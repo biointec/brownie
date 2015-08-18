@@ -1,0 +1,4 @@
+[Project]
+Name=brownie
+Manager=KDevCMakeManager
+VersionControl=kdevgit
