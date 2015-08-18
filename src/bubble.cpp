@@ -116,7 +116,7 @@ struct pathStruct {
             SSNode node=tempQueue.front();
             if(node.getNumLeftArcs()==1&&node.getNumRightArcs()==1) {
                 tempQueue.pop();
-                stReadoCov=stReadoCov+(node.getStReadCov()/node.getMarginalLength());
+                stReadoCov=stReadoCov+(node.getReadStartCov()/node.getMarginalLength());
                 length=length+node.getMarginalLength();
                 i++;
             } else {
@@ -339,7 +339,7 @@ bool DBGraph::bubbleDetection(int round) {
     int numOfCorDel=0;
     bool remove=false;
 
-   
+
 
     updateCutOffValue(round);
     for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
@@ -353,7 +353,7 @@ bool DBGraph::bubbleDetection(int round) {
         if(leftNode.getNumRightArcs()<2) {
             continue;
         }
- 
+
         pathStruct rootPath(leftNode);
         MinHeap.push(rootPath);
         std::set<NodeID> visitedNodes;
@@ -398,8 +398,8 @@ bool DBGraph::bubbleDetection(int round) {
                                 double prevAcrcCov=prevPath.getSingleArcPathCoverage();
                                 double exteNodeCov=extendedPath.getSingleNodePahtCoverage();
                                 double exteArcCov=extendedPath.getSingleArcPathCoverage();
-                            
-                              
+
+
                                 double  prevProbalility=  gsl_cdf_gaussian_P((prevNodeCov-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
                                 double  exteProbalility=  gsl_cdf_gaussian_P((exteNodeCov-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
                                 double prevProbArcCov=gsl_cdf_gaussian_P((prevAcrcCov-estimatedArcCoverageMean)/estimatedArcCoverageSTD,1);
@@ -476,14 +476,14 @@ bool DBGraph::bubbleDetection(int round) {
                                         }
                                         if(preReliable) {
                                             numOfCorDel=numOfCorDel+extendedPath.removeSingleNodes();
-                                       
+
 
                                             remove=true;
                                             break;
 
                                         } else {
                                             numOfCorDel=numOfCorDel+ prevPath.removeSingleNodes();
-                                  
+
 
                                             remove=true;
                                             break;

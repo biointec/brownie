@@ -29,6 +29,7 @@
 
 #include <map>
 #include <set>
+#include <atomic>
 
 // ============================================================================
 // ARC ITERATOR CLASS
@@ -142,8 +143,8 @@ private:
         bool anchorFlag;        // FIXME
 
         double expMult;
-        double stReadCov;
-        //comment by mahdi
+        std::atomic<Coverage> readStartCov;
+        std::atomic<Coverage> kmerCov;
 
 public:
         /**
@@ -157,7 +158,7 @@ public:
         /**
          * Default constructor
          */
-        DSNode() : leftID(0), rightID(0), flag(0), visited(false), anchorFlag(false), expMult(0), stReadCov(0) {
+        DSNode() : leftID(0), rightID(0), flag(0), visited(false), anchorFlag(false), expMult(0), readStartCov(0) {
                 arcInfo.up = 0;
         }
 
@@ -210,24 +211,50 @@ public:
         }
 
         /**
-         * Set the expected coverage
-         * @param target The target coverage
+         * Set the read start coverage
+         * @param target The target read start coverage
          */
-                //comment by mahdi
-
-
-	void setStReadCov(double target) {
-                stReadCov = target;
+	void setReadStartCov(Coverage target) {
+                readStartCov = target;
         }
 
         /**
-         * Get the expected multiplicity
-         * @return The expected multiplicity
+         * Get the read start coverage
+         * @return The read start coverage
          */
-        double getStReadCov() const {
-                return stReadCov;
+        Coverage getReadStartCov() const {
+                return readStartCov;
         }
 
+        /**
+         * Atomically increment the read start coverage
+         */
+        void incReadStartCov() {
+                readStartCov++;
+        }
+
+        /**
+         * Set the kmer coverage
+         * @param target The kmer coverage
+         */
+        void setKmerCov(Coverage target) {
+                kmerCov = target;
+        }
+
+        /**
+         * Get the kmer coverage
+         * @return The kmer coverage
+         */
+        Coverage getKmerCov() const {
+                return kmerCov;
+        }
+
+        /**
+         * Atomically increment the kmer coverage
+         */
+        void incKmerCov() {
+                kmerCov++;
+        }
 
         /**
          * Get the multiplicity, rounded to the closest integer
@@ -242,7 +269,7 @@ public:
          * @return The low side estimation of the multiplicity
          */
         size_t getLoExpMult() const {
-                int loSi = (int)(expMult - MULT_SIGN_STD * stReadCov + 0.5);
+                int loSi = (int)(expMult - MULT_SIGN_STD * readStartCov + 0.5);
                 return (loSi > 0) ? loSi : 0;
         }
 
@@ -251,7 +278,7 @@ public:
          * @return The high side estimation of the multiplicity
          */
         size_t getHiExpMult() const {
-                int hiSi = (int)(expMult + MULT_SIGN_STD * stReadCov + 0.5);
+                int hiSi = (int)(expMult + MULT_SIGN_STD * readStartCov + 0.5);
                 return hiSi;
         }
 
@@ -260,7 +287,7 @@ public:
          * @return True of false
          */
         bool multIsDubious() const {
-                return stReadCov < 1000;
+                return readStartCov < 1000;
         }
 
         /**

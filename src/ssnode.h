@@ -27,9 +27,6 @@
 #include "nucleotide.h"
 #include "tkmer.h"
 
-// FIXME
-using namespace std;
-
 // ============================================================================
 // NODE CLASS
 // ============================================================================
@@ -126,17 +123,49 @@ public:
         }
 
         /**
-         * Get the expected multiplicity deviation
-         * @return The expected multiplicity deviation
+         * Set the read start coverage
+         * @param target The target read start coverage
          */
-	//comment by mahdi
-	//Get the number of reads which their start position completely aligned with this kmer
-        double getStReadCov() const {
-                return dsNode->getStReadCov();// getMultStd();
+        void setReadStartCov(Coverage target) {
+                dsNode->setReadStartCov(target);
         }
 
-        void setStReadCov(double target)  {
-                dsNode->setStReadCov(target);
+        /**
+         * Get the read start coverage
+         * @return The read start coverage
+         */
+        Coverage getReadStartCov() const {
+                return dsNode->getReadStartCov();
+        }
+
+        /**
+         * Atomically increment the read start coverage
+         */
+        void incReadStartCov() {
+                dsNode->incReadStartCov();
+        }
+
+        /**
+         * Set the kmer coverage
+         * @param target The kmer coverage
+         */
+        void setKmerCov(Coverage target) {
+                dsNode->setKmerCov(target);
+        }
+
+        /**
+         * Get the kmer coverage
+         * @return The kmer coverage
+         */
+        Coverage getKmerCov() const {
+                return dsNode->getKmerCov();
+        }
+
+        /**
+         * Atomically increment the kmer coverage
+         */
+        void incKmerCov() {
+                dsNode->incKmerCov();
         }
 
         /**

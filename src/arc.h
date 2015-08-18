@@ -90,7 +90,7 @@ public:
         /**
          * Increment of the coverage
          */
-        void incrementCoverage() {
+        void incReadCov() {
                 cov++;
         }
 

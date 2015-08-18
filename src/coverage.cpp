@@ -49,11 +49,15 @@ void DBGraph::parseReads(size_t thisThread,
         for (size_t i = 0; i < readBuffer.size(); i++) {
                 const string& read = readBuffer[i];
 
+                KmerIt it(read);
+                if (!it.isValid())
+                        continue;
+
                 // increase the read start coverage (only for the first valid kmer)
-                NodePosPair result = table->find(KmerIt(read).getKmer());
+                NodePosPair result = table->find(it.getKmer());
                 if (result.getNodeID() != 0) {
                         SSNode node = getSSNode(result.getNodeID());
-                        node.setStReadCov(node.getStReadCov()+1);
+                        node.setReadStartCov(node.getReadStartCov()+1);
                 }
 
                 NodeID prevID = 0;
@@ -68,15 +72,15 @@ void DBGraph::parseReads(size_t thisThread,
                         // we've found the kmer, increase the node coverage
                         NodeID thisID = result.getNodeID();
                         SSNode node = getSSNode(thisID);
-                        node.setExpMult(node.getExpMult() + 1);
+                        node.incKmerCov();
 
                         // if the previous node was valid and different, increase the arc coverage
                         if ((prevID != 0) && (prevID != thisID)) {
-                                getSSNode(prevID).getRightArc(thisID)->incrementCoverage();
-                                getSSNode(thisID).getLeftArc(prevID)->incrementCoverage();
+                                getSSNode(prevID).getRightArc(thisID)->incReadCov();
+                                getSSNode(thisID).getLeftArc(prevID)->incReadCov();
                         }
 
-                        if (it.hasLeftOverlap())
+                        if (it.hasRightOverlap())
                                 prevID = thisID;
                         else
                                 prevID = 0;
@@ -175,7 +179,7 @@ void DBGraph::extractStatistic(double reliabilityPer) {
     while(sumOfMarginalLenght<((totalLength*percentage)/100)) {
         SSNode tempNode=nodeArray[i];
         sumOfMarginalLenght=sumOfMarginalLenght+tempNode.getMarginalLength();
-        sumOfReadStcov=sumOfReadStcov+tempNode.getStReadCov();
+        sumOfReadStcov=sumOfReadStcov+tempNode.getReadStartCov();
         i++;
     }
     avg=sumOfReadStcov/sumOfMarginalLenght;
@@ -274,7 +278,7 @@ void DBGraph::extractStatistic(double reliabilityPer) {
             int nodeMultiplicity=1;
             double numerator=0;
             double newValue=avg*nodeMultiplicity*leftNode.getMarginalLength();
-            double newProbability=gsl_ran_poisson_pdf(leftNode.getStReadCov(),newValue);
+            double newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
 
             int realMul=trueMult[lID];
             if (realMul>1) {
@@ -285,7 +289,7 @@ void DBGraph::extractStatistic(double reliabilityPer) {
                 nodeMultiplicity++;
                 numerator=newProbability;
                 newValue=avg*nodeMultiplicity*leftNode.getMarginalLength();
-                newProbability=gsl_ran_poisson_pdf(leftNode.getStReadCov(),newValue);
+                newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
             }
 
             nodeMultiplicity--;
@@ -296,33 +300,33 @@ void DBGraph::extractStatistic(double reliabilityPer) {
             int i=nodeMultiplicity-1;
             if(i>0) {
                 double newValue=avg*i*leftNode.getMarginalLength();
-                newProbability=gsl_ran_poisson_pdf(leftNode.getStReadCov(),newValue);
+                newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
                 denominator=denominator+newProbability;
                 i--;
                 while(i>=0&& abs(newProbability-currentProb)> .00000001) {
                     currentProb=newProbability;
                     newValue=avg*i*leftNode.getMarginalLength();
-                    newProbability=gsl_ran_poisson_pdf(leftNode.getStReadCov(),newValue);
+                    newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
                     denominator=denominator+newProbability;
                     i--;
                 }
             }
             i=nodeMultiplicity+1;
             newValue=avg*i*leftNode.getMarginalLength();
-            newProbability=gsl_ran_poisson_pdf(leftNode.getStReadCov(),newValue);
+            newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
             denominator=denominator+newProbability;
             i++;
             while(i>0&& abs(newProbability-currentProb)> .00000001) {
                 currentProb=newProbability;
                 newValue=avg*i*leftNode.getMarginalLength();
-                newProbability=gsl_ran_poisson_pdf(leftNode.getStReadCov(),newValue);
+                newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
                 denominator=denominator+newProbability;
                 i++;
             }
 
             newValue=avg*nodeMultiplicity*leftNode.getMarginalLength();
-            if(leftNode.getStReadCov()<newValue)
-                newProbability=gsl_ran_poisson_pdf(leftNode.getStReadCov(),newValue);
+            if(leftNode.getReadStartCov()<newValue)
+                newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
             else
                 newProbability=gsl_ran_poisson_pdf(newValue,newValue);
 
@@ -333,7 +337,7 @@ void DBGraph::extractStatistic(double reliabilityPer) {
 
             if (nodeMultiplicity==1) {
 
-                int shiftedStReadCov=leftNode.getStReadCov()+avg*leftNode.getMarginalLength();
+                int shiftedStReadCov=leftNode.getReadStartCov()+avg*leftNode.getMarginalLength();
                 //i=2
                 newValue=2*avg*leftNode.getMarginalLength();
                 numerator=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
@@ -360,7 +364,7 @@ void DBGraph::extractStatistic(double reliabilityPer) {
             double confidenceRatio=numerator/denominator;
 
             nodesExpMult[leftNode.getNodeID()]=make_pair(nodeMultiplicity,make_pair( confidenceRatio,inCorrctnessRatio));
-            expcovFile<<leftNode.getNodeID()<<","<< leftNode.getMarginalLength()<<","<<leftNode.getStReadCov() <<","<<trueMult[abs( leftNode.getNodeID())]<<","<<nodeMultiplicity
+            expcovFile<<leftNode.getNodeID()<<","<< leftNode.getMarginalLength()<<","<<leftNode.getReadStartCov() <<","<<trueMult[abs( leftNode.getNodeID())]<<","<<nodeMultiplicity
                       <<"," <<std::setprecision(8) <<confidenceRatio<<","<<std::setprecision(8) <<inCorrctnessRatio<<endl;
         }
 
@@ -700,7 +704,7 @@ void DBGraph::setAnchorNodes()
         }
 
         cout << "Anchor: " << id << " (length: " << node.getMarginalLength()
-             << "): " << node.getExpMult() << " +/- " << node.getStReadCov();
+             << "): " << node.getExpMult() << " +/- " << node.getReadStartCov();
 
         cout << ( trueMult[id] == 1 ? "" : " (ERROR)" ) << endl;
     }
@@ -745,7 +749,7 @@ bool DBGraph::mergeSingleNodes()
         left.inheritRightArcs ( right );
         left.setExpMult ( left.getExpMult() + right.getExpMult() );
         //comment by mahdi
-        left.setStReadCov(left.getStReadCov()+right.getStReadCov());
+        left.setReadStartCov(left.getReadStartCov()+right.getReadStartCov());
         right.invalidate();
         numDeleted++;
 
@@ -895,7 +899,7 @@ bool DBGraph::arcFilteringBasedOnExpMultiplicity()
             toDel.deleteLeftArc ( id );
             numArcsDetatched++;
             if ( getSSNode ( toDelete[i] ).getFlag() == 1 ) {
-                cout << "Incorrectly removed arcs between node " << id << " (" << node.getMarginalLength() << "): " << node.getExpMult() << " +/- " << node.getStReadCov() << " and node " << toDelete[i] << " (" << toDel.getMarginalLength() << "): " << toDel.getExpMult() << " +/- " << toDel.getStReadCov() << endl;
+                cout << "Incorrectly removed arcs between node " << id << " (" << node.getMarginalLength() << "): " << node.getExpMult() << " +/- " << node.getReadStartCov() << " and node " << toDelete[i] << " (" << toDel.getMarginalLength() << "): " << toDel.getExpMult() << " +/- " << toDel.getReadStartCov() << endl;
                 incorrDetach++;
             }
         }
@@ -941,7 +945,7 @@ bool DBGraph::arcFilteringBasedOnSignExpMultiplicity()
             toDel.deleteLeftArc ( id );
             numArcsDetatched++;
             if ( toDel.getFlag() == 1 ) {
-                cout << "Incorrectly removed arcs between node " << id << " (" << node.getMarginalLength() << "): " << node.getExpMult() << " +/- " << node.getStReadCov() << " and node " << toDelete[i] << " (" << toDel.getMarginalLength() << "): " << toDel.getExpMult() << " +/- " << toDel.getStReadCov() << endl;
+                cout << "Incorrectly removed arcs between node " << id << " (" << node.getMarginalLength() << "): " << node.getExpMult() << " +/- " << node.getReadStartCov() << " and node " << toDelete[i] << " (" << toDel.getMarginalLength() << "): " << toDel.getExpMult() << " +/- " << toDel.getReadStartCov() << endl;
                 incorrDetach++;
             }
         }
@@ -1020,7 +1024,7 @@ bool DBGraph::flowConservationBasedArcFiltering()
             if ( getDSNode ( abs ( it->second ) ).getFlag() == 1 ) {
                 incorrDetach++;
                 cout << " Wrong !!!!!!! " << endl;
-                cout << nodeToDelete.getExpMult() << " +/- " << nodeToDelete.getStReadCov() << endl;
+                cout << nodeToDelete.getExpMult() << " +/- " << nodeToDelete.getReadStartCov() << endl;
             } else {
                 // cout << " Correct" << endl;
             }

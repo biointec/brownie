@@ -48,9 +48,9 @@ DBGraph::DBGraph(const Settings& settings) : settings(settings), nodes(NULL),
     const double minCertainVlueCov=1.1;
     const double minSafeValueCov=1.5;
     const double minRedLineValueCov=2;
-    
-    
-    
+
+
+
 
 
 void DBGraph::initialize()
@@ -303,10 +303,10 @@ bool DBGraph::updateCutOffValue(int round)
         pre=current;
         i++;
     }
-    
+
     if (safeValue>redLineValue)
       redLineValue=safeValue;
-    
+
     double maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*3>minCertainVlueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*3:minCertainVlueCov;
     if (bestAnswer.first>maxThreshold)
         certainValue=maxThreshold;
@@ -325,9 +325,9 @@ bool DBGraph::updateCutOffValue(int round)
 
     if (this->redLineValueCov<redLineValue)
         this->redLineValueCov=redLineValue;
-    
- 
-    
+
+
+
     cout<<"certainValue: "<<this->certainVlueCov<<endl;
     cout<<"safeValue: "<<this->safeValueCov<<endl;
     cout<<"redLineValue: "<<this->redLineValueCov<<endl;
@@ -629,8 +629,8 @@ void DBGraph::increaseCoverage(const NodeEndRef &left, const NodeEndRef &right)
             if (lNode.getLeftKmer() == left.getKmer())
                 return;
 
-    lNode.getRightArc(right.getNodeID())->incrementCoverage();
-    rNode.getLeftArc(left.getNodeID())->incrementCoverage();
+    lNode.getRightArc(right.getNodeID())->incReadCov();
+    rNode.getLeftArc(left.getNodeID())->incReadCov();
 }
 
 void DBGraph::threadThroughReads(const string& filename, size_t numReads,
@@ -719,7 +719,7 @@ void DBGraph::createFromFile(const string& nodeFilename,
     // auxiliary variables
     string dS, descriptor;
     int dI, length;
-    double expMult, stReadCov;
+    double expMult, readStartCov;
 
     // read the metadata
     ifstream metaDataFile(metaDataFilename.c_str());
@@ -739,14 +739,14 @@ void DBGraph::createFromFile(const string& nodeFilename,
     SSNode::setNodePointer(nodes);
     for (NodeID id = 1; id <= numNodes; id++) {
         // read the node info
-        nodeFile >> dS >> dI >> length >> expMult >> stReadCov >> descriptor;
+        nodeFile >> dS >> dI >> length >> expMult >> readStartCov >> descriptor;
 
         DSNode& node = getDSNode(id);
         node.setSequence(descriptor);
 
         node.setExpMult(expMult);
         //comment by mahdi
-        node.setStReadCov(stReadCov);
+        node.setReadStartCov(readStartCov);
 
         Kmer firstKmer = node.getLeftKmer();
         Kmer finalKmer = node.getRightKmer();
@@ -924,8 +924,8 @@ void DBGraph::writeGraph(const std::string& nodeFilename,
 
         //nodeFile << "NODE" << "\t" << numExtractedNodes << "\t"
         nodeFile << "NODE" << "\t" << id << "\t"
-                 << node.getLength() << "\t" << node.getExpMult()
-                 << "\t" << node.getStReadCov() << "\n"
+                 << node.getLength() << "\t" << node.getKmerCov()
+                 << "\t" << node.getReadStartCov() << "\n"
                  << node.getSequence() << "\n";
 
         KmerOverlap ol;

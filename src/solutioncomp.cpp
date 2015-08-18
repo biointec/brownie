@@ -176,7 +176,7 @@ void DBGraph::writeCytoscapeGraph(int ID)
             correctnessRatio=result.second.second;
         }
         ofs << *it << "\t" << trueMult[abs(*it)] << "\t" << node.getExpMult() << "\t"
-            << node.getMarginalLength() << "\t"<<double(node.getStReadCov()/node.getMarginalLength()) <<"\t"<<nodeMultiplicity<<"\t"<< confidenceRatio<<"\t"<< correctnessRatio <<"\t"<<node.getSequence() << endl;
+            << node.getMarginalLength() << "\t"<<double(node.getReadStartCov()/node.getMarginalLength()) <<"\t"<<nodeMultiplicity<<"\t"<< confidenceRatio<<"\t"<< correctnessRatio <<"\t"<<node.getSequence() << endl;
     }
     ofs.close();
 }
@@ -263,7 +263,7 @@ void DBGraph::writeLocalCytoscapeGraph(int ID, NodeID srcID, size_t maxDepth)
             correctnessRatio=result.second.second;
         }
         ofs << *it << "\t" << trueMult[abs(*it)] << "\t" << node.getExpMult() << "\t"
-            << node.getMarginalLength() << "\t"<<double(node.getStReadCov()/node.getMarginalLength()) <<"\t"<<nodeMultiplicity<<"\t"<< confidenceRatio<<"\t"<< correctnessRatio <<"\t"<<node.getSequence() << endl;
+            << node.getMarginalLength() << "\t"<<double(node.getReadStartCov()/node.getMarginalLength()) <<"\t"<<nodeMultiplicity<<"\t"<< confidenceRatio<<"\t"<< correctnessRatio <<"\t"<<node.getSequence() << endl;
     }
     ofs.close();
 }

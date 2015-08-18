@@ -27,7 +27,7 @@ bool sortMemResultbySize ( match_t left, match_t right )
     return left.len>right.len;
 }
 void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
-    
+
     cout <<endl<<"welcome to error correction part"<<endl;
     //*******************************************************
     FileType type =library.getFileType();
@@ -52,9 +52,9 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
     ifstream readsFile;
     readsFile.open(readFileName.c_str(),ios::in);
     ofstream outFastq;
-    
+
     outFastq.open(library.getOutputFileName(), ios::out);
-    
+
     readStructStr readInfo;
     string nodeContent;
     string guessedRead;
@@ -93,7 +93,7 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
             double passedTime=double(endt-begin)/(double) (CLOCKS_PER_SEC*60);
             double progress = ((double)numOfReads/(double)numOfAllreads)*100;
             double remainingTime=((100-progress)*passedTime)/progress;
-            cout << "Processing read number " << numOfReads<<"\/"<<numOfAllreads
+            cout << "Processing read number " << numOfReads<<"/"<<numOfAllreads
                  <<" which  means: " << progress<<"%  progress. Approximate remaining time is " <<remainingTime <<" minutes. Error correction is less than " <<(numOfSupportedReads/numOfReads)*100 <<"%"<<"\r";
             cout.flush();
         }
