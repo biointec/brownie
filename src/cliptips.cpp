@@ -191,7 +191,7 @@ bool DBGraph::clipTips ( bool hard )
         SSNode startNode = ( rightDE ) ? getSSNode ( -id ) : getSSNode ( id );
 
 
-     
+
         if(startNode.getNodeID()==1) {
 
             int stop=1;

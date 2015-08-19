@@ -45,9 +45,9 @@ DBGraph::DBGraph(const Settings& settings) : settings(settings), nodes(NULL),
     //mahdi comment my
     initialize();
 }
-    const double minCertainVlueCov=1.1;
-    const double minSafeValueCov=1.5;
-    const double minRedLineValueCov=2;
+const double minCertainVlueCov=1.1;
+const double minSafeValueCov=1.5;
+const double minRedLineValueCov=2;
 
 
 
@@ -66,6 +66,7 @@ void DBGraph::initialize()
     certainVlueCov=minCertainVlueCov;
     safeValueCov=minSafeValueCov;
     redLineValueCov=minRedLineValueCov;
+    updateCutOffValueRound=1;
 }
 
 int DBGraph::parseLine(char* line)
@@ -225,115 +226,150 @@ bool DBGraph::filterChimeric(int round)
 
 bool DBGraph::updateCutOffValue(int round)
 {
-    char roundStr[15];
-    sprintf(roundStr, "%d", round);
-    string strRound =string (roundStr);
-    vector<double> allNodes;
-    vector <pair<double ,pair<int, int> > > FrequencyArrayBoth;
-    vector<pair<double,int> > frequencyArray;
-    size_t validNodes=0;
-    for (NodeID i = -numNodes; i <= numNodes; i++) {
-        if (i==0)
-            continue;
-        SSNode n = getSSNode(i);
-        if(!n.isValid())
-            continue;
-        validNodes++;
-        double kmerCoverage=n.getExpMult() / n.getMarginalLength();
-        allNodes.push_back(kmerCoverage);
-    }
-    std::sort (allNodes.begin(), allNodes.end());
-    double St=allNodes[0];
-    unsigned int i=0;
-    double Interval=(estimatedKmerCoverage*2)/200;
-    double rightLimit=estimatedKmerCoverage*10;
-    if (rightLimit>coverage) {
-        rightLimit=coverage;
-    }
-    if (Interval<.1* (round+1))
-        Interval=.1* (round+1);
-    if (Interval>.5*(round+1))
-        Interval=.5*(round+1)>Interval?Interval:.5*(round+1);
-    unsigned int m=0;
-    unsigned int n=0;
-    i=0;
-    St=allNodes[0];
-    while (i<allNodes.size()) {
-        double intervalCount=0;
-        while (allNodes[i]>=St && allNodes[i]<St+Interval) {
-            intervalCount++;
-            i++;
+
+        char roundStr[15];
+        sprintf(roundStr, "%d", round);
+        string strRound =string (roundStr);
+        vector<pair<double,int> > allNodes;
+        vector<pair<int , pair<double,int> > > frequencyArray;
+        size_t validNodes=0;
+        for (NodeID i = -numNodes; i <= numNodes; i++) {
+                if (i==0)
+                        continue;
+                SSNode n = getSSNode(i);
+                if(!n.isValid())
+                        continue;
+                validNodes++;
+                double kmerCoverage=(double)n.getExpMult() / (double)n.getMarginalLength();
+                allNodes.push_back(make_pair(kmerCoverage,n.getMarginalLength()) );
         }
-        if (allNodes[i]>rightLimit)
-            break;
-        St=St+Interval;
-        double representative=St+Interval/2;
-        if (intervalCount!=0)
-            frequencyArray.push_back(make_pair(representative,intervalCount));
-    }
-    if (validNodes/100>10)
-      validNodes=10;
-    //double flucValue=(double)validNodes/1000*(round+1)<50?(double)validNodes/1000*(round+1):50;
-    double flucValue=validNodes*(round+1);
-    if (frequencyArray.size()==0)
-        return false;
-    pair<double,int> pre=frequencyArray[0];
-    pair<double,int> current;
-    double currentDist=0;
-    double maxDist=0;
-
-    pair<double,int> bestAnswer;
-    double redLineValue=0;
-    double certainValue=0;
-    double safeValue=0;
-    i=1;
-    while(i<frequencyArray.size()) {
-        current=frequencyArray[i];
-        currentDist= pre.second-current.second;
-        if (currentDist<flucValue*-1) {
-            redLineValue=pre.first;
-            break;
-        } else {
-            if (currentDist>maxDist) {
-                maxDist=currentDist;
-                bestAnswer=pre;
-                safeValue=current.first;
-            }
+        std::sort (allNodes.begin(), allNodes.end());
+        unsigned int i=0;
+        double Interval=(estimatedKmerCoverage*2)/200;
+        double rightLimit=estimatedKmerCoverage*10;
+        if (rightLimit>coverage) {
+                rightLimit=coverage;
         }
-        pre=current;
-        i++;
-    }
+        if (Interval<.1* (round+1))
+                Interval=.1* (round+1);
+        if (Interval>.5*(round+1))
+                Interval=.5*(round+1)>Interval?Interval:.5*(round+1);
 
-    if (safeValue>redLineValue)
-      redLineValue=safeValue;
+        unsigned int m=0;
+        unsigned int n=0;
+        i=0;
+        pair<double, int> test=allNodes.back();
+        int sizeOfvec=allNodes.size();
+        double  St=allNodes[0].first;
+        while (true) {
+                double intervalCount=0;
+                int sumOfMarginalLenght=0;
+                while (allNodes[i].first>=St && allNodes[i].first<St+Interval&& i<allNodes.size()-1) {
+                        intervalCount++;
+                        i++;
+                        sumOfMarginalLenght=sumOfMarginalLenght+allNodes[i].second;
+                }
+                //if (allNodes[i].first>rightLimit)
+                //        break;
+                if (i==validNodes-1)
+                        break;
+                St=St+Interval;
+                double representative=St+Interval/2;
+                if (intervalCount!=0)
+                        frequencyArray.push_back(make_pair(sumOfMarginalLenght , make_pair(representative,intervalCount)));
+        }
+        if (validNodes/100>10)
+                validNodes=10;
+        double flucValue=validNodes*(round+1);
+        if (frequencyArray.size()==0)
+                return false;
+        pair<double,int> pre=frequencyArray[0].second;
+        pair<double,int> current;
+        double currentDist=0;
+        double maxDist=0;
 
-    double maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*3>minCertainVlueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*3:minCertainVlueCov;
-    if (bestAnswer.first>maxThreshold)
-        certainValue=maxThreshold;
-    else
-        certainValue=bestAnswer.first;
-    if (this->certainVlueCov<certainValue)
-        this->certainVlueCov=certainValue;
-    maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*2>minSafeValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*2:minSafeValueCov;
-    if (safeValue>maxThreshold)
-        safeValue=maxThreshold;
-    if (this->safeValueCov<safeValue)
-        this->safeValueCov=safeValue;
-    maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*1>minRedLineValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*1:minRedLineValueCov;
-    if (redLineValue>maxThreshold)
-        redLineValue=maxThreshold;
+        pair<double,int> bestAnswer;
+        double redLineValue=0;
+        double certainValue=0;
+        double safeValue=0;
+        i=0;
 
-    if (this->redLineValueCov<redLineValue)
-        this->redLineValueCov=redLineValue;
+        i=1;
+        while(i<frequencyArray.size()) {
+                current=frequencyArray[i].second;
+                currentDist= pre.second-current.second;
+                if (currentDist<flucValue*-1) {
+                        redLineValue=pre.first;
+                        break;
+                } else {
+                        if (currentDist>maxDist) {
+                                maxDist=currentDist;
+                                bestAnswer=pre;
+                                safeValue=current.first;
+                        }
+                }
+                pre=current;
+                i++;
+        }
 
+        if (safeValue>redLineValue)
+                redLineValue=safeValue;
 
+        double maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*3>minCertainVlueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*3:minCertainVlueCov;
+        if (bestAnswer.first>maxThreshold)
+                certainValue=maxThreshold;
+        else
+                certainValue=bestAnswer.first;
+        if (this->certainVlueCov<certainValue)
+                this->certainVlueCov=certainValue;
+        maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*2>minSafeValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*2:minSafeValueCov;
+        if (safeValue>maxThreshold)
+                safeValue=maxThreshold;
+        if (this->safeValueCov<safeValue)
+                this->safeValueCov=safeValue;
+        maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*1>minRedLineValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*1:minRedLineValueCov;
+        if (redLineValue>maxThreshold)
+                redLineValue=maxThreshold;
 
-    cout<<"certainValue: "<<this->certainVlueCov<<endl;
-    cout<<"safeValue: "<<this->safeValueCov<<endl;
-    cout<<"redLineValue: "<<this->redLineValueCov<<endl;
-
+        if (this->redLineValueCov<redLineValue)
+                this->redLineValueCov=redLineValue;
+        cout<<"certainValue: "<<this->certainVlueCov<<endl;
+        cout<<"safeValue: "<<this->safeValueCov<<endl;
+        cout<<"redLineValue: "<<this->redLineValueCov<<endl;
+        //writing to file to make a plot
+        #ifdef DEBUG
+        if (round>0)
+                plotCovDiagram(frequencyArray);
+        #endif
+        return true;
 }
-
+void DBGraph::plotCovDiagram(vector<pair<int , pair<double,int> > >& frequencyArray){
+        ofstream expcovFile;
+        std::string roundstr="";
+        if (updateCutOffValueRound<10)
+                roundstr="00"+std::to_string( updateCutOffValueRound);
+        else if (updateCutOffValueRound<100)
+                roundstr="0"+std::to_string( updateCutOffValueRound);
+        else
+                roundstr=std::to_string( updateCutOffValueRound);
+        string filename= "cov/cov_"+roundstr+".dat";
+        string outputFileName= "cov/cov_"+roundstr+".pdf";
+        expcovFile.open( filename.c_str());
+        this->updateCutOffValueRound++;
+        expcovFile<<"certainValue: "<<this->certainVlueCov<<endl;
+        expcovFile<<"safeValue: "<<this->safeValueCov<<endl;
+        expcovFile<<"redLineValue: "<<this->redLineValueCov<<endl;
+        expcovFile<<"representative     sumOfMarginalLenght"<<endl;
+        int i=0;
+        while(i<frequencyArray.size()) {
+                pair<double,int> pre=frequencyArray[i].second;
+                expcovFile<<pre.first<< "       "<<frequencyArray[i].first<< endl;
+                i++;
+        }
+        expcovFile.close();
+        string command="gnuplot -e  \"filename='"+filename+"'\" -e \"outputfile='"+outputFileName+"'\" cov/plot.dem";
+        system(command.c_str());
+}
 
 struct readStructStr
 {

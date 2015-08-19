@@ -334,7 +334,7 @@ struct comparator {
 bool DBGraph::bubbleDetection(int round) {
 
     priority_queue<pathStruct,vector<pathStruct>,comparator > MinHeap;
-    int maxLength=70;
+    int maxLength=settings.getK()*2;
     int numOfIncDel=0;
     int numOfCorDel=0;
     bool remove=false;

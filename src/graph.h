@@ -304,7 +304,8 @@ public:
     double certainVlueCov;
     double safeValueCov;
     double redLineValueCov;
- 
+    int updateCutOffValueRound;
+
     size_t n50;
     int numberOfValidNodes;
     size_t sizeOfGraph;
@@ -457,6 +458,7 @@ public:
      */
     bool filterCoverage( float round);
     bool updateCutOffValue(int round);
+    void plotCovDiagram(vector<pair<int , pair<double,int> > >& frequencyArray);
     void makeSampleReadFile(float num);
     size_t getLowestArcMultiplicity(NodeID left, NodeID right);
 

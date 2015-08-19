@@ -179,21 +179,23 @@ void Brownie::stageFour()
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
 
-        if (!stageFourNecessary()) {
+       /* if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 4..." << endl << endl;
                 return;
-        }
+        }*/
         DBGraph testgraph(settings);
         testgraph.createFromFile(getNodeFilename(3),
                                  getArcFilename(3),
                                  getMetaDataFilename(3));
         cout<<"initial kmerCoverage : "<<testgraph.estimatedKmerCoverage<<endl;
+        string command="rm cov/*.pdf && rm cov/*.dat";
+        system(command.c_str());
         testgraph.clipTips(0);
         testgraph.mergeSingleNodes();
         testgraph.filterCoverage(0);
         testgraph.mergeSingleNodes();
-        testgraph.extractStatistic(.5);
+        testgraph.extractStatistic(1);
 
         DBGraph graph(settings);
         graph.estimatedArcCoverageMean= testgraph.estimatedArcCoverageMean;
@@ -221,9 +223,9 @@ void Brownie::stageFour()
         cout << "Created graph in "
         << Util::stopChrono() << "s." << endl;
         Util::startChrono();
-        //#ifdef DEBUG
+        #ifdef DEBUG
         graph.compareToSolution();
-        //#endif
+        #endif
         //variables
         bool simplified = true;
         size_t bigestN50=0;
@@ -281,7 +283,7 @@ void Brownie::stageFour()
                 }
                 //*******************************************************
 
-                graph.extractStatistic(.9);
+                graph.extractStatistic(1);
                 #ifdef DEBUG
                 cout<<"estimated Arc Coverage Mean: "<<graph.estimatedArcCoverageMean<<endl;
                 cout<<"estimated Arc Coverage STD: "<<graph.estimatedArcCoverageSTD<<endl;
@@ -323,7 +325,6 @@ void Brownie::stageFour()
                         graph.compareToSolution();
                         #endif
                 }
-                graph.compareToSolution();
                 //*******************************************************
                 simplified = tips  || chimeric  || coverage || link|| deleted || bubble;
                 round++;
@@ -334,8 +335,9 @@ void Brownie::stageFour()
         Util::startChrono();
         #ifdef DEBUG
         graph.sanityCheck();
+        command="pdftk cov/*.pdf cat output allpdfFiles.pdf";
+        system(command.c_str());
         #endif
-
         graph.clear();
         cout << "Stage 4 finished.\n" << endl;
 }
@@ -355,10 +357,10 @@ void Brownie::stageFive()
         << graph.getNumArcs() << " arcs)" << endl;
         cout << "Created graph in "
         << Util::stopChrono() << "s." << endl;
-        //#ifdef DEBUG
+        #ifdef DEBUG
         graph.compareToSolution();
-        //#endif
-        graph.writeCytoscapeGraph(0);
+        #endif
+        //graph.writeCytoscapeGraph(0);
         Util::startChrono();
         graph.errorCorrection(libraries);
         cout << "Error correction completed in "
@@ -388,3 +390,4 @@ int main(int argc, char** args)
         cout << "Exiting... bye!" << endl << endl;
         return EXIT_SUCCESS;
 }
+

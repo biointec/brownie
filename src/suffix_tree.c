@@ -33,17 +33,17 @@ The general pseudo code is:
 
 n = length of the string.
 ST_CreateTree:
-   Calls n times to SPA (Single Phase Algorithm). SPA:  
+   Calls n times to SPA (Single Phase Algorithm). SPA:
       Increase the variable e (virtual end of all leaves).
    Calls SEA (Single Extension Algorithm) starting with the first extension that
    does not already exist in the tree and ending at the first extension that
-   already exists. SEA :  
+   already exists. SEA :
       Follow suffix link.
       Check if current suffix exists in the tree.
       If it does not - apply rule 2 and then create a new suffix link.
-      apply_rule_2:  
+      apply_rule_2:
          Create a new leaf and maybe a new internal node as well.
-         create_node:  
+         create_node:
             Create a new node or a leaf.
 
 
@@ -125,8 +125,8 @@ typedef struct SUFFIXTREEPOS
    create_node :
    Creates a node with the given init field-values.
 
-  Input : The father of the node, the starting and ending indices 
-  of the incloming edge to that node, 
+  Input : The father of the node, the starting and ending indices
+  of the incloming edge to that node,
         the path starting position of the node.
 
   Output: A pointer to that node.
@@ -163,11 +163,11 @@ NODE* create_node(NODE* father, DBL_WORD start, DBL_WORD end, DBL_WORD position)
 /******************************************************************************/
 /*
    find_son :
-   Finds son of node that starts with a certain character. 
+   Finds son of node that starts with a certain character.
 
    Input : the tree, the node to start searching from and the character to be
            searched in the sons.
-  
+
    Output: A pointer to the found son, 0 if no such son.
 */
 
@@ -288,26 +288,26 @@ void connect_siblings(NODE* left_sib, NODE* right_sib)
 
 NODE* apply_extension_rule_2(
                       /* Node 1 (see drawings) */
-                      NODE*           node,            
+                      NODE*           node,
                       /* Start index of node 2's incoming edge */
-                      DBL_WORD        edge_label_begin,   
+                      DBL_WORD        edge_label_begin,
                       /* End index of node 2's incoming edge */
-                      DBL_WORD        edge_label_end,      
+                      DBL_WORD        edge_label_end,
                       /* Path start index of node 2 */
-                      DBL_WORD        path_pos,         
+                      DBL_WORD        path_pos,
                       /* Position in node 1's incoming edge where split is to be
 		         performed */
-                      DBL_WORD        edge_pos,         
+                      DBL_WORD        edge_pos,
                       /* Can be 'new_son' or 'split' */
-                      RULE_2_TYPE     type)            
+                      RULE_2_TYPE     type)
 {
    NODE *new_leaf,
         *new_internal,
         *son;
    /*-------new_son-------*/
-   if(type == new_son)                                       
+   if(type == new_son)
    {
-#ifdef DEBUG   
+#ifdef DEBUG_ST
       printf("rule 2: new leaf (%lu,%lu)\n",edge_label_begin,edge_label_end);
 #endif
       /* Create a new leaf (4) with the characters of the extension */
@@ -321,7 +321,7 @@ NODE* apply_extension_rule_2(
       return new_leaf;
    }
    /*-------split-------*/
-#ifdef DEBUG   
+#ifdef DEBUG_ST
    printf("rule 2: split (%lu,%lu)\n",edge_label_begin,edge_label_end);
 #endif
    /* Create a new internal node (3) at the split point */
@@ -340,18 +340,18 @@ NODE* apply_extension_rule_2(
                       edge_label_begin,
                       edge_label_end,
                       path_pos);
-   
+
    /* Connect new_internal (3) where node (1) was */
    /* Connect (3) with (1)'s left sibling */
-   connect_siblings(node->left_sibling, new_internal);   
+   connect_siblings(node->left_sibling, new_internal);
    /* connect (3) with (1)'s right sibling */
    connect_siblings(new_internal, node->right_sibling);
    node->left_sibling = 0;
 
    /* Connect (3) with (1)'s father */
-   if(new_internal->father->sons == node)            
+   if(new_internal->father->sons == node)
       new_internal->father->sons = new_internal;
-   
+
    /* Connect new_leaf (2) and node (1) as sons of new_internal (3) */
    new_internal->sons = node;
    node->father = new_internal;
@@ -379,19 +379,19 @@ NODE* apply_extension_rule_2(
 */
 
 NODE* trace_single_edge(
-                      SUFFIX_TREE*    tree, 
+                      SUFFIX_TREE*    tree,
                       /* Node to start from */
-                      NODE*           node,         
+                      NODE*           node,
                       /* String to trace */
-                      PATH            str,         
+                      PATH            str,
                       /* Last matching position in edge */
-                      DBL_WORD*       edge_pos,      
+                      DBL_WORD*       edge_pos,
                       /* Last matching position in tree source string */
-                      DBL_WORD*       chars_found,   
+                      DBL_WORD*       chars_found,
                       /* Skip or no_skip*/
-                      SKIP_TYPE       type,          
+                      SKIP_TYPE       type,
                       /* 1 if search is done, 0 if not */
-                      int*            search_done)   
+                      int*            search_done)
 {
    NODE*      cont_node;
    DBL_WORD   length,str_len;
@@ -410,7 +410,7 @@ NODE* trace_single_edge(
       *chars_found = 0;
       return node;
    }
-   
+
    /* Found first character - prepare for continuing the search */
    node    = cont_node;
    length  = get_node_label_length(tree,node);
@@ -453,7 +453,7 @@ NODE* trace_single_edge(
          counter++;
 #endif
 
-         /* Compare current characters of the string and the edge. If equal - 
+         /* Compare current characters of the string and the edge. If equal -
 	    continue */
          if(tree->tree_string[node->edge_label_start+*edge_pos] != tree->tree_string[str.begin+*edge_pos])
          {
@@ -495,17 +495,17 @@ NODE* trace_single_edge(
 */
 
 NODE* trace_string(
-                      SUFFIX_TREE*    tree, 
+                      SUFFIX_TREE*    tree,
                       /* Node to start from */
-                      NODE*           node,         
+                      NODE*           node,
                       /* String to trace */
-                      PATH            str,         
+                      PATH            str,
                       /* Last matching position in edge */
-                      DBL_WORD*       edge_pos,      
+                      DBL_WORD*       edge_pos,
                       /* Last matching position in tree string */
                       DBL_WORD*       chars_found,
                       /* skip or not */
-                      SKIP_TYPE       type)         
+                      SKIP_TYPE       type)
 {
    /* This variable will be 1 when search is done.
       It is a return value from function trace_single_edge */
@@ -536,11 +536,11 @@ NODE* trace_string(
 
 DBL_WORD ST_FindSubstring(
                       /* The suffix array */
-                      SUFFIX_TREE*    tree,      
+                      SUFFIX_TREE*    tree,
                       /* The substring to find */
-                      char*  W,         
+                      char*  W,
                       /* The length of W */
-                      DBL_WORD        P)         
+                      DBL_WORD        P)
 {
    /* Starts with the root's son that has the first character of W as its
       incoming edge first character */
@@ -553,7 +553,7 @@ DBL_WORD ST_FindSubstring(
    {
       k=node->edge_label_start;
       node_label_end = get_node_label_end(tree,node);
-      
+
       /* Scan a single edge - compare each character with the searched string */
       while(j<P && k<=node_label_end && tree->tree_string[k] == W[j])
       {
@@ -564,7 +564,7 @@ DBL_WORD ST_FindSubstring(
          counter++;
 #endif
       }
-      
+
       /* Checking which of the stopping conditions are true */
       if(j == P)
       {
@@ -683,12 +683,12 @@ int ST_FindAllSubstrings(
 /******************************************************************************/
 /*
    follow_suffix_link :
-   Follows the suffix link of the source node according to Ukkonen's rules. 
+   Follows the suffix link of the source node according to Ukkonen's rules.
 
-   Input : The tree, and pos. pos is a combination of the source node and the 
+   Input : The tree, and pos. pos is a combination of the source node and the
            position in its incoming edge where suffix ends.
-   Output: The destination node that represents the longest suffix of node's 
-           path. Example: if node represents the path "abcde" then it returns 
+   Output: The destination node that represents the longest suffix of node's
+           path. Example: if node represents the path "abcde" then it returns
            the node that represents "bcde".
 */
 
@@ -696,10 +696,10 @@ void follow_suffix_link(SUFFIX_TREE* tree, POS* pos)
 {
    /* gama is the string between node and its father, in case node doesn't have
       a suffix link */
-   PATH      gama;            
+   PATH      gama;
    /* dummy argument for trace_string function */
-   DBL_WORD  chars_found = 0;   
-   
+   DBL_WORD  chars_found = 0;
+
    if(pos->node == tree->root)
    {
       return;
@@ -707,21 +707,21 @@ void follow_suffix_link(SUFFIX_TREE* tree, POS* pos)
 
    /* If node has no suffix link yet or in the middle of an edge - remember the
       edge between the node and its father (gama) and follow its father's suffix
-      link (it must have one by Ukkonen's lemma). After following, trace down 
-      gama - it must exist in the tree (and thus can use the skip trick - see 
+      link (it must have one by Ukkonen's lemma). After following, trace down
+      gama - it must exist in the tree (and thus can use the skip trick - see
       trace_string function description) */
    if(pos->node->suffix_link == 0 || is_last_char_in_edge(tree,pos->node,pos->edge_pos) == 0)
    {
-      /* If the node's father is the root, than no use following it's link (it 
-         is linked to itself). Tracing from the root (like in the naive 
-         algorithm) is required and is done by the calling function SEA uppon 
+      /* If the node's father is the root, than no use following it's link (it
+         is linked to itself). Tracing from the root (like in the naive
+         algorithm) is required and is done by the calling function SEA uppon
          recieving a return value of tree->root from this function */
       if(pos->node->father == tree->root)
       {
          pos->node = tree->root;
          return;
       }
-      
+
       /* Store gama - the indices of node's incoming edge */
       gama.begin      = pos->node->edge_label_start;
       gama.end      = pos->node->edge_label_start + pos->edge_pos;
@@ -741,8 +741,8 @@ void follow_suffix_link(SUFFIX_TREE* tree, POS* pos)
 /******************************************************************************/
 /*
    create_suffix_link :
-   Creates a suffix link between node and the node 'link' which represents its 
-   largest suffix. The function could be avoided but is needed to monitor the 
+   Creates a suffix link between node and the node 'link' which represents its
+   largest suffix. The function could be avoided but is needed to monitor the
    creation of suffix links when debuging or changing the tree.
 
    Input : The node to link from, the node to link to.
@@ -758,20 +758,20 @@ void create_suffix_link(NODE* node, NODE* link)
 /******************************************************************************/
 /*
    SEA :
-   Single-Extension-Algorithm (see Ukkonen's algorithm). Ensure that a certain 
+   Single-Extension-Algorithm (see Ukkonen's algorithm). Ensure that a certain
    extension is in the tree.
 
    1. Follows the current node's suffix link.
    2. Check whether the rest of the extension is in the tree.
-   3. If it is - reports the calling function SPA of rule 3 (= current phase is 
+   3. If it is - reports the calling function SPA of rule 3 (= current phase is
       done).
    4. If it's not - inserts it by applying rule 2.
 
-   Input : The tree, pos - the node and position in its incoming edge where 
-           extension begins, str - the starting and ending indices of the 
-           extension, a flag indicating whether the last phase ended by rule 3 
-           (last extension of the last phase already existed in the tree - and 
-           if so, the current phase starts at not following the suffix link of 
+   Input : The tree, pos - the node and position in its incoming edge where
+           extension begins, str - the starting and ending indices of the
+           extension, a flag indicating whether the last phase ended by rule 3
+           (last extension of the last phase already existed in the tree - and
+           if so, the current phase starts at not following the suffix link of
            the first extension).
 
    Output: The rule that was applied to that extension. Can be 3 (phase is done)
@@ -779,16 +779,16 @@ void create_suffix_link(NODE* node, NODE* link)
 */
 
 void SEA(
-                      SUFFIX_TREE*   tree, 
+                      SUFFIX_TREE*   tree,
                       POS*           pos,
-                      PATH           str, 
+                      PATH           str,
                       DBL_WORD*      rule_applied,
                       char           after_rule_3)
 {
    DBL_WORD   chars_found = 0 , path_pos = str.begin;
    NODE*      tmp;
- 
-#ifdef DEBUG   
+
+#ifdef DEBUG_ST
    ST_PrintTree(tree);
    printf("extension: %lu  phase+1: %lu",str.begin, str.end);
    if(after_rule_3 == 0)
@@ -805,7 +805,7 @@ void SEA(
    if(after_rule_3 == 0)
       follow_suffix_link(tree, pos);
 
-#ifdef DEBUG   
+#ifdef DEBUG_ST
 #ifdef STATISTICS
    if(after_rule_3 == 0)
       printf("to (%lu,%lu | %lu). counter: %lu\n", pos->node->edge_label_start, get_node_label_end(tree,pos->node),pos->edge_pos,counter);
@@ -853,8 +853,8 @@ void SEA(
    if(chars_found == str.end - str.begin + 1)
    {
       *rule_applied = 3;
-      /* If there is an internal node that has no suffix link yet (only one may 
-         exist) - create a suffix link from it to the father-node of the 
+      /* If there is an internal node that has no suffix link yet (only one may
+         exist) - create a suffix link from it to the father-node of the
          current position in the tree (pos) */
       if(suffixless != 0)
       {
@@ -863,25 +863,25 @@ void SEA(
          suffixless = 0;
       }
 
-      #ifdef DEBUG   
+      #ifdef DEBUG_ST
          printf("rule 3 (%lu,%lu)\n",str.begin,str.end);
       #endif
       return;
    }
-   
-   /* If last char found is the last char of an edge - add a character at the 
+
+   /* If last char found is the last char of an edge - add a character at the
       next edge */
    if(is_last_char_in_edge(tree,pos->node,pos->edge_pos) || pos->node == tree->root)
    {
       /* Decide whether to apply rule 2 (new_son) or rule 1 */
       if(pos->node->sons != 0)
       {
-         /* Apply extension rule 2 new son - a new leaf is created and returned 
+         /* Apply extension rule 2 new son - a new leaf is created and returned
             by apply_extension_rule_2 */
          apply_extension_rule_2(pos->node, str.begin+chars_found, str.end, path_pos, 0, new_son);
          *rule_applied = 2;
-         /* If there is an internal node that has no suffix link yet (only one 
-            may exist) - create a suffix link from it to the father-node of the 
+         /* If there is an internal node that has no suffix link yet (only one
+            may exist) - create a suffix link from it to the father-node of the
             current position in the tree (pos) */
          if(suffixless != 0)
          {
@@ -893,7 +893,7 @@ void SEA(
    }
    else
    {
-      /* Apply extension rule 2 split - a new node is created and returned by 
+      /* Apply extension rule 2 split - a new node is created and returned by
          apply_extension_rule_2 */
       tmp = apply_extension_rule_2(pos->node, str.begin+chars_found, str.end, path_pos, pos->edge_pos, split);
       if(suffixless != 0)
@@ -908,7 +908,7 @@ void SEA(
       else
          /* Mark tmp as waiting for a link */
          suffixless = tmp;
-      
+
       /* Prepare pos for the next extension */
       pos->node = tmp;
       *rule_applied = 2;
@@ -918,54 +918,54 @@ void SEA(
 /******************************************************************************/
 /*
    SPA :
-   Performs all insertion of a single phase by calling function SEA starting 
-   from the first extension that does not already exist in the tree and ending 
-   at the first extension that already exists in the tree. 
+   Performs all insertion of a single phase by calling function SEA starting
+   from the first extension that does not already exist in the tree and ending
+   at the first extension that already exists in the tree.
 
-   Input :The tree, pos - the node and position in its incoming edge where 
+   Input :The tree, pos - the node and position in its incoming edge where
           extension begins, the phase number, the first extension number of that
-          phase, a flag signaling whether the extension is the first of this 
-          phase, after the last phase ended with rule 3. If so - extension will 
+          phase, a flag signaling whether the extension is the first of this
+          phase, after the last phase ended with rule 3. If so - extension will
           be executed again in this phase, and thus its suffix link would not be
           followed.
 
-   Output:The extension number that was last executed on this phase. Next phase 
+   Output:The extension number that was last executed on this phase. Next phase
           will start from it and not from 1
 */
 
 void SPA(
                       /* The tree */
-                      SUFFIX_TREE*    tree,            
+                      SUFFIX_TREE*    tree,
                       /* Current node */
-                      POS*            pos,            
+                      POS*            pos,
                       /* Current phase number */
-                      DBL_WORD        phase,            
+                      DBL_WORD        phase,
                       /* The last extension performed in the previous phase */
-                      DBL_WORD*       extension,         
+                      DBL_WORD*       extension,
                       /* 1 if the last rule applied is 3 */
-                      char*           repeated_extension)   
+                      char*           repeated_extension)
 {
    /* No such rule (0). Used for entering the loop */
-   DBL_WORD   rule_applied = 0;   
+   DBL_WORD   rule_applied = 0;
    PATH       str;
-   
+
    /* Leafs Trick: Apply implicit extensions 1 through prev_phase */
    tree->e = phase+1;
 
-   /* Apply explicit extensions untill last extension of this phase is reached 
+   /* Apply explicit extensions untill last extension of this phase is reached
       or extension rule 3 is applied once */
-   while(*extension <= phase+1)            
+   while(*extension <= phase+1)
    {
       str.begin       = *extension;
       str.end         = phase+1;
-      
+
       /* Call Single-Extension-Algorithm */
       SEA(tree, pos, str, &rule_applied, *repeated_extension);
-      
+
       /* Check if rule 3 was applied for the current extension */
       if(rule_applied == 3)
       {
-         /* Signaling that the next phase's first extension will not follow a 
+         /* Signaling that the next phase's first extension will not follow a
             suffix link because same extension is repeated */
          *repeated_extension = 1;
          break;
@@ -979,21 +979,21 @@ void SPA(
 /******************************************************************************/
 /*
    ST_CreateTree :
-   Allocates memory for the tree and starts Ukkonen's construction algorithm by 
+   Allocates memory for the tree and starts Ukkonen's construction algorithm by
    calling SPA n times, where n is the length of the source string.
 
-   Input : The source string and its length. The string is a sequence of 
-           unsigned characters (maximum of 256 different symbols) and not 
-           null-terminated. The only symbol that must not appear in the string 
-           is $ (the dollar sign). It is used as a unique symbol by the 
-           algorithm ans is appended automatically at the end of the string (by 
-           the program, not by the user!). The meaning of the $ sign is 
-           connected to the implicit/explicit suffix tree transformation, 
+   Input : The source string and its length. The string is a sequence of
+           unsigned characters (maximum of 256 different symbols) and not
+           null-terminated. The only symbol that must not appear in the string
+           is $ (the dollar sign). It is used as a unique symbol by the
+           algorithm ans is appended automatically at the end of the string (by
+           the program, not by the user!). The meaning of the $ sign is
+           connected to the implicit/explicit suffix tree transformation,
            detailed in Ukkonen's algorithm.
 
-   Output: A pointer to the newly created tree. Keep this pointer in order to 
+   Output: A pointer to the newly created tree. Keep this pointer in order to
            perform operations like search and delete on that tree. Obviously, no
-	   de-allocating of the tree space could be done if this pointer is 
+	   de-allocating of the tree space could be done if this pointer is
 	   lost, as the tree is allocated dynamically on the heap.
 */
 
@@ -1019,7 +1019,7 @@ SUFFIX_TREE* ST_CreateTree(const char* str, DBL_WORD length)
    /* Calculating string length (with an ending $ sign) */
    tree->length         = length+1;
    ST_ERROR            = 1000000000;
-   
+
    /* Allocating the only real string of the tree */
    tree->tree_string = malloc((tree->length+1)*sizeof(char));
    if(tree->tree_string == 0)
@@ -1032,7 +1032,7 @@ SUFFIX_TREE* ST_CreateTree(const char* str, DBL_WORD length)
    memcpy(tree->tree_string+sizeof(char),str,length*sizeof(char));
    /* $ is considered a uniqe symbol */
    tree->tree_string[tree->length] = '$';
-   
+
    /* Allocating the tree root node */
    tree->root            = create_node(0, 0, 0, 0);
    tree->root->suffix_link = 0;
@@ -1040,7 +1040,7 @@ SUFFIX_TREE* ST_CreateTree(const char* str, DBL_WORD length)
    /* Initializing algorithm parameters */
    extension = 2;
    phase = 2;
-   
+
    /* Allocating first node, son of the root (phase 0), the longest path node */
    tree->root->sons = create_node(tree->root, 1, tree->length, 1);
    suffixless       = 0;
@@ -1107,12 +1107,12 @@ void ST_DeleteTree(SUFFIX_TREE* tree)
    ST_PrintNode :
    Prints a subtree under a node of a certain tree-depth.
 
-   Input : The tree, the node that is the root of the subtree, and the depth of 
-           that node. The depth is used for printing the branches that are 
-           coming from higher nodes and only then the node itself is printed. 
-           This gives the effect of a tree on screen. In each recoursive call, 
+   Input : The tree, the node that is the root of the subtree, and the depth of
+           that node. The depth is used for printing the branches that are
+           coming from higher nodes and only then the node itself is printed.
+           This gives the effect of a tree on screen. In each recoursive call,
            the depth is increased.
-  
+
    Output: A printout of the subtree to the screen.
 */
 
@@ -1137,7 +1137,7 @@ void ST_PrintNode(SUFFIX_TREE* tree, NODE* node1, long depth)
          printf("%c",tree->tree_string[start]);
          start++;
       }
-      #ifdef DEBUG
+      #ifdef DEBUG_ST
          printf("  \t\t\t(%lu,%lu | %lu)",node1->edge_label_start,end,node1->path_position);
       #endif
       printf("\n");
@@ -1153,7 +1153,7 @@ void ST_PrintNode(SUFFIX_TREE* tree, NODE* node1, long depth)
 /******************************************************************************/
 /*
    ST_PrintFullNode :
-   This function prints the full path of a node, starting from the root. It 
+   This function prints the full path of a node, starting from the root. It
    calls itself recoursively and than prints the last edge.
 
    Input : the tree and the node its path is to be printed.
@@ -1169,7 +1169,7 @@ void ST_PrintFullNode(SUFFIX_TREE* tree, NODE* node)
    /* Calculating the begining and ending of the last edge */
    start   = node->edge_label_start;
    end     = get_node_label_end(tree, node);
-   
+
    /* Stoping condition - the root */
    if(node->father!=tree->root)
       ST_PrintFullNode(tree,node->father);
@@ -1185,11 +1185,11 @@ void ST_PrintFullNode(SUFFIX_TREE* tree, NODE* node)
 /******************************************************************************/
 /*
    ST_PrintTree :
-   This function prints the tree. It simply starts the recoursive function 
+   This function prints the tree. It simply starts the recoursive function
    ST_PrintNode with depth 0 (the root).
 
    Input : The tree to be printed.
-  
+
    Output: A print out of the tree to the screen.
 */
 
@@ -1202,7 +1202,7 @@ void ST_PrintTree(SUFFIX_TREE* tree)
 /******************************************************************************/
 /*
    ST_SelfTest :
-   Self test of the tree - search for all substrings of the main string. See 
+   Self test of the tree - search for all substrings of the main string. See
    testing paragraph in the readme.txt file.
 
    Input : The tree to test.
