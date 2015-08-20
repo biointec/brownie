@@ -6,7 +6,7 @@
 #include <gsl/gsl_randist.h>
 #include <fstream>
 #include <list>
-#include <queue>
+
 #include <iomanip>
 #include <string.h>
 #include <sys/types.h>
@@ -61,7 +61,6 @@ struct pathStruct {
         pathQueueNodes.push(root);
         //to avoid devision by zero, it should be zero by the way
         this->pathLenght=1;
-
         numOfNode=1;
     }
     pathStruct() {}
@@ -140,8 +139,6 @@ struct pathStruct {
             SSNode node=tempQueue.front();
             if(node.getNumLeftArcs()==1&&node.getNumRightArcs()==1) {
                 tempQueue.pop();
-
-
                 nodeCov=nodeCov+(node.getExpMult()/node.getMarginalLength());
                 i++;
             } else {
@@ -150,7 +147,6 @@ struct pathStruct {
         }
         if(i!=0) {
             nodeCov=(nodeCov/i);
-
             return nodeCov;
         }
         return-1;
@@ -331,194 +327,164 @@ struct comparator {
         return first.pathLenght>=second.pathLenght;
     }
 };
+
 bool DBGraph::bubbleDetection(int round) {
+      priority_queue<pathStruct,vector<pathStruct>,comparator > MinHeap;
+      int maxLength=settings.getK()*2;
+      size_t numOfIncDel=0;
+      size_t numOfDel=0;
+      bool remove=false;
+      updateCutOffValue(round);
+      for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
+          if ( lID == 0 ) {
+              continue;
+          }
+          SSNode leftNode = getSSNode ( lID );
+          if ( !leftNode.isValid() ) {
+              continue;
+          }
+          if(leftNode.getNumRightArcs()<2) {
+              continue;
+          }
+          pathStruct rootPath(leftNode);
+          MinHeap.push(rootPath);
+          std::set<NodeID> visitedNodes;
+          std::set<Arc *>visitedArc;
+          visitedNodes.insert(leftNode.getNodeID());
+          map<NodeID,pathStruct> pathDic;
+          pathDic[rootPath.getLastNode().getNodeID()]=rootPath;
+          while(!MinHeap.empty()) {
+              pathStruct leftPath =MinHeap.top();
+              MinHeap.pop();
+              leftNode=leftPath.getLastNode();
+              for ( ArcIt it = leftNode.rightBegin(); it != leftNode.rightEnd(); it++ ) {
+                  //if(it->isValid()) {
+                  SSNode rightNode=getSSNode(it->getNodeID());
+                  Arc* p= leftNode.getRightArc(rightNode.getNodeID());
+                  if(!(visitedArc.find(p)!=visitedArc.end())) {
+                      visitedArc.insert(leftNode.getRightArc(rightNode.getNodeID()));
+                      pathStruct extendedPath;
+                      extendedPath=leftPath;
+                      //+rightNode.getMarginalLength()
+                      if(extendedPath.pathLenght>=maxLength || rightNode.getNumRightArcs()==0)
+                          continue;
+                      extendedPath.addNodeToPaht(rightNode);
+                      MinHeap.push(extendedPath);
+                      if (visitedNodes.find(rightNode.getNodeID()) != visitedNodes.end()) {
+                          pathStruct prevPath=pathDic.at(rightNode.getNodeID());
+                          if (prevPath.firstNode.getNodeID()!=extendedPath.firstNode.getNodeID()) {
+                              double lengthpro=0;
+                              if(prevPath.pathLenght!=0)
+                                  lengthpro=extendedPath.pathLenght/prevPath.pathLenght;
+                              if (lengthpro<.8 || lengthpro>1.2)
+                                      continue;
+                                  double prevNodeCov=prevPath.getSingleNodePahtCoverage();
+                                  double prevAcrcCov=prevPath.getSingleArcPathCoverage();
+                                  double exteNodeCov=extendedPath.getSingleNodePahtCoverage();
+                                  double exteArcCov=extendedPath.getSingleArcPathCoverage();
+                                  double  prevProbalility=  gsl_cdf_gaussian_P((prevNodeCov-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
+                                  double  exteProbalility=  gsl_cdf_gaussian_P((exteNodeCov-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
+                                  double prevProbArcCov=gsl_cdf_gaussian_P((prevAcrcCov-estimatedArcCoverageMean)/estimatedArcCoverageSTD,1);
+                                  double exteProbArcCov=gsl_cdf_gaussian_P((exteArcCov-estimatedArcCoverageMean)/estimatedArcCoverageSTD,1);
+                                  bool preReliable=false;
+                                  bool find=false;
+                                  queue<SSNode> tempQueue;
+                                  if(prevNodeCov!=-1 && prevAcrcCov!=-1 && exteNodeCov!=-1&& exteArcCov!=-1) {
+                                      if(prevProbalility<.1||exteProbalility<.1) {
 
-    priority_queue<pathStruct,vector<pathStruct>,comparator > MinHeap;
-    int maxLength=settings.getK()*2;
-    int numOfIncDel=0;
-    int numOfCorDel=0;
-    bool remove=false;
+                                          if (((prevProbArcCov<.1&&prevProbalility<.1&&prevNodeCov<this->redLineValueCov) || prevNodeCov<this->certainVlueCov)&&(exteProbArcCov>.1&&exteProbalility>.1) ) {
+                                              preReliable=false;
+                                              find=true;
+                                              tempQueue=prevPath.pathQueueNodes;
+                                          }
+                                          if (((exteProbArcCov<.1&&exteProbalility<.1&&exteNodeCov<this->redLineValueCov)|| exteNodeCov<this->certainVlueCov)&& (prevProbArcCov>.1&&prevProbalility>.1)  ) {
+                                              preReliable=true;
+                                              find=true;
+                                              tempQueue=extendedPath.pathQueueNodes;
+                                          }
+                                      }
+                                  } else {
+                                      if(prevNodeCov!=-1&&prevAcrcCov!=-1) {
+                                          if ((prevProbArcCov<.1&&prevProbalility<.1&&prevNodeCov<this->redLineValueCov )&&(prevNodeCov<this->certainVlueCov)) {
+                                              preReliable=false;
+                                              find=true;
+                                              tempQueue=prevPath.pathQueueNodes;
+                                          }
 
 
+                                      } else {
+                                          if(exteNodeCov!=-1&& exteArcCov!=-1) {
+                                              if ((exteProbArcCov<.1&&exteProbalility<.1&&exteNodeCov<this->redLineValueCov)&&(exteNodeCov<this->certainVlueCov)) {
+                                                  preReliable=true;
+                                                  find=true;
+                                                  tempQueue=extendedPath.pathQueueNodes;
+                                              }
+                                          }
+                                      }
+                                  }
+                                  if(nodesExpMult.size()>0 && !find) {
+                                      pair<int, pair<double,double> > resultR=nodesExpMult[abs( extendedPath.rootNode.getNodeID())];
+                                      if(resultR.first==1 && (resultR.second.second/resultR.second.first)<1) {
+                                          pair<int, pair<double,double> > resultE=nodesExpMult[abs( extendedPath.firstNode.getNodeID())];
+                                          pair<int, pair<double,double> > resultP=nodesExpMult[abs( prevPath.firstNode.getNodeID())];
+                                          find =true;
+                                          if ((resultE.second.second/resultE.second.first)<resultP.second.second/resultP.second.first) {
+                                              preReliable=false;
+                                              tempQueue=prevPath.pathQueueNodes;
 
-    updateCutOffValue(round);
-    for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
-        if ( lID == 0 ) {
-            continue;
+
+                                          } else {
+                                              preReliable=true;
+                                              tempQueue=extendedPath.pathQueueNodes;
+                                          }
+                                      }
+
+                                  }
+                                  if(find && !tempQueue.empty() ) {
+                                          #ifdef DEBUG
+                                          sanitycheckforbubbledetecttion( tempQueue,numOfIncDel);
+                                          #endif
+                                          if(preReliable) {
+                                              numOfDel=numOfDel+extendedPath.removeSingleNodes();
+
+                                              break;
+                                          } else {
+                                              numOfDel=numOfDel+ prevPath.removeSingleNodes();
+
+                                              break;
+                                          }
+                                  }
+                          }
+
+                      } else {
+                          visitedNodes.insert(rightNode.getNodeID());
+                          pathDic[rightNode.getNodeID()]=extendedPath;
+                      }
+                  }
+                  //}
+              }
+          }
+
+      }
+
+      if(numOfDel>0||numOfIncDel>0) {
+          cout<<"number of  deleted nodes based on bubble detection:            "<<numOfDel<<endl;
+          cout<<"number of incorrectly deleted nodes based on bubble detection: "<<numOfIncDel<<endl;
+      }
+
+      if (numOfDel !=0 ||numOfIncDel!=0)
+          return true;
+  return false;
+  }
+
+void DBGraph::sanitycheckforbubbledetecttion( queue<SSNode>& tempQueue, size_t& numOfIncDel){
+        SSNode tempNode=tempQueue.front();
+        tempQueue.pop();
+        tempNode=tempQueue.front();
+        while(!tempQueue.empty()&& tempNode.getNumLeftArcs()==1 && tempNode.getNumRightArcs()==1) {
+                tempQueue.pop();
+                if(trueMult[abs(tempNode.getNodeID())]>0)
+                        numOfIncDel++;
+                tempNode=tempQueue.front();
         }
-        SSNode leftNode = getSSNode ( lID );
-        if ( !leftNode.isValid() ) {
-            continue;
-        }
-        if(leftNode.getNumRightArcs()<2) {
-            continue;
-        }
-
-        pathStruct rootPath(leftNode);
-        MinHeap.push(rootPath);
-        std::set<NodeID> visitedNodes;
-        std::set<Arc *>visitedArc;
-
-        visitedNodes.insert(leftNode.getNodeID());
-        map<NodeID,pathStruct> pathDic;
-        pathDic[rootPath.getLastNode().getNodeID()]=rootPath;
-        while(!MinHeap.empty()) {
-            pathStruct leftPath =MinHeap.top();
-            MinHeap.pop();
-            leftNode=leftPath.getLastNode();
-            for ( ArcIt it = leftNode.rightBegin(); it != leftNode.rightEnd(); it++ ) {
-                //if(it->isValid()) {
-                SSNode rightNode=getSSNode(it->getNodeID());
-
-                Arc* p= leftNode.getRightArc(rightNode.getNodeID());
-                if(!(visitedArc.find(p)!=visitedArc.end())) {
-                    visitedArc.insert(leftNode.getRightArc(rightNode.getNodeID()));
-                    //why I cannot do it?
-                    //visitedArc.insert(leftNode.getRightArc())
-                    pathStruct extendedPath;
-                    extendedPath=leftPath;
-                    //+rightNode.getMarginalLength()
-                    if(extendedPath.pathLenght>=maxLength || rightNode.getNumRightArcs()==0)
-                        continue;
-                    extendedPath.addNodeToPaht(rightNode);
-                    MinHeap.push(extendedPath);
-                    if (visitedNodes.find(rightNode.getNodeID()) != visitedNodes.end()) {
-                        pathStruct prevPath=pathDic.at(rightNode.getNodeID());
-                        // this condition can be removed later, it check to have a parallel path which starts from same node.
-                        //to avoid below example (ab is common in both path, we need only one common node)
-                        //abcdef
-                        //abmnktgf
-                        if (prevPath.firstNode.getNodeID()!=extendedPath.firstNode.getNodeID()) {
-                            double lengthpro=0;
-                            if(prevPath.pathLenght!=0)
-                                lengthpro=extendedPath.pathLenght/prevPath.pathLenght;
-                            if (lengthpro>.8 && lengthpro<1.2) {
-
-                                double prevNodeCov=prevPath.getSingleNodePahtCoverage();
-                                double prevAcrcCov=prevPath.getSingleArcPathCoverage();
-                                double exteNodeCov=extendedPath.getSingleNodePahtCoverage();
-                                double exteArcCov=extendedPath.getSingleArcPathCoverage();
-
-
-                                double  prevProbalility=  gsl_cdf_gaussian_P((prevNodeCov-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
-                                double  exteProbalility=  gsl_cdf_gaussian_P((exteNodeCov-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
-                                double prevProbArcCov=gsl_cdf_gaussian_P((prevAcrcCov-estimatedArcCoverageMean)/estimatedArcCoverageSTD,1);
-                                double exteProbArcCov=gsl_cdf_gaussian_P((exteArcCov-estimatedArcCoverageMean)/estimatedArcCoverageSTD,1);
-
-                                bool preReliable=false;
-                                bool find=false;
-                                queue<SSNode> tempQueue;
-
-                                if(prevNodeCov!=-1 && prevAcrcCov!=-1 && exteNodeCov!=-1&& exteArcCov!=-1) {
-                                    if(prevProbalility<.1||exteProbalility<.1) {
-
-                                        if (((prevProbArcCov<.1&&prevProbalility<.1&&prevNodeCov<this->redLineValueCov) || prevNodeCov<this->certainVlueCov)&&(exteProbArcCov>.1&&exteProbalility>.1) ) {
-                                            preReliable=false;
-                                            find=true;
-                                            tempQueue=prevPath.pathQueueNodes;
-                                        }
-                                        if (((exteProbArcCov<.1&&exteProbalility<.1&&exteNodeCov<this->redLineValueCov)|| exteNodeCov<this->certainVlueCov)&& (prevProbArcCov>.1&&prevProbalility>.1)  ) {
-                                            preReliable=true;
-                                            find=true;
-                                            tempQueue=extendedPath.pathQueueNodes;
-                                        }
-                                    }
-                                } else {
-                                    if(prevNodeCov!=-1&&prevAcrcCov!=-1) {
-                                        if ((prevProbArcCov<.1&&prevProbalility<.1&&prevNodeCov<this->redLineValueCov )&&(prevNodeCov<this->certainVlueCov)) {
-                                            preReliable=false;
-                                            find=true;
-                                            tempQueue=prevPath.pathQueueNodes;
-                                        }
-
-                                    } else {
-                                        if(exteNodeCov!=-1&& exteArcCov!=-1) {
-                                            if ((exteProbArcCov<.1&&exteProbalility<.1&&exteNodeCov<this->redLineValueCov)&&(exteNodeCov<this->certainVlueCov)) {
-                                                preReliable=true;
-                                                find=true;
-                                                tempQueue=extendedPath.pathQueueNodes;
-                                            }
-
-                                        }
-                                    }
-                                }
-                                if(nodesExpMult.size()>0 && !find) {
-                                    pair<int, pair<double,double> > resultR=nodesExpMult[abs( extendedPath.rootNode.getNodeID())];
-                                    if(resultR.first==1 && (resultR.second.second/resultR.second.first)<1) {
-                                        pair<int, pair<double,double> > resultE=nodesExpMult[abs( extendedPath.firstNode.getNodeID())];
-                                        pair<int, pair<double,double> > resultP=nodesExpMult[abs( prevPath.firstNode.getNodeID())];
-                                        find =true;
-                                        if ((resultE.second.second/resultE.second.first)<resultP.second.second/resultP.second.first) {
-                                            preReliable=false;
-                                            tempQueue=prevPath.pathQueueNodes;
-
-                                        } else {
-                                            preReliable=true;
-                                            tempQueue=extendedPath.pathQueueNodes;
-                                        }
-                                    }
-
-                                }
-
-
-                                if(find) {
-                                    if ( totalRAM<getMemoryUsedByProc())
-                                        totalRAM=getMemoryUsedByProc();
-                                    if (!tempQueue.empty()) {
-                                        SSNode tempNode=tempQueue.front();
-                                        tempQueue.pop();
-                                        tempNode=tempQueue.front();
-                                        while(!tempQueue.empty()&& tempNode.getNumLeftArcs()==1 && tempNode.getNumRightArcs()==1) {
-                                            tempQueue.pop();
-                                            if(trueMult[abs(tempNode.getNodeID())]>0)
-                                                numOfIncDel++;
-                                            tempNode=tempQueue.front();
-                                        }
-                                        if(preReliable) {
-                                            numOfCorDel=numOfCorDel+extendedPath.removeSingleNodes();
-
-
-                                            remove=true;
-                                            break;
-
-                                        } else {
-                                            numOfCorDel=numOfCorDel+ prevPath.removeSingleNodes();
-
-
-                                            remove=true;
-                                            break;
-
-                                        }
-
-                                    }
-                                }
-
-                            }
-                        }
-
-                    } else {
-                        visitedNodes.insert(rightNode.getNodeID());
-
-                        pathDic[rightNode.getNodeID()]=extendedPath;
-
-
-                    }
-
-
-                }
-                //}
-            }
-        }
-
-
-    }
-    if(numOfCorDel>0||numOfIncDel>0) {
-        cout<<"number of correctly deleted nodes based on bubble detection: "<<numOfCorDel<<endl;
-        cout<<"number of incorrectly deleted nodes based on bubble detection: "<<numOfIncDel<<endl;
-    }
-    if (numOfCorDel ==0 &&numOfIncDel==0)
-        remove= false;
-
-    return remove;
-
 }

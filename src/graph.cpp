@@ -67,6 +67,7 @@ void DBGraph::initialize()
     safeValueCov=minSafeValueCov;
     redLineValueCov=minRedLineValueCov;
     updateCutOffValueRound=1;
+    maxNodeSizeToDel=100;
 }
 
 int DBGraph::parseLine(char* line)
@@ -156,72 +157,67 @@ bool DBGraph::continueEdit(size_t& bigestN50, string& nodeFileName, string& arcF
 }
 bool DBGraph::filterChimeric(int round)
 {
-    size_t numFiltered = 0;
+        size_t numFiltered = 0;
+        size_t numOfIncorrectlyFiltered=0;
+        // sanity check
+        if ( !updateCutOffValue(round))
+                return false;
+        for (NodeID i = -numNodes; i <= numNodes; i++) {
+                if (i==0)
+                        continue;
+                SSNode n = getSSNode(i);
+                if(!n.isValid())
+                        continue;
 
-    // sanity check
+                if (n.getNumRightArcs() != 1)
+                        continue;
+                if (n.getNumLeftArcs() != 1)
+                        continue;
+                if (n.getMarginalLength() < settings.getK())  //????
+                        continue;
+                if (n.getExpMult() / n.getMarginalLength() > this->safeValueCov || n.getMarginalLength()>this->maxNodeSizeToDel )
+                        continue;
+                SSNode rrNode = getSSNode(n.rightBegin()->getNodeID());
+                if (rrNode.getNodeID()==-n.getNodeID())
+                        continue;
 
+                // first, disconnect the right node from all its right neighbors
 
-    if ( !updateCutOffValue(round))
-        return false;
-    for (NodeID i = -numNodes; i <= numNodes; i++) {
-        if (i==0)
-            continue;
-        SSNode n = getSSNode(i);
-        if(!n.isValid())
-            continue;
+                for (ArcIt it = n.rightBegin(); it != n.rightEnd(); it++) {
 
-        if (n.getNumRightArcs() != 1)
-            continue;
-        if (n.getNumLeftArcs() != 1)
-            continue;
-        if (n.getMarginalLength() < settings.getK())  //????
-            continue;
+                        SSNode rrNode = getSSNode(it->getNodeID());
+                        if (rrNode.getNodeID()==-n.getNodeID())
+                                continue;
+                        bool result = rrNode.deleteLeftArc(n.getNodeID());
+                        assert(result);
+                        //break;
+                }
 
-        double probalility=  gsl_cdf_gaussian_P(((n.getExpMult() / n.getMarginalLength())-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
+                // first, disconnect the right node from all its right neighbors
+                for (ArcIt it = n.leftBegin(); it != n.leftEnd(); it++) {
+                        SSNode llNode = getSSNode(it->getNodeID());
+                        if (llNode.getNodeID()==-n.getNodeID())
+                                continue;
+                        bool result = llNode.deleteRightArc(n.getNodeID());
+                        assert(result);
+                        //break;
+                }
 
+                n.deleteAllLeftArcs();
+                n.deleteAllRightArcs();
+                n.invalidate();
 
-        if (n.getExpMult() / n.getMarginalLength() > this->safeValueCov || n.getMarginalLength()>100 ||probalility>.01)
-            continue;
-        SSNode rrNode = getSSNode(n.rightBegin()->getNodeID());
-        if (rrNode.getNodeID()==-n.getNodeID())
-            continue;
+                numFiltered++;
+                #ifdef DEBUG
+                if (trueMult[i] >= 1)
+                        numOfIncorrectlyFiltered++;
 
-        // first, disconnect the right node from all its right neighbors
+                #endif
 
-        for (ArcIt it = n.rightBegin(); it != n.rightEnd(); it++) {
-
-            SSNode rrNode = getSSNode(it->getNodeID());
-            if (rrNode.getNodeID()==-n.getNodeID())
-                continue;
-            bool result = rrNode.deleteLeftArc(n.getNodeID());
-            assert(result);
-            //break;
         }
-
-        // first, disconnect the right node from all its right neighbors
-        for (ArcIt it = n.leftBegin(); it != n.leftEnd(); it++) {
-            SSNode llNode = getSSNode(it->getNodeID());
-            if (llNode.getNodeID()==-n.getNodeID())
-                continue;
-            bool result = llNode.deleteRightArc(n.getNodeID());
-            assert(result);
-            //break;
-        }
-
-        n.deleteAllLeftArcs();
-        n.deleteAllRightArcs();
-        n.invalidate();
-
-        numFiltered++;
-
-        if (trueMult[i] >= 1)
-            cout << "\tIncorrectly deleted chimeric connection, namely node: " << i << endl;
-
-
-    }
-
-    cout << "Number of chimeric nodes deleted: " << numFiltered << endl;
-    return numFiltered > 0;
+        cout << "\tIncorrectly deleted chimeric connection, namely node: " << numOfIncorrectlyFiltered << endl;
+        cout << "Number of chimeric nodes deleted: " << numFiltered << endl;
+        return numFiltered > 0;
 }
 
 bool DBGraph::updateCutOffValue(int round)
@@ -230,9 +226,10 @@ bool DBGraph::updateCutOffValue(int round)
         char roundStr[15];
         sprintf(roundStr, "%d", round);
         string strRound =string (roundStr);
-        vector<pair<double,int> > allNodes;
-        vector<pair<int , pair<double,int> > > frequencyArray;
+        vector<pair<double,pair<size_t , pair<bool, int> > > > allNodes;
+        vector<pair< pair< int , int> , pair<double,int> > > frequencyArray;
         size_t validNodes=0;
+
         for (NodeID i = -numNodes; i <= numNodes; i++) {
                 if (i==0)
                         continue;
@@ -241,9 +238,35 @@ bool DBGraph::updateCutOffValue(int round)
                         continue;
                 validNodes++;
                 double kmerCoverage=(double)n.getExpMult() / (double)n.getMarginalLength();
-                allNodes.push_back(make_pair(kmerCoverage,n.getMarginalLength()) );
+                int marginalLength=n.getMarginalLength()+ settings.getK();
+                bool correctNode=false;
+                double nodeMultiplicityR=1;
+                if (nodesExpMult.size()>0){
+                        pair<int, pair<double,double> > resultR=nodesExpMult[abs( n.getNodeID())];
+                        nodeMultiplicityR=0;
+                        double confidenceRatio=resultR.second.first;
+                        double inCorrctnessRatio=resultR.second.second;
+                        if (confidenceRatio/ inCorrctnessRatio>100 ) {
+                                nodeMultiplicityR=resultR.first;
+                        }
+                }
+                #ifdef DEBUG
+                if (trueMult[abs(n.getNodeID())]>0){
+                        marginalLength=marginalLength*trueMult[abs(n.getNodeID())];
+                        correctNode=true;
+                }
+                #endif
+                allNodes.push_back( make_pair(kmerCoverage, make_pair( nodeMultiplicityR, make_pair(correctNode, n.getMarginalLength())) ));
         }
         std::sort (allNodes.begin(), allNodes.end());
+        size_t j=allNodes.size();
+        size_t sumOfbigNodes=0;
+
+        while(j>0 && sumOfbigNodes<settings.getGenomeSize()*1.5){
+                j--;
+                sumOfbigNodes=sumOfbigNodes+allNodes[j].second.second.second*allNodes[j].second.first;
+        }
+        this->cutOffvalue=allNodes[j].first;
         unsigned int i=0;
         double Interval=(estimatedKmerCoverage*2)/200;
         double rightLimit=estimatedKmerCoverage*10;
@@ -258,25 +281,24 @@ bool DBGraph::updateCutOffValue(int round)
         unsigned int m=0;
         unsigned int n=0;
         i=0;
-        pair<double, int> test=allNodes.back();
-        int sizeOfvec=allNodes.size();
         double  St=allNodes[0].first;
         while (true) {
                 double intervalCount=0;
                 int sumOfMarginalLenght=0;
+                int correctNodeMarginalLength=0;
                 while (allNodes[i].first>=St && allNodes[i].first<St+Interval&& i<allNodes.size()-1) {
                         intervalCount++;
                         i++;
-                        sumOfMarginalLenght=sumOfMarginalLenght+allNodes[i].second;
+                        sumOfMarginalLenght=sumOfMarginalLenght+allNodes[i].second.second.second ;
+                        if (allNodes[i].second.second.first)
+                                correctNodeMarginalLength=correctNodeMarginalLength+allNodes[i].second.second.second;
                 }
-                //if (allNodes[i].first>rightLimit)
-                //        break;
                 if (i==validNodes-1)
                         break;
                 St=St+Interval;
                 double representative=St+Interval/2;
                 if (intervalCount!=0)
-                        frequencyArray.push_back(make_pair(sumOfMarginalLenght , make_pair(representative,intervalCount)));
+                        frequencyArray.push_back(make_pair(make_pair( sumOfMarginalLenght, correctNodeMarginalLength) , make_pair(representative,intervalCount)));
         }
         if (validNodes/100>10)
                 validNodes=10;
@@ -314,25 +336,27 @@ bool DBGraph::updateCutOffValue(int round)
 
         if (safeValue>redLineValue)
                 redLineValue=safeValue;
-
-        double maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*3>minCertainVlueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*3:minCertainVlueCov;
+        //double maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*3>minCertainVlueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*3:minCertainVlueCov;
+        double maxThreshold=this->cutOffvalue/5>minCertainVlueCov?this->cutOffvalue/5:minCertainVlueCov;
         if (bestAnswer.first>maxThreshold)
                 certainValue=maxThreshold;
         else
                 certainValue=bestAnswer.first;
         if (this->certainVlueCov<certainValue)
                 this->certainVlueCov=certainValue;
-        maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*2>minSafeValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*2:minSafeValueCov;
+        //maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*2>minSafeValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*2:minSafeValueCov;
+        maxThreshold=this->cutOffvalue/4>minCertainVlueCov?this->cutOffvalue/4:minCertainVlueCov;
         if (safeValue>maxThreshold)
                 safeValue=maxThreshold;
         if (this->safeValueCov<safeValue)
                 this->safeValueCov=safeValue;
-        maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*1>minRedLineValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*1:minRedLineValueCov;
+        //maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*1>minRedLineValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*1:minRedLineValueCov;
+        maxThreshold=this->cutOffvalue/3>minCertainVlueCov?this->cutOffvalue/3:minCertainVlueCov;
         if (redLineValue>maxThreshold)
                 redLineValue=maxThreshold;
-
         if (this->redLineValueCov<redLineValue)
                 this->redLineValueCov=redLineValue;
+        cout<<"cut off value base on genome size:" <<this->cutOffvalue<<endl;
         cout<<"certainValue: "<<this->certainVlueCov<<endl;
         cout<<"safeValue: "<<this->safeValueCov<<endl;
         cout<<"redLineValue: "<<this->redLineValueCov<<endl;
@@ -343,7 +367,7 @@ bool DBGraph::updateCutOffValue(int round)
         #endif
         return true;
 }
-void DBGraph::plotCovDiagram(vector<pair<int , pair<double,int> > >& frequencyArray){
+void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > >& frequencyArray){
         ofstream expcovFile;
         std::string roundstr="";
         if (updateCutOffValueRound<10)
@@ -359,11 +383,11 @@ void DBGraph::plotCovDiagram(vector<pair<int , pair<double,int> > >& frequencyAr
         expcovFile<<"certainValue: "<<this->certainVlueCov<<endl;
         expcovFile<<"safeValue: "<<this->safeValueCov<<endl;
         expcovFile<<"redLineValue: "<<this->redLineValueCov<<endl;
-        expcovFile<<"representative     sumOfMarginalLenght"<<endl;
+        expcovFile<<"representative     sumOfMarginalLength     sumOfcorrectLength      sumOfIncorrectLength"<<endl;
         int i=0;
         while(i<frequencyArray.size()) {
                 pair<double,int> pre=frequencyArray[i].second;
-                expcovFile<<pre.first<< "       "<<frequencyArray[i].first<< endl;
+                expcovFile<<pre.first<< "       "<<frequencyArray[i].first.first<<"   "<< frequencyArray[i].first.second<<"     "<< frequencyArray[i].first.first-frequencyArray[i].first.second <<endl;
                 i++;
         }
         expcovFile.close();
@@ -456,92 +480,88 @@ bool DBGraph::filterCoverage(float round)
 }
 bool DBGraph::removeIncorrectLink()
 {
-    int num=0;
-    bool modify=false;
-    for(int i=1; i<numNodes; i++) {
-        SSNode left=getSSNode(i);
-        if ( !left.isValid() ) {
-            continue;
-        }
+        int num=0;
+        bool modify=false;
+        for(int i=1; i<numNodes; i++) {
+                SSNode left=getSSNode(i);
+                if ( !left.isValid() )
+                        continue;
+                pair<int, pair<double,double> > result=nodesExpMult[abs( left.getNodeID())];
+                double confidenceRatio=result.second.first;
+                double inCorrctnessRatio=result.second.second;
+                double nodeMultiplicity=result.first;
+                int j=0;
+                if(nodeMultiplicity==1&& ( confidenceRatio/inCorrctnessRatio)>10 && (left.getNumLeftArcs()>1||left.getNumRightArcs()>1)) {
+                        if (left.getNumLeftArcs()>1) {
+                                j=0;
+                                for ( ArcIt it = left.leftBegin(); it != left.leftEnd(); it++ ) {
+                                        SSNode llNode = getSSNode ( it->getNodeID() );
+                                        pair<int, pair<double,double> > resultL=nodesExpMult[abs( llNode.getNodeID())];
+                                        double confidenceRatioL=result.second.first;
+                                        double inCorrctnessRatioL=result.second.second;
+                                        double nodeMultiplicityL=result.first;
 
-        pair<int, pair<double,double> > result=nodesExpMult[abs( left.getNodeID())];
-        double confidenceRatio=result.second.first;
-        double inCorrctnessRatio=result.second.second;
-        double nodeMultiplicity=result.first;
+                                        if(nodeMultiplicityL==1&& (confidenceRatioL/inCorrctnessRatioL)>10)
+                                                j++;
+                                }
+                                if (j>1) {
 
-        int j=0;
-
-        if(nodeMultiplicity==1&& ( confidenceRatio/inCorrctnessRatio)>10 && (left.getNumLeftArcs()>1||left.getNumRightArcs()>1)) {
-            if (left.getNumLeftArcs()>1) {
-                j=0;
-                for ( ArcIt it = left.leftBegin(); it != left.leftEnd(); it++ ) {
-                    SSNode llNode = getSSNode ( it->getNodeID() );
-                    pair<int, pair<double,double> > resultL=nodesExpMult[abs( llNode.getNodeID())];
-                    double confidenceRatioL=result.second.first;
-                    double inCorrctnessRatioL=result.second.second;
-                    double nodeMultiplicityL=result.first;
-
-                    if(nodeMultiplicityL==1&& (confidenceRatioL/inCorrctnessRatioL)>10)
-                        j++;
-                }
-                if (j>1) {
-
-                    SSNode minNode=left.leftBegin();
-                    int leftCov=left.getLeftArc(minNode.getNodeID())->getCoverage();
-                    for ( ArcIt it = left.leftBegin(); it != left.leftEnd(); it++ ) {
-                        SSNode llNode = getSSNode ( it->getNodeID() );
-                        if(left.getLeftArc(llNode.getNodeID())->getCoverage()<leftCov) {
-                            leftCov=left.getLeftArc(llNode.getNodeID())->getCoverage();
-                            minNode=llNode;
+                                        SSNode minNode=left.leftBegin();
+                                        int leftCov=left.getLeftArc(minNode.getNodeID())->getCoverage();
+                                        for ( ArcIt it = left.leftBegin(); it != left.leftEnd(); it++ ) {
+                                                SSNode llNode = getSSNode ( it->getNodeID() );
+                                                if(left.getLeftArc(llNode.getNodeID())->getCoverage()<leftCov) {
+                                                        leftCov=left.getLeftArc(llNode.getNodeID())->getCoverage();
+                                                        minNode=llNode;
+                                                }
+                                        }
+                                        if (abs(left.getNodeID())!=abs(minNode.getNodeID())) {
+                                                bool dresult = left.deleteLeftArc ( minNode.getNodeID() );
+                                                assert ( dresult );
+                                                dresult=minNode.deleteRightArc(left.getNodeID());
+                                                assert(dresult);
+                                                modify=true;
+                                                num++;
+                                        }
+                                }
                         }
-                    }
-                    if (abs(left.getNodeID())!=abs(minNode.getNodeID())) {
-                        bool dresult = left.deleteLeftArc ( minNode.getNodeID() );
-                        assert ( dresult );
-                        dresult=minNode.deleteRightArc(left.getNodeID());
-                        assert(dresult);
-                        modify=true;
-                        num++;
-                    }
-                }
-            }
-            j=0;
-            if (left.getNumRightArcs()>1) {
-                for ( ArcIt it2 = left.rightBegin(); it2 != left.rightEnd(); it2++ ) {
+                        j=0;
+                        if (left.getNumRightArcs()>1) {
+                                for ( ArcIt it2 = left.rightBegin(); it2 != left.rightEnd(); it2++ ) {
 
-                    SSNode rrNode = getSSNode ( it2->getNodeID() );
-                    pair<int, pair<double,double> > resultR=nodesExpMult[abs( rrNode.getNodeID())];
-                    double confidenceRatioR=resultR.second.first;
-                    double inCorrctnessRatioR=resultR.second.second;
-                    double nodeMultiplicityR=resultR.first;
-                    if(nodeMultiplicityR==1&& ( confidenceRatioR/inCorrctnessRatioR)>10)
-                        j++;
-                }
-                if (j>1) {
-                    SSNode minNode=left.rightBegin();
-                    int rightCov=left.getRightArc(minNode.getNodeID())->getCoverage();
-                    for ( ArcIt it = left.rightBegin(); it != left.rightEnd(); it++ ) {
-                        SSNode rrNode = getSSNode (it->getNodeID());
-                        if(left.getRightArc(rrNode.getNodeID())->getCoverage()<rightCov) {
-                            rightCov=left.getRightArc(rrNode.getNodeID())->getCoverage();
-                            minNode=rrNode;
+                                        SSNode rrNode = getSSNode ( it2->getNodeID() );
+                                        pair<int, pair<double,double> > resultR=nodesExpMult[abs( rrNode.getNodeID())];
+                                        double confidenceRatioR=resultR.second.first;
+                                        double inCorrctnessRatioR=resultR.second.second;
+                                        double nodeMultiplicityR=resultR.first;
+                                        if(nodeMultiplicityR==1&& ( confidenceRatioR/inCorrctnessRatioR)>10)
+                                                j++;
+                                }
+                                if (j>1) {
+                                        SSNode minNode=left.rightBegin();
+                                        int rightCov=left.getRightArc(minNode.getNodeID())->getCoverage();
+                                        for ( ArcIt it = left.rightBegin(); it != left.rightEnd(); it++ ) {
+                                                SSNode rrNode = getSSNode (it->getNodeID());
+                                                if(left.getRightArc(rrNode.getNodeID())->getCoverage()<rightCov) {
+                                                        rightCov=left.getRightArc(rrNode.getNodeID())->getCoverage();
+                                                        minNode=rrNode;
+                                                }
+                                        }
+                                        if (abs(left.getNodeID())!=abs(minNode.getNodeID())) {
+                                                bool dresult = left.deleteRightArc ( minNode.getNodeID() );
+                                                assert ( dresult );
+                                                dresult=minNode.deleteLeftArc(left.getNodeID());
+                                                assert(dresult);
+                                                modify=true;
+                                                num++;
+                                        }
+                                }
                         }
-                    }
-                    if (abs(left.getNodeID())!=abs(minNode.getNodeID())) {
-                        bool dresult = left.deleteRightArc ( minNode.getNodeID() );
-                        assert ( dresult );
-                        dresult=minNode.deleteLeftArc(left.getNodeID());
-                        assert(dresult);
-                        modify=true;
-                        num++;
-                    }
                 }
-            }
-        }
 
-    }
-    cout<<"The number of deleted ars are:"<<num<<endl;
-    return modify;
+        }
+        cout<<"The number of deleted arc are:"<<num<<endl;
+        return modify;
 
 }
 

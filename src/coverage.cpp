@@ -257,13 +257,6 @@ void DBGraph::extractStatistic(double reliabilityPer) {
                 if (!leftNode.isValid()) {
                         continue;
                 }
-                if (lID==2831371)
-                {
-                        int stop=0;
-
-                        stop++;
-
-                }
                 if(leftNode.isValid()) {
                         int nodeMultiplicity=1;
                         double numerator=0;
@@ -319,12 +312,7 @@ void DBGraph::extractStatistic(double reliabilityPer) {
                                 newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
                         else
                                 newProbability=gsl_ran_poisson_pdf(newValue,newValue);
-
                         inCorrctnessRatio=gsl_ran_poisson_pdf(newValue,newValue)/newProbability;
-
-                        //newProbability=gsl_ran_poisson(newValue,newValue)-gsl_ran_poisson(leftNode.getSequence(),newValue);
-                        //inCorrctnessRatio=gsl_ran_poisson((newValue,newValue)/newProbability;
-
                         if (nodeMultiplicity==1) {
                                 int shiftedStReadCov=leftNode.getReadStartCov()+avg*leftNode.getMarginalLength();
                                 //i=2
@@ -334,7 +322,6 @@ void DBGraph::extractStatistic(double reliabilityPer) {
                                 //for i=1
                                 newValue=avg*leftNode.getMarginalLength();
                                 denominator=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
-
                                 i=3;
                                 newValue=avg*i*leftNode.getMarginalLength();
                                 newProbability=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
@@ -359,122 +346,108 @@ void DBGraph::extractStatistic(double reliabilityPer) {
         // expcovFile.close();
 }
 
-bool DBGraph::deleteUnreliableNodes(unsigned int min_len, int round) {
-    bool modify=false;
-    try {
+bool DBGraph::deleteUnreliableNodes( int round) {
+        bool modify=false;
+        try {
 
-        updateCutOffValue(round);
+                updateCutOffValue(round);
 
-        int numberOfDel=0;
+                int numberOfDel=0;
 
-        vector<double> tempArray1;
-        vector<double> tempArray2;
-        int i=0;
-        for ( NodeID lID =1; lID <= numNodes; lID++ ) {
-            SSNode leftNode = getSSNode ( lID );
-            if(!leftNode.isValid())
-                continue;
-            i++;
-            pair<int, pair<double,double> > result=nodesExpMult[abs( leftNode.getNodeID())];
-            if (!std::isinf( result.second.first))
-                tempArray1.push_back(result.second.second/result.second.first);
-            else
-                tempArray1.push_back(0);
-            tempArray2.push_back(result.second.second);
-        }
-        sort(tempArray1.begin(), tempArray1.end());
-        sort(tempArray2.begin(), tempArray2.end());
-        double max= tempArray1.at(floor(i*.80));
-        double min=tempArray2.at(floor(i*.90));
-        max=max<5?max:5;
-        min=min>100?min:100;
-        for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
-            if (lID==0)
-                continue;
-            SSNode leftNode = getSSNode ( lID );
-            if(!leftNode.isValid())
-                continue;
-            pair<int, pair<double,double> > result=nodesExpMult[abs( leftNode.getNodeID())];
-            double confidenceRatio=result.second.first;
-            double inCorrctnessRatio=result.second.second;
-            double nodeMultiplicity=result.first;
-            bool change=false;
-            double ratio=0;
+                vector<double> tempArray1;
+                vector<double> tempArray2;
+                int i=0;
+                for ( NodeID lID =1; lID <= numNodes; lID++ ) {
+                        SSNode leftNode = getSSNode ( lID );
+                        if(!leftNode.isValid())
+                                continue;
+                        i++;
+                        pair<int, pair<double,double> > result=nodesExpMult[abs( leftNode.getNodeID())];
+                        if (!std::isinf( result.second.first))
+                                tempArray1.push_back(result.second.second/result.second.first);
+                        else
+                                tempArray1.push_back(0);
+                        tempArray2.push_back(result.second.second);
+                }
+                sort(tempArray1.begin(), tempArray1.end());
+                sort(tempArray2.begin(), tempArray2.end());
+                double max= tempArray1.at(floor(i*.80));
+                double min=tempArray2.at(floor(i*.90));
+                max=max<5?max:5;
+                min=min>100?min:100;
+                for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
+                        if (lID==0)
+                                continue;
+                        SSNode leftNode = getSSNode ( lID );
+                        if(!leftNode.isValid())
+                                continue;
+                        pair<int, pair<double,double> > result=nodesExpMult[abs( leftNode.getNodeID())];
+                        double confidenceRatio=result.second.first;
+                        double inCorrctnessRatio=result.second.second;
+                        double nodeMultiplicity=result.first;
+                        bool change=false;
+                        double ratio=0;
 
-            if (std::isinf(confidenceRatio)) {
-                ratio=0;
-            }
-            else {
-                ratio=inCorrctnessRatio/confidenceRatio;
-            }
+                        if (std::isinf(confidenceRatio)) {
+                                ratio=0;
+                        }
+                        else {
+                                ratio=inCorrctnessRatio/confidenceRatio;
+                        }
+                        if((inCorrctnessRatio>min&& leftNode.getMarginalLength()<this->maxNodeSizeToDel)) {
+
+                                if (leftNode.getNumLeftArcs()==0)
+                                        continue;
+                                if (leftNode.getExpMult()/leftNode.getMarginalLength()<this->redLineValueCov)
+                                        change=removeNode(leftNode);
+                                if(change) {
+                                        modify=true;
+                                        numberOfDel++;
+                                }
+
+                        } else {
+
+                                if(ratio<.5&& leftNode.getMarginalLength()<this->maxNodeSizeToDel) {
+                                        if(leftNode.getNumRightArcs()- nodeMultiplicity>=1) {
+                                                do {
+
+                                                        if (leftNode.getExpMult()/leftNode.getMarginalLength()<this->redLineValueCov)
+                                                                change=deleteExtraRightLink(leftNode, round);
+
+                                                } while ((change&& leftNode.getNumRightArcs()- nodeMultiplicity>=1 ));
+                                        }
+
+                                        if(leftNode.getNumLeftArcs()-nodeMultiplicity>=1) {
+                                                do {
+                                                        change=deleteExtraLeftLink(leftNode, round);
+
+                                                } while ((change&& (leftNode.getNumLeftArcs()- nodeMultiplicity)>=1 ));
+                                        }
+                                        if(change) {
+                                                modify=true;
+                                                numberOfDel++;
+                                        }
+                                }
 
 
+                        }
 
-            if((inCorrctnessRatio>min&& leftNode.getMarginalLength()<min_len)) {
 
-                if (leftNode.getNumLeftArcs()==0)
-                    continue;
-                if (leftNode.getExpMult()/leftNode.getMarginalLength()<this->redLineValueCov)
-                    change=removeNode(leftNode, "deleteUnreliableNodesFirst");
-                if(change) {
-                    modify=true;
-                    numberOfDel++;
                 }
 
-            } else {
-                //if ((inCorrctnessRatio/ confidenceRatio)<max ) {
-
-                //  if (isinf(confidenceRatio)||inCorrctnessRatio==1 ) {
-                if(ratio<.5&& leftNode.getMarginalLength()<min_len) {
-                    if(leftNode.getNumRightArcs()- nodeMultiplicity>=1) {
-                        do {
-                            //              if (nodeMultiplicity==1&& inCorrctnessRatio==1&& confidenceRatio>100)
-                            //                 change=deleteHarshExtraRightLink(leftNode);
-                            //           else
-                            if (leftNode.getExpMult()/leftNode.getMarginalLength()<this->redLineValueCov)
-
-                                change=deleteExtraRightLink(leftNode, round);
-
-                        } while ((change&& leftNode.getNumRightArcs()- nodeMultiplicity>=1 ));
-                    }
-
-                    if(leftNode.getNumLeftArcs()-nodeMultiplicity>=1) {
-                        do {
-                            //         if (nodeMultiplicity==1&&inCorrctnessRatio==1&&confidenceRatio>100)
-                            //           change=deleteHarshExtraLeftLink(leftNode);
-                            //     else
-                            change=deleteExtraLeftLink(leftNode, round);
-
-                        } while ((change&& (leftNode.getNumLeftArcs()- nodeMultiplicity)>=1 ));
-                    }
-                    if(change) {
-                        modify=true;
-                        numberOfDel++;
-                    }
-                }
-
-
-            }
-
-
+                cout<<"number of noeds deleted in guessNodeMultiplicity procedure is:	"<<numberOfDel<<endl;
+        } catch(exception e) {
+                cout<<"Fatal error occured in deleteUnreliableNodes around node: "<<e.what()<<endl;
         }
 
-        cout<<"number of correctly deleted node in guessNodeMultiplicity procedure is:	"<<numberOfDel<<endl;
-    } catch(exception e) {
-        cout<<"Fatal error occured in deleteUnreliableNodes around node: "<<e.what()<<endl;
-    }
-
-    return modify;
+        return modify;
 }
 
-bool DBGraph::removeNode(SSNode rootNode, string functionName) {
+bool DBGraph::removeNode(SSNode rootNode) {
         bool change=false;
         try {
 
-                if (trueMult[abs( rootNode.getNodeID())]>0) {
-                        // cout<<"you deleted a correct node in "+functionName+ ", node number is:	"<<rootNode.getNodeID()<<endl;
-                        //writeLocalCytoscapeGraph(4,rootNode.getNodeID(),100);
-                }
+
                 for ( ArcIt it2 = rootNode.leftBegin(); it2 != rootNode.leftEnd(); it2++ ) {
                         SSNode llNode = getSSNode ( it2->getNodeID() );
                         if (llNode.getNodeID()==-rootNode.getNodeID())
@@ -721,6 +694,11 @@ bool DBGraph::mergeSingleNodes()
                 if ( right.getNumLeftArcs() != 1 ) {
                         continue;
                 }
+                #ifdef DEBUG
+                if ( ( ( trueMult[abs ( lID )] >= 1 ) && ( trueMult[abs ( lID )] == 0 ) ) ||
+                        ( ( trueMult[abs ( rID )] >= 1 ) && ( trueMult[abs ( lID )] == 0 ) ) )
+                        numOfIncorrectConnection++;
+                #endif
                 left.deleteRightArc ( rID );
                 right.deleteLeftArc ( lID );
                 left.inheritRightArcs ( right );
@@ -742,7 +720,9 @@ bool DBGraph::mergeSingleNodes()
 
         }
         cout << "Concatenated " << numDeleted << " nodes" << endl;
+        #ifdef DEBUG
         cout <<numOfIncorrectConnection<< " of connections are between correct and incorrect node"<<endl;
+        #endif
         return (numDeleted > 0||change);
 }
 //comment mahdi creating new procedure for removing diamonds
@@ -788,7 +768,7 @@ bool DBGraph::deleteSuspiciousNodes() {
                                         FP++;
                                 }
 
-                                removeNode(leftNode, "deleteSuspiciousNodes1");
+                                removeNode(leftNode);
                                 modify=true;
                         } else {
                                 if (trueMult[abs (leftNode.getNodeID())]>0) {
@@ -808,7 +788,7 @@ bool DBGraph::deleteSuspiciousNodes() {
                                 else {
                                         FP++;
                                 }
-                                removeNode(rNode, "deleteSuspiciousNodes2");
+                                removeNode(rNode);
                                 modify=true;
                         } else {
                                 if (trueMult[abs(rNode.getNodeID())]>0) {

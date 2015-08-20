@@ -36,7 +36,7 @@
 #include <gsl/gsl_math.h>
 #include "sparseSA.hpp"
 #include "fasta.hpp"
-
+#include <queue>
 typedef std::pair<NodePair, GaussVal> Observation;
 
 // ============================================================================
@@ -304,6 +304,8 @@ public:
     double certainVlueCov;
     double safeValueCov;
     double redLineValueCov;
+    double cutOffvalue;
+    size_t maxNodeSizeToDel;
     int updateCutOffValueRound;
 
     size_t n50;
@@ -316,11 +318,12 @@ public:
     bool mergeSingleNodes();
 
     bool bubbleDetection(int round);
+    void sanitycheckforbubbledetecttion( queue<SSNode> &tempQueue, size_t &numOfIncDel);
 
-    bool removeNode(SSNode rootNode, string functionName);
+    bool removeNode(SSNode rootNode);
     void extractStatistic(double reliabilityPer);
 
-    bool deleteUnreliableNodes(unsigned int min_len, int round);
+    bool deleteUnreliableNodes( int round);
     bool deleteExtraRightLink(SSNode leftNode, int round);
     bool deleteExtraLeftLink(SSNode leftNode, int round);
 
@@ -458,7 +461,7 @@ public:
      */
     bool filterCoverage( float round);
     bool updateCutOffValue(int round);
-    void plotCovDiagram(vector<pair<int , pair<double,int> > >& frequencyArray);
+    void plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > >& frequencyArray);
     void makeSampleReadFile(float num);
     size_t getLowestArcMultiplicity(NodeID left, NodeID right);
 

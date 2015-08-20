@@ -207,66 +207,67 @@ bool DBGraph::clipTips ( bool hard )
 
 bool DBGraph::clipTips(int round)
 {
-    int numInitial = 0;
+        int numInitial = 0;
 
-    double tp=0, tn=0, fp=0,fn=0;
-    updateCutOffValue(round);
-    cout<<"cut off value for removing tips is: "<<this->redLineValueCov<<endl;
+        double tp=0, tn=0, fp=0,fn=0;
+        updateCutOffValue(round);
+        cout<<"cut off value for removing tips is: "<<this->redLineValueCov<<endl;
 
-    for (NodeID i = 1; i <= numNodes; i++) {
+        for (NodeID i = 1; i <= numNodes; i++) {
 
-        if (nodes[i].isValid())
-            numInitial++;
-    }
-
-    bool graphModified=false;
-    for ( NodeID id = 1; id <= numNodes; id++ ) {
-
-        DSNode &node = getDSNode ( id );
-        if ( !node.isValid() ) {
-            continue;
+                if (nodes[i].isValid())
+                        numInitial++;
         }
+        for ( NodeID id = 1; id <= numNodes; id++ ) {
 
+                DSNode &node = getDSNode ( id );
+                if ( !node.isValid() ) {
+                        continue;
+                }
+                // check for dead ends
+                bool leftDE = ( node.getNumLeftArcs() == 0 );
+                bool rightDE = ( node.getNumRightArcs() == 0 );
+                if ( !leftDE && !rightDE ) {
+                        continue;
+                }
+                SSNode startNode = ( rightDE ) ? getSSNode ( -id ) : getSSNode ( id );
+                SSNode currNode = startNode;
+                double cov=currNode.getExpMult()/currNode.getMarginalLength();
 
-        // check for dead ends
-        bool leftDE = ( node.getNumLeftArcs() == 0 );
-        bool rightDE = ( node.getNumRightArcs() == 0 );
-        if ( !leftDE && !rightDE ) {
-            continue;
+                if (cov>this->redLineValueCov) {//||currNode.getMarginalLength()>100
+                        #ifdef DEBUG
+                        if (trueMult[abs( startNode.getNodeID())]>0) {
+                                tn++;
+                        } else {
+                                fn++;
+                        }
+                        #endif
+                        continue;
+                }
+                #ifdef DEBUG
+                if (trueMult[abs( startNode.getNodeID())]>0) {
+                        fp++;
+                } else {
+                        tp++;
+                }
+                #endif
+                removeNode(startNode);
+                continue;
         }
-        SSNode startNode = ( rightDE ) ? getSSNode ( -id ) : getSSNode ( id );
-        SSNode currNode = startNode;
-        double cov=currNode.getExpMult()/currNode.getMarginalLength();
+        // count the number of clipped nodes
+        int numRemaining = 0;
+        for (NodeID i = 1; i <= numNodes; i++)
+                if (nodes[i].isValid())
+                        numRemaining++;
 
-        if (cov>this->redLineValueCov) {//||currNode.getMarginalLength()>100
-            if (trueMult[abs( startNode.getNodeID())]>0) {
-                tn++;
-            } else {
-                fn++;
-            }
-            continue;
-        }
-        if (trueMult[abs( startNode.getNodeID())]>0) {
-            fp++;
-        } else {
-            tp++;
-        }
-        removeNode(startNode,"Remove Tip");
-        continue;
-    }
-    // count the number of clipped nodes
-    int numRemaining = 0;
-    for (NodeID i = 1; i <= numNodes; i++)
-        if (nodes[i].isValid())
-            numRemaining++;
+                size_t numClipped = numInitial - numRemaining;
+        cout << "Clipped " << numClipped << "/" << numInitial << " nodes." << endl;
+        #ifdef DEBUG
+        cout<< "TP:	"<<tp<<"	TN:	"<<tn<<"	FP:	"<<fp<<"	FN:	"<<fn<<endl;
+        cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
+        cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
+        #endif
+        return numClipped > 0;
 
-    size_t numClipped = numInitial - numRemaining;
-
-    cout << "Clipped " << numClipped << "/" << numInitial << " nodes." << endl;
-    cout<< "TP:	"<<tp<<"	TN:	"<<tn<<"	FP:	"<<fp<<"	FN:	"<<fn<<endl;
-    cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
-    cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
-    return numClipped > 0;
-    return graphModified;
 }
 

@@ -37,7 +37,16 @@ Brownie::Brownie(int argc, char** args)
         Kmer::setWordSize(settings.getK());
         RKmer::setWordSize(settings.getK() - KMERBYTEREDUCTION * 4);
 }
-
+void Brownie::printInFile() {
+        string konsole=settings.getTempDirectory()+ "/konsole.txt";
+        freopen(konsole.c_str(),"a",stdout);
+        cout<<"-------------------------------------------------------------------------------"<<endl;
+        time_t t;
+        time(&t);
+        cout << ctime(&t) << endl; // e.g., Fri May 02 17:57:14 2003
+        cout<<"-------------------------------------------------------------------------------"<<endl;
+        cout << "Welcome to Brownie\n" << endl;
+}
 void Brownie::stageOne()
 {
         // ============================================================
@@ -231,7 +240,6 @@ void Brownie::stageFour()
         size_t bigestN50=0;
         int round=1;
         size_t minN50=100;
-        int maxSizeNodeForDel=100;
 
 
         while (simplified) {
@@ -258,7 +266,6 @@ void Brownie::stageFour()
                 }
                 //*******************************************************
                 bool chimeric = graph.filterChimeric( round);
-
                 if (chimeric) {
                         graph.mergeSingleNodes();
                         if (!graph.continueEdit(bigestN50, nodeFileName,arcFileName,metaDataFileName))
@@ -311,7 +318,7 @@ void Brownie::stageFour()
                 //*******************************************************
                 bool deleted=false;
                 if (bigestN50>minN50) {
-                        deleted=graph.deleteUnreliableNodes(maxSizeNodeForDel, round);
+                        deleted=graph.deleteUnreliableNodes( round);
                         #ifdef DEBUG
                         graph.compareToSolution();
                         #endif
@@ -373,7 +380,7 @@ int main(int argc, char** args)
 {
         try {
                 Brownie brownie(argc, args);
-
+                //brownie.printInFile();
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
                 << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL << endl;
                 cout << "Today is " << Util::getTime() << endl;

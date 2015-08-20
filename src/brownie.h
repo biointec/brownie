@@ -164,6 +164,8 @@ public:
         bool stageFiveNecessary() const {
                 return true;
         }
+        void printInFile();
+
 };
 
 #endif
