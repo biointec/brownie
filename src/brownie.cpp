@@ -303,7 +303,6 @@ void Brownie::stageFour()
                         graph.compareToSolution();
                         #endif
                 }
-
                 if (link) {
                         graph.mergeSingleNodes();
                         if (!graph.continueEdit(bigestN50, nodeFileName,arcFileName,metaDataFileName))
@@ -376,7 +375,7 @@ int main(int argc, char** args)
 {
         try {
                 Brownie brownie(argc, args);
-                //brownie.printInFile();
+                brownie.printInFile();
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
                 << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL << endl;
                 cout << "Today is " << Util::getTime() << endl;
