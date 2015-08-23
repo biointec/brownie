@@ -304,7 +304,7 @@ double NW_Alignment::alignment(string &s1, string &s2)
 
     int s[n][m];
     char t[n][m];
-    for (int i=0; i<n; i++) {   
+    for (int i=0; i<n; i++) {
             s[i][0]=i*-1;
     }
     for (int j = 0; j < m; j++)
@@ -313,12 +313,12 @@ double NW_Alignment::alignment(string &s1, string &s2)
     }
     for (int i = 1; i <= n-1; i++)
     {
-        //int jIndexMin=1<i-d? i-d:1;
-        for (int j = 1; j <= m-1; j++) // for (int j = jIndexMin; j <= i+(d); j++)//   
+
+        for (int j = 1; j <= m-1; j++) // for (int j = jIndexMin; j <= i+(d); j++)//
         {
 
             int scroeDiag = 0;
-       
+
             if(s1[i-1]==s2[j-1]|| s1[i-1]=='N'||s2[i-1]=='N')
                 //if (s1.substr(i - 1, 1) == s2.substr(j - 1, 1))
                 scroeDiag = s[i - 1][ j - 1] + matchScore;   //match
@@ -344,12 +344,7 @@ double NW_Alignment::alignment(string &s1, string &s2)
 
         }
     }
-    /* for (int i=0; i<n; i++) {
-         for(int j=0; j<m; j++) {
-             cout<<t[i][j]<<"	";
-         }
-         cout<<"\n";
-     }*/
+
 
     string news1="";
     string news2="";

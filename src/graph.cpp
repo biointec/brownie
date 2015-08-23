@@ -45,10 +45,6 @@ DBGraph::DBGraph(const Settings& settings) : settings(settings), nodes(NULL),
     //mahdi comment my
     initialize();
 }
-const double minCertainVlueCov=1.1;
-const double minSafeValueCov=1.5;
-const double minRedLineValueCov=2;
-
 
 
 
@@ -58,16 +54,17 @@ void DBGraph::initialize()
     //correct it later it should read this information from setting file, but setting dosn't have such infomratin right now
     readLength=100;//settings.getReadLength();
     coverage=100;//settings.getCoverage();
+    double minCertainVlueCov=2;
+    double minSafeValueCov=2;
+    double minRedLineValueCov=3;
     kmerSize= settings.getK();
     estimatedKmerCoverage=(coverage/readLength)*(readLength-kmerSize+1)/12;
     estimatedMKmerCoverageSTD=sqrt( estimatedKmerCoverage);
-    estimatedArcCoverageMean=estimatedKmerCoverage;
-    estimatedArcCoverageSTD=estimatedMKmerCoverageSTD;
     certainVlueCov=minCertainVlueCov;
     safeValueCov=minSafeValueCov;
     redLineValueCov=minRedLineValueCov;
     updateCutOffValueRound=1;
-    maxNodeSizeToDel=100;
+    maxNodeSizeToDel=settings.getK()*2;
 }
 
 int DBGraph::parseLine(char* line)
@@ -157,11 +154,10 @@ bool DBGraph::continueEdit(size_t& bigestN50, string& nodeFileName, string& arcF
 }
 bool DBGraph::filterChimeric(int round)
 {
+        cout<<"*********************<<filter Chimeric starts>>......................................... "<<endl;
         size_t numFiltered = 0;
         size_t numOfIncorrectlyFiltered=0;
         // sanity check
-        if ( !updateCutOffValue(round))
-                return false;
         for (NodeID i = -numNodes; i <= numNodes; i++) {
                 if (i==0)
                         continue;
@@ -175,7 +171,7 @@ bool DBGraph::filterChimeric(int round)
                         continue;
                 if (n.getMarginalLength() < settings.getK())  //????
                         continue;
-                if (n.getExpMult() / n.getMarginalLength() > this->safeValueCov || n.getMarginalLength()>this->maxNodeSizeToDel )
+                if (n.getExpMult() / n.getMarginalLength() > this->redLineValueCov || n.getMarginalLength()>this->maxNodeSizeToDel )
                         continue;
                 SSNode rrNode = getSSNode(n.rightBegin()->getNodeID());
                 if (rrNode.getNodeID()==-n.getNodeID())
@@ -230,39 +226,36 @@ bool DBGraph::updateCutOffValue(int round)
         vector<pair< pair< int , int> , pair<double,int> > > frequencyArray;
         size_t validNodes=0;
 
-        for (NodeID i = -numNodes; i <= numNodes; i++) {
-                if (i==0)
-                        continue;
+        for (NodeID i =1; i <= numNodes; i++) {
+
                 SSNode n = getSSNode(i);
                 if(!n.isValid())
                         continue;
                 validNodes++;
                 double kmerCoverage=(double)n.getExpMult() / (double)n.getMarginalLength();
-                int marginalLength=n.getMarginalLength()+ settings.getK();
+                int marginalLength=n.getMarginalLength();//+ settings.getK();
                 bool correctNode=false;
                 double nodeMultiplicityR=1;
-                if (nodesExpMult.size()>0){
+                /*if (nodesExpMult.size()>0){
                         pair<int, pair<double,double> > resultR=nodesExpMult[abs( n.getNodeID())];
                         nodeMultiplicityR=0;
                         double confidenceRatio=resultR.second.first;
                         double inCorrctnessRatio=resultR.second.second;
-                        if (confidenceRatio/ inCorrctnessRatio>100 ) {
-                                nodeMultiplicityR=resultR.first;
-                        }
-                }
+                        nodeMultiplicityR=resultR.first;
+                        marginalLength=marginalLength;
+                }*/
                 #ifdef DEBUG
-                if (trueMult[abs(n.getNodeID())]>0){
-                        marginalLength=marginalLength*trueMult[abs(n.getNodeID())];
+                nodeMultiplicityR=trueMult[abs(n.getNodeID())];
+                if (nodeMultiplicityR)
                         correctNode=true;
-                }
                 #endif
-                allNodes.push_back( make_pair(kmerCoverage, make_pair( nodeMultiplicityR, make_pair(correctNode, n.getMarginalLength())) ));
+                allNodes.push_back( make_pair(kmerCoverage, make_pair( nodeMultiplicityR, make_pair(correctNode,marginalLength)) ));
         }
         std::sort (allNodes.begin(), allNodes.end());
         size_t j=allNodes.size();
         size_t sumOfbigNodes=0;
 
-        while(j>0 && sumOfbigNodes<settings.getGenomeSize()*1.5){
+        while(j>0 && sumOfbigNodes<settings.getGenomeSize()){
                 j--;
                 sumOfbigNodes=sumOfbigNodes+allNodes[j].second.second.second*allNodes[j].second.first;
         }
@@ -317,7 +310,7 @@ bool DBGraph::updateCutOffValue(int round)
         i=0;
 
         i=1;
-        while(i<frequencyArray.size()) {
+       /* while(i<frequencyArray.size()) {
                 current=frequencyArray[i].second;
                 currentDist= pre.second-current.second;
                 if (currentDist<flucValue*-1) {
@@ -336,36 +329,45 @@ bool DBGraph::updateCutOffValue(int round)
 
         if (safeValue>redLineValue)
                 redLineValue=safeValue;
-        //double maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*3>minCertainVlueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*3:minCertainVlueCov;
-        double maxThreshold=this->cutOffvalue/5>minCertainVlueCov?this->cutOffvalue/5:minCertainVlueCov;
+        double maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*3>minCertainVlueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*3:minCertainVlueCov;
+        //double maxThreshold=this->cutOffvalue/5>minCertainVlueCov?this->cutOffvalue/5:minCertainVlueCov;
         if (bestAnswer.first>maxThreshold)
                 certainValue=maxThreshold;
         else
                 certainValue=bestAnswer.first;
         if (this->certainVlueCov<certainValue)
                 this->certainVlueCov=certainValue;
-        //maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*2>minSafeValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*2:minSafeValueCov;
-        maxThreshold=this->cutOffvalue/4>minCertainVlueCov?this->cutOffvalue/4:minCertainVlueCov;
+        maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*3>minSafeValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*3:minSafeValueCov;
+        //maxThreshold=this->cutOffvalue/4>minCertainVlueCov?this->cutOffvalue/4:minCertainVlueCov;
         if (safeValue>maxThreshold)
                 safeValue=maxThreshold;
         if (this->safeValueCov<safeValue)
                 this->safeValueCov=safeValue;
-        //maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*1>minRedLineValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*round*1:minRedLineValueCov;
-        maxThreshold=this->cutOffvalue/3>minCertainVlueCov?this->cutOffvalue/3:minCertainVlueCov;
+        maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*2>minRedLineValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*2:minRedLineValueCov;
+        //maxThreshold=this->cutOffvalue/3>minCertainVlueCov?this->cutOffvalue/3:minCertainVlueCov;
         if (redLineValue>maxThreshold)
                 redLineValue=maxThreshold;
         if (this->redLineValueCov<redLineValue)
-                this->redLineValueCov=redLineValue;
-        cout<<"cut off value base on genome size:" <<this->cutOffvalue<<endl;
+                this->redLineValueCov=redLineValue;*/
+        this->redLineValueCov=estimatedKmerCoverage-estimatedMKmerCoverageSTD*3>minRedLineValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*3:minRedLineValueCov;
+        this->safeValueCov=estimatedKmerCoverage-estimatedMKmerCoverageSTD*4>minSafeValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*4:minSafeValueCov;
+        this->certainVlueCov=estimatedKmerCoverage-estimatedMKmerCoverageSTD*5>minCertainVlueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*5:minCertainVlueCov;
+        if (this->redLineValueCov>minRedLineValueCov)
+                minRedLineValueCov=this->redLineValueCov;
+        if(this->safeValueCov>minSafeValueCov)
+                minSafeValueCov=this->safeValueCov;
+        if(this->certainVlueCov>minCertainVlueCov)
+                minCertainVlueCov=this->certainVlueCov;
+
         cout<<"certainValue: "<<this->certainVlueCov<<endl;
         cout<<"safeValue: "<<this->safeValueCov<<endl;
         cout<<"redLineValue: "<<this->redLineValueCov<<endl;
         //writing to file to make a plot
-        #ifdef DEBUG
-        if (round>0)
+        //#ifdef DEBUG
+        //if (round>0)
                 plotCovDiagram(frequencyArray);
-        #endif
-        return true;
+        //#endif
+        //return true;
 }
 void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > >& frequencyArray){
         ofstream expcovFile;
@@ -383,16 +385,22 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
         expcovFile<<"certainValue: "<<this->certainVlueCov<<endl;
         expcovFile<<"safeValue: "<<this->safeValueCov<<endl;
         expcovFile<<"redLineValue: "<<this->redLineValueCov<<endl;
-        expcovFile<<"representative     sumOfMarginalLength     sumOfcorrectLength      sumOfIncorrectLength"<<endl;
+        expcovFile<<"cutOffvalue: "<<this->cutOffvalue<<endl;
+        expcovFile<<"estimatedKmerCoverage: "<<this->estimatedKmerCoverage<<endl;
+        expcovFile<<"estimatedMKmerCoverageSTD: "<<this->estimatedMKmerCoverageSTD<<endl;
+        expcovFile<<"representative_1     representative_2     sumOfMarginalLength     sumOfcorrectLength      sumOfIncorrectLength"<<endl;
         int i=0;
+        double added=(frequencyArray[1].second.first-frequencyArray[0].second.first)/2;
         while(i<frequencyArray.size()) {
                 pair<double,int> pre=frequencyArray[i].second;
-                expcovFile<<pre.first<< "       "<<frequencyArray[i].first.first<<"   "<< frequencyArray[i].first.second<<"     "<< frequencyArray[i].first.first-frequencyArray[i].first.second <<endl;
+                expcovFile<<pre.first<< "       "<<pre.first+added<<"     "<<frequencyArray[i].first.first<<"   "<< frequencyArray[i].first.second<<"     "<< frequencyArray[i].first.first-frequencyArray[i].first.second <<endl;
                 i++;
         }
         expcovFile.close();
+        #ifdef DEBUG
         string command="gnuplot -e  \"filename='"+filename+"'\" -e \"outputfile='"+outputFileName+"'\" cov/plot.dem";
         system(command.c_str());
+        #endif
 }
 
 struct readStructStr
@@ -409,77 +417,82 @@ struct readStructStr
 
 bool DBGraph::filterCoverage(float round)
 {
-    int tp=0;
-    int tn=0;
-    int fp=0;
-    int fn=0;
+        cout<<"*********************<<Filter Coverage starts>>......................................... "<<endl;
+        int tp=0;
+        int tn=0;
+        int fp=0;
+        int fn=0;
+        size_t numFiltered = 0;
+        for (NodeID i =1; i <= numNodes; i++) {
 
-    size_t numFiltered = 0;
+                SSNode n = getSSNode(i);
+                if(!n.isValid())
+                        continue;
 
-    updateCutOffValue(round);
-
-    for (NodeID i = -numNodes; i <= numNodes; i++) {
-        if (i==0)
-            continue;
-        SSNode n = getSSNode(i);
-        if(!n.isValid())
-            continue;
-
-        if (n.getNumLeftArcs()==0)
-            continue;
-
-        double kmerCoverage=n.getExpMult() / n.getMarginalLength();
-
-
-        if (kmerCoverage>this->safeValueCov) {
-            if (trueMult[abs(i)] >= 1)
-                tn++;
-            else
-                fn++;
-            continue;
+                double kmerCoverage=n.getExpMult() / n.getMarginalLength();
+                if ((n.getNumRightArcs() != 1||n.getNumLeftArcs() != 1)&&(kmerCoverage>certainVlueCov))
+                        continue;
+                if (kmerCoverage>this->safeValueCov) {
+                        if (trueMult[abs(i)] >= 1)
+                                tn++;
+                        else
+                                fn++;
+                        continue;
+                }
+                bool Del=removeNode(n);
+                if (Del){
+                        numFiltered++;
+                        if (trueMult[abs(i)] >= 1)
+                                fp++;
+                        else
+                                tp++;
+                }
+                else
+                {
+                        if (trueMult[abs(i)] >= 1)
+                                tn++;
+                        else
+                                fn++;
+                }
         }
 
-        for (ArcIt it = n.rightBegin(); it != n.rightEnd(); it++) {
-            SSNode rrNode = getSSNode(it->getNodeID());
-            // don't delete arc to the same physical node as it will break the iterator
-            if (it->getNodeID() == -n.getNodeID())
-                continue;
-            bool result = rrNode.deleteLeftArc(n.getNodeID());
-            assert(result);
-        }
 
-        for (ArcIt it = n.leftBegin(); it != n.leftEnd(); it++) {
-            SSNode llNode = getSSNode(it->getNodeID());
-            // don't delete arc to the same physical node as it will break the iterator
-            if (it->getNodeID() == -n.getNodeID())
-                continue;
-            bool result = llNode.deleteRightArc(n.getNodeID());
-            assert(result);
-        }
-
-        n.deleteAllLeftArcs();
-        n.deleteAllRightArcs();
-        n.invalidate();
-        numFiltered++;
-
-        if (trueMult[abs(i)] >= 1)
-            fp++;
-        else
-            tp++;
-    }
+        cout << "Number of coverage nodes deleted: " << numFiltered << " gain value is ("<<100*((double)(tp-fp)/(double)(tp+fn))<< "%)"<<endl;
+        cout<< "TP:	"<<tp<<"	TN:	"<<tn<<"	FP:	"<<fp<<"	FN:	"<<fn<<endl;
+        cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
+        cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
 
 
-    cout << "Number of coverage nodes deleted: " << numFiltered << " gain value is ("<<100*((double)(tp-fp)/(double)(tp+fn))<< "%)"<<endl;
-    cout<< "TP:	"<<tp<<"	TN:	"<<tn<<"	FP:	"<<fp<<"	FN:	"<<fn<<endl;
-    cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
-    cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
-
-
-    return numFiltered > 0;
+        return numFiltered > 0;
 
 }
+bool DBGraph::removeNode(SSNode & rootNode) {
+        if (rootNode.getMarginalLength()>maxNodeSizeToDel)
+                return false;
+
+        for ( ArcIt it2 = rootNode.leftBegin(); it2 != rootNode.leftEnd(); it2++ ) {
+                SSNode llNode = getSSNode ( it2->getNodeID() );
+                if (llNode.getNodeID()==-rootNode.getNodeID())
+                        continue;
+                bool result = llNode.deleteRightArc ( rootNode.getNodeID() );
+                assert ( result );
+        }
+        for ( ArcIt it3 = rootNode.rightBegin(); it3 != rootNode.rightEnd(); it3++ ) {
+                SSNode rrNode = getSSNode ( it3->getNodeID() );
+                if (rrNode.getNodeID()==-rootNode.getNodeID())
+                        continue;
+                bool result = rrNode.deleteLeftArc ( rootNode.getNodeID() );
+                assert ( result );
+        }
+        rootNode.deleteAllRightArcs();
+        rootNode.deleteAllLeftArcs();
+        rootNode.invalidate();
+        return true;
+}
+
 bool DBGraph::removeIncorrectLink()
 {
+        cout<<"*********************<<Remove Incorrect Link starts>>......................................... "<<endl;
         int num=0;
         bool modify=false;
         for(int i=1; i<numNodes; i++) {

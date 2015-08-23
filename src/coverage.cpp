@@ -140,15 +140,9 @@ bool cmssn(const SSNode& first, const SSNode & second ) {
 
 
 }
-void DBGraph::extractStatistic(double reliabilityPer) {
-        //reliabilityPer specify how much we should rely on our new statistical inference to calculate estimatedKmerCoverage
-        //for example if we set it to 1, we completely forget what we had befor.
-        if (reliabilityPer>1) {
-                reliabilityPer=1;
-        }
-        if(reliabilityPer<0) {
-                reliabilityPer=0;
-        }
+/*void DBGraph::extractStatistic() {
+        //read this page for more info:
+        //http://stattrek.com/sampling/sampling-distribution.aspx
         vector<pair<double,double> > tempArray;
         vector <SSNode> nodeArray;
         int percentage=5;
@@ -162,7 +156,6 @@ void DBGraph::extractStatistic(double reliabilityPer) {
                 if ( lID != 0  ) {
                         SSNode leftNode = getSSNode ( lID );
                         if(leftNode.isValid()) {
-
                                 totalLength=totalLength+leftNode.getMarginalLength();
                                 nodeArray.push_back(leftNode);
 
@@ -202,8 +195,11 @@ void DBGraph::extractStatistic(double reliabilityPer) {
                 }
                 i++;
         }
-        estimatedKmerCoverage=(coverage/sumOfMarginalLenght)*(reliabilityPer)+estimatedKmerCoverage*(1-reliabilityPer);
-        estimatedArcCoverageMean=arcCovAvg*(reliabilityPer)+estimatedArcCoverageMean*(1-reliabilityPer);
+
+
+
+        estimatedKmerCoverage=(coverage/sumOfMarginalLenght);
+        estimatedArcCoverageMean=arcCovAvg;
         double  arcCovSTD=0;
         arcCovNum=0;
         int num=i;
@@ -244,7 +240,7 @@ void DBGraph::extractStatistic(double reliabilityPer) {
                 std=std/(num-1);
 
         std=sqrt(std);
-        estimatedMKmerCoverageSTD= sqrt(estimatedKmerCoverage);
+        estimatedMKmerCoverageSTD= std;//sqrt(estimatedKmerCoverage);
         if (arcCovNum!=1)
                 arcCovSTD=arcCovSTD/(arcCovNum-1);
         estimatedArcCoverageSTD=sqrt( estimatedArcCoverageMean);
@@ -344,134 +340,251 @@ void DBGraph::extractStatistic(double reliabilityPer) {
         i=0;
         num=0;
         // expcovFile.close();
+}*/
+void DBGraph::extractStatistic(int round) {
+
+        vector<pair<double,double> > tempArray;
+        vector <SSNode> nodeArray;
+        int percentage=5;
+        long double sumOfReadStcov=0;
+        long double sumOfMarginalLenght=0;
+        long double totalLength=0;
+        double coverage=0;
+        double StandardErrorMean=0;
+        double avg=0;
+        for ( NodeID lID = 1; lID <= numNodes; lID++ ) {
+                if ( lID != 0  ) {
+                        SSNode leftNode = getSSNode ( lID );
+                        if(leftNode.isValid()) {
+                                totalLength=totalLength+leftNode.getMarginalLength();
+                                nodeArray.push_back(leftNode);
+
+                        }
+                }
+        }
+        sort(nodeArray.begin(), nodeArray.end(),cmssn );
+        int i=0;
+        while(sumOfMarginalLenght<((totalLength*percentage)/100)) {
+                SSNode tempNode=nodeArray[i];
+                sumOfMarginalLenght=sumOfMarginalLenght+tempNode.getMarginalLength();
+                sumOfReadStcov=sumOfReadStcov+tempNode.getReadStartCov();
+                i++;
+        }
+        avg=sumOfReadStcov/sumOfMarginalLenght;
+        i=0;
+        sumOfMarginalLenght=0;
+        double arcCovAvg=0;
+        int arcCovNum=0;
+        int size=nodeArray.size();
+        double sumOfCoverage=0;
+        while((i<50||sumOfMarginalLenght<((totalLength*percentage)/100))&& i<size) {
+                SSNode tempNode=nodeArray[i];
+                sumOfMarginalLenght=sumOfMarginalLenght+tempNode.getMarginalLength();
+                sumOfCoverage=sumOfCoverage+tempNode.getExpMult();
+                i++;
+        }
+        estimatedKmerCoverage=(sumOfCoverage/sumOfMarginalLenght);
+        int num=i;
+        sumOfMarginalLenght=0;
+        double sumOfSTD=0;
+        i=0;
+        while(i<num) {
+                SSNode tempNode=nodeArray[i];
+                sumOfSTD=sumOfSTD+((tempNode.getExpMult()/tempNode.getMarginalLength())-estimatedKmerCoverage)*((tempNode.getExpMult()/tempNode.getMarginalLength())-estimatedKmerCoverage);
+                i++;
+        }
+        if(num>0)
+                StandardErrorMean=sqrt( sumOfSTD/num);
+        estimatedMKmerCoverageSTD=StandardErrorMean;//          sqrt(num)*std;
+        //estimatedMKmerCoverageSTD=std*sqrt(num);
+        for ( NodeID lID = 0; lID <= numNodes; lID++ ) {
+                if ( lID == 0  )
+                        continue;
+                // map<NodeID,set<int,int> >nodesExpMult;
+                SSNode leftNode = getSSNode ( lID );
+                if (!leftNode.isValid()) {
+                        continue;
+                }
+                if(leftNode.isValid()) {
+                        int nodeMultiplicity=1;
+                        double numerator=0;
+                        double newValue=avg*nodeMultiplicity*leftNode.getMarginalLength();
+                        double newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
+
+                        int realMul=trueMult[lID];
+                        if (realMul>1) {
+                                int stop=0;
+                                stop++;
+                        }
+                        while(newProbability>numerator) {
+                                nodeMultiplicity++;
+                                numerator=newProbability;
+                                newValue=avg*nodeMultiplicity*leftNode.getMarginalLength();
+                                newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
+                        }
+
+                        nodeMultiplicity--;
+                        double denominator=0;
+                        double currentProb=numerator;
+
+                        double inCorrctnessRatio=0;
+                        int i=nodeMultiplicity-1;
+                        if(i>0) {
+                                double newValue=avg*i*leftNode.getMarginalLength();
+                                newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
+                                denominator=denominator+newProbability;
+                                i--;
+                                while(i>=0&& abs(newProbability-currentProb)> .00000001) {
+                                        currentProb=newProbability;
+                                        newValue=avg*i*leftNode.getMarginalLength();
+                                        newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
+                                        denominator=denominator+newProbability;
+                                        i--;
+                                }
+                        }
+                        i=nodeMultiplicity+1;
+                        newValue=avg*i*leftNode.getMarginalLength();
+                        newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
+                        denominator=denominator+newProbability;
+                        i++;
+                        while(i>0&& abs(newProbability-currentProb)> .00000001) {
+                                currentProb=newProbability;
+                                newValue=avg*i*leftNode.getMarginalLength();
+                                newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
+                                denominator=denominator+newProbability;
+                                i++;
+                        }
+
+                        newValue=avg*nodeMultiplicity*leftNode.getMarginalLength();
+                        if(leftNode.getReadStartCov()<newValue)
+                                newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
+                        else
+                                newProbability=gsl_ran_poisson_pdf(newValue,newValue);
+                        inCorrctnessRatio=gsl_ran_poisson_pdf(newValue,newValue)/newProbability;
+                        if (nodeMultiplicity==1) {
+                                int shiftedStReadCov=leftNode.getReadStartCov()+avg*leftNode.getMarginalLength();
+                                //i=2
+                                newValue=2*avg*leftNode.getMarginalLength();
+                                numerator=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
+
+                                //for i=1
+                                newValue=avg*leftNode.getMarginalLength();
+                                denominator=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
+                                i=3;
+                                newValue=avg*i*leftNode.getMarginalLength();
+                                newProbability=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
+                                currentProb=numerator;
+
+                                while(abs(newProbability-currentProb)> .00000001) {
+                                        i++;
+                                        denominator=denominator+newProbability;
+                                        currentProb=newProbability;
+                                        newValue=avg*i*leftNode.getMarginalLength();
+                                        newProbability=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
+                                }
+                        }
+
+                        double confidenceRatio=numerator/denominator;
+                        nodesExpMult[leftNode.getNodeID()]=make_pair(nodeMultiplicity,make_pair( confidenceRatio,inCorrctnessRatio));
+                        }
+        }
+        sumOfMarginalLenght=0;
+        i=0;
+        num=0;
+        // expcovFile.close();
 }
 
+
+
+
 bool DBGraph::deleteUnreliableNodes( int round) {
+        cout<<"*********************<<Delete Unreliable Nodes starts>>......................................... "<<endl;
         bool modify=false;
-        try {
+        int numberOfDel=0;
+        vector<double> tempArray1;
+        vector<double> tempArray2;
+        int i=0;
+        for ( NodeID lID =1; lID <= numNodes; lID++ ) {
+                SSNode leftNode = getSSNode ( lID );
+                if(!leftNode.isValid())
+                        continue;
+                i++;
+                pair<int, pair<double,double> > result=nodesExpMult[abs( leftNode.getNodeID())];
+                if (!std::isinf( result.second.first))
+                        tempArray1.push_back(result.second.second/result.second.first);
+                else
+                        tempArray1.push_back(0);
+                tempArray2.push_back(result.second.second);
+        }
+        sort(tempArray1.begin(), tempArray1.end());
+        sort(tempArray2.begin(), tempArray2.end());
+        double max= tempArray1.at(floor(i*.80));
+        double min=tempArray2.at(floor(i*.90));
+        max=max<5?max:5;
+        min=min>100?min:100;
+        for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
+                if (lID==0)
+                        continue;
+                SSNode leftNode = getSSNode ( lID );
+                if(!leftNode.isValid())
+                        continue;
+                pair<int, pair<double,double> > result=nodesExpMult[abs( leftNode.getNodeID())];
+                double confidenceRatio=result.second.first;
+                double inCorrctnessRatio=result.second.second;
+                double nodeMultiplicity=result.first;
+                bool change=false;
+                double ratio=0;
 
-                updateCutOffValue(round);
-
-                int numberOfDel=0;
-
-                vector<double> tempArray1;
-                vector<double> tempArray2;
-                int i=0;
-                for ( NodeID lID =1; lID <= numNodes; lID++ ) {
-                        SSNode leftNode = getSSNode ( lID );
-                        if(!leftNode.isValid())
-                                continue;
-                        i++;
-                        pair<int, pair<double,double> > result=nodesExpMult[abs( leftNode.getNodeID())];
-                        if (!std::isinf( result.second.first))
-                                tempArray1.push_back(result.second.second/result.second.first);
-                        else
-                                tempArray1.push_back(0);
-                        tempArray2.push_back(result.second.second);
+                if (std::isinf(confidenceRatio)) {
+                        ratio=0;
                 }
-                sort(tempArray1.begin(), tempArray1.end());
-                sort(tempArray2.begin(), tempArray2.end());
-                double max= tempArray1.at(floor(i*.80));
-                double min=tempArray2.at(floor(i*.90));
-                max=max<5?max:5;
-                min=min>100?min:100;
-                for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
-                        if (lID==0)
-                                continue;
-                        SSNode leftNode = getSSNode ( lID );
-                        if(!leftNode.isValid())
-                                continue;
-                        pair<int, pair<double,double> > result=nodesExpMult[abs( leftNode.getNodeID())];
-                        double confidenceRatio=result.second.first;
-                        double inCorrctnessRatio=result.second.second;
-                        double nodeMultiplicity=result.first;
-                        bool change=false;
-                        double ratio=0;
+                else {
+                        ratio=inCorrctnessRatio/confidenceRatio;
+                }
+                if((inCorrctnessRatio>min&& leftNode.getMarginalLength()<this->maxNodeSizeToDel)) {
 
-                        if (std::isinf(confidenceRatio)) {
-                                ratio=0;
+                        if (leftNode.getNumLeftArcs()==0)
+                                continue;
+                        if (leftNode.getExpMult()/leftNode.getMarginalLength()<this->redLineValueCov)
+                                change=removeNode(leftNode);
+                        if(change) {
+                                modify=true;
+                                numberOfDel++;
                         }
-                        else {
-                                ratio=inCorrctnessRatio/confidenceRatio;
-                        }
-                        if((inCorrctnessRatio>min&& leftNode.getMarginalLength()<this->maxNodeSizeToDel)) {
 
-                                if (leftNode.getNumLeftArcs()==0)
-                                        continue;
-                                if (leftNode.getExpMult()/leftNode.getMarginalLength()<this->redLineValueCov)
-                                        change=removeNode(leftNode);
+                } else {
+
+                        if(ratio<.5&& leftNode.getMarginalLength()<this->maxNodeSizeToDel) {
+                                if(leftNode.getNumRightArcs()- nodeMultiplicity>=1) {
+                                        do {
+
+                                                if (leftNode.getExpMult()/leftNode.getMarginalLength()<this->redLineValueCov)
+                                                        change=deleteExtraRightLink(leftNode, round);
+
+                                        } while ((change&& leftNode.getNumRightArcs()- nodeMultiplicity>=1 ));
+                                }
+
+                                if(leftNode.getNumLeftArcs()-nodeMultiplicity>=1) {
+                                        do {
+                                                change=deleteExtraLeftLink(leftNode, round);
+
+                                        } while ((change&& (leftNode.getNumLeftArcs()- nodeMultiplicity)>=1 ));
+                                }
                                 if(change) {
                                         modify=true;
                                         numberOfDel++;
                                 }
-
-                        } else {
-
-                                if(ratio<.5&& leftNode.getMarginalLength()<this->maxNodeSizeToDel) {
-                                        if(leftNode.getNumRightArcs()- nodeMultiplicity>=1) {
-                                                do {
-
-                                                        if (leftNode.getExpMult()/leftNode.getMarginalLength()<this->redLineValueCov)
-                                                                change=deleteExtraRightLink(leftNode, round);
-
-                                                } while ((change&& leftNode.getNumRightArcs()- nodeMultiplicity>=1 ));
-                                        }
-
-                                        if(leftNode.getNumLeftArcs()-nodeMultiplicity>=1) {
-                                                do {
-                                                        change=deleteExtraLeftLink(leftNode, round);
-
-                                                } while ((change&& (leftNode.getNumLeftArcs()- nodeMultiplicity)>=1 ));
-                                        }
-                                        if(change) {
-                                                modify=true;
-                                                numberOfDel++;
-                                        }
-                                }
-
-
                         }
-
 
                 }
 
-                cout<<"number of noeds deleted in guessNodeMultiplicity procedure is:	"<<numberOfDel<<endl;
-        } catch(exception e) {
-                cout<<"Fatal error occured in deleteUnreliableNodes around node: "<<e.what()<<endl;
         }
 
+        cout<<"number of noeds deleted in guessNodeMultiplicity procedure is:	"<<numberOfDel<<endl;
         return modify;
 }
 
-bool DBGraph::removeNode(SSNode rootNode) {
-        bool change=false;
-        try {
 
-
-                for ( ArcIt it2 = rootNode.leftBegin(); it2 != rootNode.leftEnd(); it2++ ) {
-                        SSNode llNode = getSSNode ( it2->getNodeID() );
-                        if (llNode.getNodeID()==-rootNode.getNodeID())
-                                continue;
-                        bool result = llNode.deleteRightArc ( rootNode.getNodeID() );
-                        assert ( result );
-                }
-                for ( ArcIt it3 = rootNode.rightBegin(); it3 != rootNode.rightEnd(); it3++ ) {
-                        SSNode rrNode = getSSNode ( it3->getNodeID() );
-                        if (rrNode.getNodeID()==-rootNode.getNodeID())
-                                continue;
-                        bool result = rrNode.deleteLeftArc ( rootNode.getNodeID() );
-                        assert ( result );
-                }
-                rootNode.deleteAllRightArcs();
-                rootNode.deleteAllLeftArcs();
-                rootNode.invalidate();
-                change=true;
-        }
-        catch(exception e) {
-                cout<<"Fatal error occured in removeNode around node: "<<rootNode.getNodeID()<< " error Num:"<<e.what()<<endl;
-        }
-        return change;
-}
 
 bool DBGraph::deleteExtraRightLink(SSNode rootNode, int round) {
         bool change=false;

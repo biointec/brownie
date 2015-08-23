@@ -207,10 +207,9 @@ bool DBGraph::clipTips ( bool hard )
 
 bool DBGraph::clipTips(int round)
 {
+        cout<<"*********************<<clip Tips starts>>......................................... "<<endl;
         int numInitial = 0;
-
         double tp=0, tn=0, fp=0,fn=0;
-        updateCutOffValue(round);
         cout<<"cut off value for removing tips is: "<<this->redLineValueCov<<endl;
 
         for (NodeID i = 1; i <= numNodes; i++) {

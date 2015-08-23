@@ -48,276 +48,142 @@
 using namespace std;
 
 struct pathStruct {
-
-    SSNode rootNode;
-    SSNode lastNode;
-    SSNode firstNode;
-    int pathLenght;
-    int numOfNode;
-    queue<SSNode> pathQueueNodes;
-    pathStruct(SSNode root) {
-        this->rootNode=root;
-        this->lastNode=root;
-        pathQueueNodes.push(root);
-        //to avoid devision by zero, it should be zero by the way
-        this->pathLenght=1;
-        numOfNode=1;
-    }
-    pathStruct() {}
-    void addNodeToPaht(SSNode node) {
-        pathQueueNodes.push(node);
-        pathLenght=pathLenght+node.getMarginalLength();
-        this->lastNode=node;
-        numOfNode++;
-        if(numOfNode==2) {
-            firstNode=node;
+        SSNode rootNode;
+        SSNode lastNode;
+        SSNode firstNode;
+        int pathLenght;
+        int numOfNode;
+        queue<SSNode> pathQueueNodes;
+        pathStruct(SSNode root) {
+                this->rootNode=root;
+                this->lastNode=root;
+                pathQueueNodes.push(root);
+                //to avoid devision by zero, it should be zero by the way
+                this->pathLenght=1;
+                numOfNode=1;
+        }
+        pathStruct() {}
+        void addNodeToPaht(SSNode node) {
+                pathQueueNodes.push(node);
+                pathLenght=pathLenght+node.getMarginalLength();
+                this->lastNode=node;
+                numOfNode++;
+                if(numOfNode==2) {
+                        firstNode=node;
+                }
 
         }
-
-    }
-    SSNode getLastNode() {
-        return lastNode;
-    }
-    double getNodePahtCoverage() {
-
-        queue<SSNode> tempQueue=this->pathQueueNodes;
-        double nodeCov;
-        //pop root
-        tempQueue.pop();
-        while(!tempQueue.empty()) {
-            SSNode node=tempQueue.front();
-            tempQueue.pop();
-            nodeCov=nodeCov+(node.getExpMult()/node.getMarginalLength());
+        SSNode getLastNode() {
+                return lastNode;
         }
-        nodeCov=nodeCov/numOfNode;
-        return nodeCov;
-
-    }
-    string getSequence() {
-        queue<SSNode> tempQueue=this->pathQueueNodes;
-        tempQueue.pop();
-        string str;
-        while(!tempQueue.empty()) {
-            SSNode node=tempQueue.front();
-            str=str+node.getSequence();
-            tempQueue.pop();
-        }
-        return str;
-    }
-    double getSingleExpStReadCov() {
-        queue<SSNode> tempQueue=this->pathQueueNodes;
-        double stReadoCov=0;
-        int i=0;
-        int length;
-        //pop root
-        tempQueue.pop();
-        while(!tempQueue.empty()) {
-            SSNode node=tempQueue.front();
-            if(node.getNumLeftArcs()==1&&node.getNumRightArcs()==1) {
+        string getSequence() {
+                queue<SSNode> tempQueue=this->pathQueueNodes;
                 tempQueue.pop();
-                stReadoCov=stReadoCov+(node.getReadStartCov()/node.getMarginalLength());
-                length=length+node.getMarginalLength();
-                i++;
-            } else {
-                break;
-            }
+                string str;
+                while(!tempQueue.empty()) {
+                        SSNode node=tempQueue.front();
+                        str=str+node.getSequence();
+                        tempQueue.pop();
+                }
+                return str;
         }
-        if(i!=0||length<31) {
-            stReadoCov=(stReadoCov/i);
-            return stReadoCov;
-        }
-        return-1;
-    }
-    double getSingleNodePahtCoverage() {
+        double getSingleNodePahtCoverage() {
 
-        queue<SSNode> tempQueue=this->pathQueueNodes;
-        double nodeCov=0;
-        int i=0;
-        //pop root
-        tempQueue.pop();
-        while(!tempQueue.empty()) {
-            SSNode node=tempQueue.front();
-            if(node.getNumLeftArcs()==1&&node.getNumRightArcs()==1) {
+                queue<SSNode> tempQueue=this->pathQueueNodes;
+                double nodeCov=0;
+                int i=0;
+                //pop root
                 tempQueue.pop();
-                nodeCov=nodeCov+(node.getExpMult()/node.getMarginalLength());
-                i++;
-            } else {
-                break;
-            }
-        }
-        if(i!=0) {
-            nodeCov=(nodeCov/i);
-            return nodeCov;
-        }
-        return-1;
-
-    }
-
-    double getSingleArcPathCoverage() {
-
-        queue<SSNode> tempQueue=this->pathQueueNodes;
-        double arcCov=0;
-        if(tempQueue.size()>=2) {
-            SSNode firstNode=tempQueue.front();
-            tempQueue.pop();
-            int i=0;
-            while(!tempQueue.empty()) {
-                SSNode secondNode=tempQueue.front();
-                if(secondNode.getNumRightArcs()==1&& secondNode.getNumLeftArcs()==1) {
-                    tempQueue.pop();
-                    arcCov=arcCov+firstNode.getRightArc(secondNode.getNodeID())->getCoverage();
-                    firstNode=secondNode;
-                    i++;
+                while(!tempQueue.empty()) {
+                        SSNode node=tempQueue.front();
+                        if(node.getNumLeftArcs()==1&&node.getNumRightArcs()==1) {
+                                tempQueue.pop();
+                                nodeCov=nodeCov+(node.getExpMult()/node.getMarginalLength());
+                                i++;
+                        } else {
+                                break;
+                        }
                 }
-                else {
-                    break;
+                if(i!=0) {
+                        nodeCov=(nodeCov/i);
+                        return nodeCov;
                 }
-
-            }
-            //the initial value is -1, so it should be added again
-            if(i!=0) {
-                arcCov=(arcCov)/(i);
-                return arcCov;
-
-            }
+                return-1;
 
         }
-        return -1;
-    }
-    double getSingleNodeMulCertanity(const std::map<int, std::pair<int, std::pair<double, double> > >& nodesExpMult) {
+        double getSingleArcPathCoverage() {
+                queue<SSNode> tempQueue=this->pathQueueNodes;
+                double arcCov=0;
+                if(tempQueue.size()>=2) {
+                        SSNode firstNode=tempQueue.front();
+                        tempQueue.pop();
+                        int i=0;
+                        while(!tempQueue.empty()) {
+                                SSNode secondNode=tempQueue.front();
+                                if(secondNode.getNumRightArcs()==1&& secondNode.getNumLeftArcs()==1) {
+                                        tempQueue.pop();
+                                        arcCov=arcCov+firstNode.getRightArc(secondNode.getNodeID())->getCoverage();
+                                        firstNode=secondNode;
+                                        i++;
+                                }
+                                else {
+                                        break;
+                                }
 
-        queue<SSNode> tempQueue=this->pathQueueNodes;
-        double Certanity=0;
-        if(tempQueue.size()>=2) {
+                        }
+                        //the initial value is -1, so it should be added again
+                        if(i!=0) {
+                                arcCov=(arcCov)/(i);
+                                return arcCov;
 
-            tempQueue.pop();
-            int i=0;
-            while(!tempQueue.empty()) {
-                SSNode secondNode=tempQueue.front();
-                if(secondNode.getNumLeftArcs()==1) {
-                    tempQueue.pop();
-                    pair<int, pair<double,double> > Result= nodesExpMult.at(abs( secondNode.getNodeID()));
-                    Certanity=Certanity+Result.second.first;
-                    i++;
+                        }
 
                 }
-                else {
-                    break;
+                return -1;
+        }
+        int removeSingleNodes() {
+                int remove=0;
+                if(pathQueueNodes.size()>=3) {
+                        SSNode rNode=pathQueueNodes.front();
+                        pathQueueNodes.pop();
+                        SSNode rrNode =pathQueueNodes.front();
+                        pathQueueNodes.pop();
+                        SSNode rrrNode=pathQueueNodes.front();
+                        pathQueueNodes.pop();
+                        if(rrNode.getNumLeftArcs()==1 && rrNode.getNumRightArcs()==1 ) {
+                                bool result= rrrNode.deleteLeftArc(rrNode.getNodeID());
+                                assert(result);
+                                rrNode.deleteRightArc(rrrNode.getNodeID());
+                                rrNode.deleteLeftArc(rNode.getNodeID());
+                                rNode.deleteRightArc(rrNode.getNodeID());
+                                rrNode.deleteAllLeftArcs();
+                                rrNode.deleteAllRightArcs();
+                                rrNode.invalidate();
+                                remove++;
+
+                        }
+                        while(rrrNode.getNumLeftArcs()==0&& rrrNode.getNumRightArcs()==1&& !pathQueueNodes.empty()) {
+                                rrNode=rrrNode;
+                                rrrNode=pathQueueNodes.front();
+                                pathQueueNodes.pop();
+                                bool result= rrrNode.deleteLeftArc(rrNode.getNodeID());
+                                assert(result);
+                                rrNode.deleteRightArc(rrrNode.getNodeID());
+                                rrNode.deleteAllLeftArcs();
+                                rrNode.deleteAllRightArcs();
+                                rrNode.invalidate();
+                                remove++;
+                        }
                 }
 
-            }
-            //the initial value is -1, so it should be added again
-            if(i!=0) {
-                Certanity=(Certanity)/(i);
-                return Certanity;
-
-            }
+                return remove;
 
         }
-        return -1;
-    }
 
 
-    double getSingleNodeIncorrectness(const std::map<int, std::pair<int, std::pair<double, double> > > &temp) {
-
-        queue<SSNode> tempQueue=this->pathQueueNodes;
-        double incorrectness=0;
-        if(tempQueue.size()>=2) {
-
-            tempQueue.pop();
-            int i=0;
-            while(!tempQueue.empty()) {
-                SSNode secondNode=tempQueue.front();
-                if(secondNode.getNumLeftArcs()==1) {
-                    tempQueue.pop();
-                    pair<int, pair<double,double> > Result=temp.at((int)abs(secondNode.getNodeID()));
-                    //pair<int, pair<double,double> > Result= temp.at(abs( firstNode.getNodeID());
-                    //temp.find()
-                    incorrectness=incorrectness+Result.second.second;
-
-                    i++;
-
-                }
-                else {
-                    break;
-                }
-
-            }
-            //the initial value is -1, so it should be added again
-            if(i!=0) {
-                incorrectness=(incorrectness)/(i);
-                return incorrectness;
-
-            }
-
+        bool operator<( const pathStruct & d ) const {
+                return pathLenght <= d.pathLenght;
         }
-        return -1;
-    }
-    double getArcPathCoverage() {
-
-        queue<SSNode> tempQueue=this->pathQueueNodes;
-        double arcCov;
-        if(tempQueue.size()>=2) {
-            SSNode firstNode=tempQueue.front();
-            tempQueue.pop();
-            while(!tempQueue.empty()) {
-                SSNode secondNode=tempQueue.front();
-                tempQueue.pop();
-                arcCov=arcCov+firstNode.getRightArc(secondNode.getNodeID())->getCoverage();
-                firstNode=secondNode;
-
-            }
-            arcCov=arcCov/(numOfNode-1);
-            return arcCov;
-        } else {
-            return 0;
-        }
-
-
-    }
-    int removeSingleNodes() {
-        int remove=0;
-        if(pathQueueNodes.size()>=3) {
-            SSNode rNode=pathQueueNodes.front();
-            pathQueueNodes.pop();
-            SSNode rrNode =pathQueueNodes.front();
-            pathQueueNodes.pop();
-            SSNode rrrNode=pathQueueNodes.front();
-            pathQueueNodes.pop();
-            if(rrNode.getNumLeftArcs()==1 && rrNode.getNumRightArcs()==1 ) {
-                bool result= rrrNode.deleteLeftArc(rrNode.getNodeID());
-                assert(result);
-                rrNode.deleteRightArc(rrrNode.getNodeID());
-                rrNode.deleteLeftArc(rNode.getNodeID());
-                rNode.deleteRightArc(rrNode.getNodeID());
-                rrNode.deleteAllLeftArcs();
-                rrNode.deleteAllRightArcs();
-                rrNode.invalidate();
-                remove++;
-
-            }
-            while(rrrNode.getNumLeftArcs()==0&& rrrNode.getNumRightArcs()==1&& !pathQueueNodes.empty()) {
-                rrNode=rrrNode;
-                rrrNode=pathQueueNodes.front();
-                pathQueueNodes.pop();
-                bool result= rrrNode.deleteLeftArc(rrNode.getNodeID());
-                assert(result);
-                rrNode.deleteRightArc(rrrNode.getNodeID());
-                rrNode.deleteAllLeftArcs();
-                rrNode.deleteAllRightArcs();
-                rrNode.invalidate();
-                remove++;
-            }
-        }
-
-        return remove;
-
-    }
-
-
-    bool operator<( const pathStruct & d ) const {
-        return pathLenght <= d.pathLenght;
-    }
 
 };
 struct comparator {
@@ -329,162 +195,210 @@ struct comparator {
 };
 
 bool DBGraph::bubbleDetection(int round) {
-      priority_queue<pathStruct,vector<pathStruct>,comparator > MinHeap;
-      int maxLength=settings.getK()*2;
-      size_t numOfIncDel=0;
-      size_t numOfDel=0;
-      bool remove=false;
-      updateCutOffValue(round);
-      for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
-          if ( lID == 0 ) {
-              continue;
-          }
-          SSNode leftNode = getSSNode ( lID );
-          if ( !leftNode.isValid() ) {
-              continue;
-          }
-          if(leftNode.getNumRightArcs()<2) {
-              continue;
-          }
-          pathStruct rootPath(leftNode);
-          MinHeap.push(rootPath);
-          std::set<NodeID> visitedNodes;
-          std::set<Arc *>visitedArc;
-          visitedNodes.insert(leftNode.getNodeID());
-          map<NodeID,pathStruct> pathDic;
-          pathDic[rootPath.getLastNode().getNodeID()]=rootPath;
-          while(!MinHeap.empty()) {
-              pathStruct leftPath =MinHeap.top();
-              MinHeap.pop();
-              leftNode=leftPath.getLastNode();
-              for ( ArcIt it = leftNode.rightBegin(); it != leftNode.rightEnd(); it++ ) {
-                  //if(it->isValid()) {
-                  SSNode rightNode=getSSNode(it->getNodeID());
-                  Arc* p= leftNode.getRightArc(rightNode.getNodeID());
-                  if(!(visitedArc.find(p)!=visitedArc.end())) {
-                      visitedArc.insert(leftNode.getRightArc(rightNode.getNodeID()));
-                      pathStruct extendedPath;
-                      extendedPath=leftPath;
-                      //+rightNode.getMarginalLength()
-                      if(extendedPath.pathLenght>=maxLength || rightNode.getNumRightArcs()==0)
-                          continue;
-                      extendedPath.addNodeToPaht(rightNode);
-                      MinHeap.push(extendedPath);
-                      if (visitedNodes.find(rightNode.getNodeID()) != visitedNodes.end()) {
-                          pathStruct prevPath=pathDic.at(rightNode.getNodeID());
-                          if (prevPath.firstNode.getNodeID()!=extendedPath.firstNode.getNodeID()) {
-                              double lengthpro=0;
-                              if(prevPath.pathLenght!=0)
-                                  lengthpro=extendedPath.pathLenght/prevPath.pathLenght;
-                              if (lengthpro<.8 || lengthpro>1.2)
-                                      continue;
-                                  double prevNodeCov=prevPath.getSingleNodePahtCoverage();
-                                  double prevAcrcCov=prevPath.getSingleArcPathCoverage();
-                                  double exteNodeCov=extendedPath.getSingleNodePahtCoverage();
-                                  double exteArcCov=extendedPath.getSingleArcPathCoverage();
-                                  double  prevProbalility=  gsl_cdf_gaussian_P((prevNodeCov-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
-                                  double  exteProbalility=  gsl_cdf_gaussian_P((exteNodeCov-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
-                                  double prevProbArcCov=gsl_cdf_gaussian_P((prevAcrcCov-estimatedArcCoverageMean)/estimatedArcCoverageSTD,1);
-                                  double exteProbArcCov=gsl_cdf_gaussian_P((exteArcCov-estimatedArcCoverageMean)/estimatedArcCoverageSTD,1);
-                                  bool preReliable=false;
-                                  bool find=false;
-                                  queue<SSNode> tempQueue;
-                                  if(prevNodeCov!=-1 && prevAcrcCov!=-1 && exteNodeCov!=-1&& exteArcCov!=-1) {
-                                      if(prevProbalility<.1||exteProbalility<.1) {
+        cout<<"*********************<<Bubble Detection starts>>......................................... "<<endl;
+        priority_queue<pathStruct,vector<pathStruct>,comparator > MinHeap;
+        int maxLength=settings.getK()*2;
+        size_t numOfDel=0;
+        bool remove=false;
+        size_t TP=0,TN=0,FP=0,FN=0;
+        for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
+                if ( lID == 0 ) {
+                        continue;
+                }
+                SSNode leftNode = getSSNode ( lID );
+                if ( !leftNode.isValid() ) {
+                        continue;
+                }
+                if(leftNode.getNumRightArcs()<2) {
+                        continue;
+                }
+                pathStruct rootPath(leftNode);
+                MinHeap.push(rootPath);
+                std::set<NodeID> visitedNodes;
+                std::set<Arc *>visitedArc;
+                visitedNodes.insert(leftNode.getNodeID());
+                map<NodeID,pathStruct> pathDic;
+                pathDic[rootPath.getLastNode().getNodeID()]=rootPath;
+                while(!MinHeap.empty()) {
+                        pathStruct leftPath =MinHeap.top();
+                        MinHeap.pop();
+                        leftNode=leftPath.getLastNode();
+                        for ( ArcIt it = leftNode.rightBegin(); it != leftNode.rightEnd(); it++ ) {
+                                //if(it->isValid()) {
+                                SSNode rightNode=getSSNode(it->getNodeID());
+                                Arc* p= leftNode.getRightArc(rightNode.getNodeID());
+                                if(!(visitedArc.find(p)!=visitedArc.end())) {
+                                        visitedArc.insert(leftNode.getRightArc(rightNode.getNodeID()));
+                                        pathStruct extendedPath;
+                                        extendedPath=leftPath;
+                                        //+rightNode.getMarginalLength()
+                                        if(extendedPath.pathLenght>=maxLength || rightNode.getNumRightArcs()==0)
+                                                continue;
+                                        extendedPath.addNodeToPaht(rightNode);
+                                        MinHeap.push(extendedPath);
+                                        if (visitedNodes.find(rightNode.getNodeID()) != visitedNodes.end()) {
+                                                pathStruct prevPath=pathDic.at(rightNode.getNodeID());
+                                                if (prevPath.firstNode.getNodeID()!=extendedPath.firstNode.getNodeID()) {
+                                                        double lengthpro=0;
+                                                        if(prevPath.pathLenght!=0)
+                                                                lengthpro=extendedPath.pathLenght/prevPath.pathLenght;
+                                                        if (lengthpro<.8 || lengthpro>1.2)
+                                                                continue;
+                                                        if (removeBubble(prevPath.firstNode ,extendedPath.firstNode,TP,TN,FP,FN, numOfDel))
+                                                                break;
+                                                }
+                                        } else {
+                                                visitedNodes.insert(rightNode.getNodeID());
+                                                pathDic[rightNode.getNodeID()]=extendedPath;
+                                        }
+                                }
+                        }
+                }
 
-                                          if (((prevProbArcCov<.1&&prevProbalility<.1&&prevNodeCov<this->redLineValueCov) || prevNodeCov<this->certainVlueCov)&&(exteProbArcCov>.1&&exteProbalility>.1) ) {
-                                              preReliable=false;
-                                              find=true;
-                                              tempQueue=prevPath.pathQueueNodes;
-                                          }
-                                          if (((exteProbArcCov<.1&&exteProbalility<.1&&exteNodeCov<this->redLineValueCov)|| exteNodeCov<this->certainVlueCov)&& (prevProbArcCov>.1&&prevProbalility>.1)  ) {
-                                              preReliable=true;
-                                              find=true;
-                                              tempQueue=extendedPath.pathQueueNodes;
-                                          }
-                                      }
-                                  } else {
-                                      if(prevNodeCov!=-1&&prevAcrcCov!=-1) {
-                                          if ((prevProbArcCov<.1&&prevProbalility<.1&&prevNodeCov<this->redLineValueCov )&&(prevNodeCov<this->certainVlueCov)) {
-                                              preReliable=false;
-                                              find=true;
-                                              tempQueue=prevPath.pathQueueNodes;
-                                          }
-
-
-                                      } else {
-                                          if(exteNodeCov!=-1&& exteArcCov!=-1) {
-                                              if ((exteProbArcCov<.1&&exteProbalility<.1&&exteNodeCov<this->redLineValueCov)&&(exteNodeCov<this->certainVlueCov)) {
-                                                  preReliable=true;
-                                                  find=true;
-                                                  tempQueue=extendedPath.pathQueueNodes;
-                                              }
-                                          }
-                                      }
-                                  }
-                                  if(nodesExpMult.size()>0 && !find) {
-                                      pair<int, pair<double,double> > resultR=nodesExpMult[abs( extendedPath.rootNode.getNodeID())];
-                                      if(resultR.first==1 && (resultR.second.second/resultR.second.first)<1) {
-                                          pair<int, pair<double,double> > resultE=nodesExpMult[abs( extendedPath.firstNode.getNodeID())];
-                                          pair<int, pair<double,double> > resultP=nodesExpMult[abs( prevPath.firstNode.getNodeID())];
-                                          find =true;
-                                          if ((resultE.second.second/resultE.second.first)<resultP.second.second/resultP.second.first) {
-                                              preReliable=false;
-                                              tempQueue=prevPath.pathQueueNodes;
-
-
-                                          } else {
-                                              preReliable=true;
-                                              tempQueue=extendedPath.pathQueueNodes;
-                                          }
-                                      }
-
-                                  }
-                                  if(find && !tempQueue.empty() ) {
-                                          #ifdef DEBUG
-                                          sanitycheckforbubbledetecttion( tempQueue,numOfIncDel);
-                                          #endif
-                                          if(preReliable) {
-                                              numOfDel=numOfDel+extendedPath.removeSingleNodes();
-
-                                              break;
-                                          } else {
-                                              numOfDel=numOfDel+ prevPath.removeSingleNodes();
-
-                                              break;
-                                          }
-                                  }
-                          }
-
-                      } else {
-                          visitedNodes.insert(rightNode.getNodeID());
-                          pathDic[rightNode.getNodeID()]=extendedPath;
-                      }
-                  }
-                  //}
-              }
-          }
-
-      }
-
-      if(numOfDel>0||numOfIncDel>0) {
-          cout<<"number of  deleted nodes based on bubble detection:            "<<numOfDel<<endl;
-          cout<<"number of incorrectly deleted nodes based on bubble detection: "<<numOfIncDel<<endl;
-      }
-
-      if (numOfDel !=0 ||numOfIncDel!=0)
-          return true;
-  return false;
-  }
-
-void DBGraph::sanitycheckforbubbledetecttion( queue<SSNode>& tempQueue, size_t& numOfIncDel){
-        SSNode tempNode=tempQueue.front();
-        tempQueue.pop();
-        tempNode=tempQueue.front();
-        while(!tempQueue.empty()&& tempNode.getNumLeftArcs()==1 && tempNode.getNumRightArcs()==1) {
-                tempQueue.pop();
-                if(trueMult[abs(tempNode.getNodeID())]>0)
-                        numOfIncDel++;
-                tempNode=tempQueue.front();
         }
+        #ifdef DEBUG
+        cout<< "TP:     "<<TP<<"        TN:     "<<TN<<"        FP:     "<<FP<<"        FN:     "<<FN<<endl;
+        cout << "Sensitivity: ("<<100*((double)TP/(double)(TP+FN))<<"%)"<<endl;
+        cout<<"Specificity: ("<<100*((double)TN/(double)(TN+FP))<<"%)"<<endl;
+        #endif
+        cout<<"number of  deleted nodes based on bubble detection:            "<<numOfDel<<endl;
+        if (numOfDel !=0)
+                return true;
+        return false;
+}
+bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel ){
+        bool preIsSingle=true;
+        bool exteIsSingle=true;
+        if (prevFirstNode.getNumLeftArcs()>1 ||prevFirstNode.getNumRightArcs()>1)
+                preIsSingle=false;
+        if(extendFirstNode.getNumLeftArcs()>1||extendFirstNode.getNumRightArcs()>1)
+                exteIsSingle=false;
+        double preCov= prevFirstNode.getExpMult()/prevFirstNode.getMarginalLength();
+        double extCov=extendFirstNode.getExpMult()/extendFirstNode.getMarginalLength();
+        if(preIsSingle && exteIsSingle) {
+                if ( preCov<this->redLineValueCov && preCov<extCov)  {
+                        #ifdef DEBUG
+                        if (trueMult[abs( prevFirstNode.getNodeID())]>0)
+                                FP++;
+                        else
+                                TP++;
+                        #endif
+                        removeNode(prevFirstNode);
+                        numOfDel++;
+                        return true;
+                }
+                else{
+                        #ifdef DEBUG
+                        if (trueMult[abs( prevFirstNode.getNodeID())]>0)
+                                TN++;
+                        else
+                                FN++;
+                        #endif
+                }
+                if (extCov<this->redLineValueCov && extCov<preCov ) {
+                        #ifdef DEBUG
+                        if(trueMult[abs( extendFirstNode.getNodeID())]>0)
+                                FP++;
+                        else
+                                TP++;
+                        #endif
+                        removeNode(extendFirstNode);
+                        numOfDel++;
+                        return true;
+                }else{
+                        #ifdef DEBUG
+                        if (trueMult[abs( extendFirstNode.getNodeID())]>0){
+                                TN++;
+                        }else
+                                FN++;
+                        #endif
+                }
+        }
+        if(preIsSingle && !exteIsSingle) {
+                if (preCov<this->safeValueCov ) {
+                        #ifdef DEBUG
+                        if (trueMult[abs( prevFirstNode.getNodeID())]>0)
+                                FP++;
+                        else
+                                TP++;
+                        #endif
+                        removeNode(prevFirstNode);
+                        numOfDel++;
+                        return true;
+                }
+                else{
+                        #ifdef DEBUG
+                        if (trueMult[abs( prevFirstNode.getNodeID())]>0)
+                                TN++;
+                        else
+                                FN++;
+                        #endif
+                }
+        }
+        if(exteIsSingle!=-1&&!preIsSingle ) {
+                if ((extCov<this->safeValueCov)) {
+                        #ifdef DEBUG
+                        if(trueMult[abs( extendFirstNode.getNodeID())]>0)
+                                FP++;
+                        else
+                                TP++;
+                        #endif
+                        removeNode(extendFirstNode);
+                        numOfDel++;
+                        return true;
+                }else{
+                        #ifdef DEBUG
+                        if (trueMult[abs( extendFirstNode.getNodeID())]>0){
+                                TN++;
+                        }else
+                                FN++;
+                        #endif
+                }
+        }
+        //when the starting nodes of both parallel paths has more than one ingoing or arcgoing arcs
+        if (exteIsSingle==-1&&preIsSingle==-1)
+                return removeNotSingleBublles(prevFirstNode,extendFirstNode, TP,TN,FP,FN, numOfDel);
+        return false;
+}
+bool DBGraph:: removeNotSingleBublles( SSNode &prevFirstNode ,SSNode& extendFirstNode, size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel){
+        double preCov= prevFirstNode.getExpMult()/prevFirstNode.getMarginalLength();
+        double extCov=extendFirstNode.getExpMult()/extendFirstNode.getMarginalLength();
+        if (preCov<extCov && preCov<this->certainVlueCov){
+                #ifdef DEBUG
+                if (trueMult[abs( prevFirstNode.getNodeID())]>0)
+                        FP++;
+                else
+                        TP++;
+                #endif
+                removeNode(prevFirstNode);
+                numOfDel++;
+                return true;
+        }
+        else{
+                #ifdef DEBUG
+                if (trueMult[abs( prevFirstNode.getNodeID())]>0)
+                        TN++;
+                else
+                        FN++;
+                #endif
+        }
+        if (extCov<preCov && extCov<this->certainVlueCov){
+                #ifdef DEBUG
+                if(trueMult[abs( extendFirstNode.getNodeID())]>0)
+                        FP++;
+                else
+                        TP++;
+                #endif
+                removeNode(extendFirstNode);
+                numOfDel++;
+                return true;
+        }else{
+                #ifdef DEBUG
+                if (trueMult[abs( extendFirstNode.getNodeID())]>0){
+                        TN++;
+                }else
+                        FN++;
+                #endif
+        }
+        return false;
 }

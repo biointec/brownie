@@ -299,8 +299,9 @@ public:
     static const DBGraph* graph;
     double estimatedKmerCoverage;//=(coverage/readLength)*(readLength-kmerSize+1)/12;
     double estimatedMKmerCoverageSTD;//=sqrt( estimatedKmerCoverage);
-    double estimatedArcCoverageMean;//=estimatedKmerCoverage;
-    double estimatedArcCoverageSTD;//=estimatedMKmerCoverageSTD;
+    double minCertainVlueCov;
+    double minSafeValueCov;
+    double minRedLineValueCov;
     double certainVlueCov;
     double safeValueCov;
     double redLineValueCov;
@@ -318,10 +319,10 @@ public:
     bool mergeSingleNodes();
 
     bool bubbleDetection(int round);
-    void sanitycheckforbubbledetecttion( queue<SSNode> &tempQueue, size_t &numOfIncDel);
-
-    bool removeNode(SSNode rootNode);
-    void extractStatistic(double reliabilityPer);
+    bool removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel);
+    bool removeNotSingleBublles(  SSNode &prevFirstNode ,SSNode& extendFirstNode, size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel);
+    bool removeNode(SSNode &rootNode);
+    void extractStatistic(int round);
 
     bool deleteUnreliableNodes( int round);
     bool deleteExtraRightLink(SSNode leftNode, int round);

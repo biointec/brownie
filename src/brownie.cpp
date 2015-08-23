@@ -188,7 +188,7 @@ void Brownie::stageFour()
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
 
-       /* if (!stageFourNecessary()) {
+       /* if (!stageFourNecessary()) g{
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 4..." << endl << endl;
                 return;
@@ -204,15 +204,12 @@ void Brownie::stageFour()
         testgraph.mergeSingleNodes();
         testgraph.filterCoverage(0);
         testgraph.mergeSingleNodes();
-        testgraph.extractStatistic(1);
-
+        testgraph.extractStatistic(0);
         DBGraph graph(settings);
-        graph.estimatedArcCoverageMean= testgraph.estimatedArcCoverageMean;
-        graph.estimatedArcCoverageSTD=sqrt(graph.estimatedArcCoverageMean);
+
         graph.estimatedKmerCoverage=testgraph.estimatedKmerCoverage;
-        graph.estimatedMKmerCoverageSTD=sqrt(graph.estimatedKmerCoverage);
-        cout<<"estimated Arc Coverage Mean: "<<graph.estimatedArcCoverageMean<<endl;
-        cout<<"estimated Arc Coverage STD: "<<graph.estimatedArcCoverageSTD<<endl;
+        graph.estimatedMKmerCoverageSTD=testgraph.estimatedMKmerCoverageSTD;
+
         cout<<"estimated Kmer Coverage Mean: "<<graph.estimatedKmerCoverage<<endl;
         cout<<"estimated Kmer Coverage STD: "<<graph.estimatedMKmerCoverageSTD<<endl;
         testgraph.clear();
@@ -244,6 +241,7 @@ void Brownie::stageFour()
 
         while (simplified) {
                 //*******************************************************
+                graph.updateCutOffValue(round);
                 bool tips=graph.clipTips(round);
                 if (tips) {
                         graph.mergeSingleNodes();
@@ -254,17 +252,7 @@ void Brownie::stageFour()
                         #endif
                 }
                 //*******************************************************
-                bool coverage = graph.filterCoverage(round);
-
-                if (coverage) {
-                        graph.mergeSingleNodes();
-                        if (!graph.continueEdit(bigestN50, nodeFileName,arcFileName,metaDataFileName))
-                                break;
-                        #ifdef DEBUG
-                        graph.compareToSolution();
-                        #endif
-                }
-                //*******************************************************
+                /*graph.updateCutOffValue(round);
                 bool chimeric = graph.filterChimeric( round);
                 if (chimeric) {
                         graph.mergeSingleNodes();
@@ -274,11 +262,22 @@ void Brownie::stageFour()
                         graph.compareToSolution();
                         #endif
 
+                }*/
+                //*******************************************************
+                graph.updateCutOffValue(round);
+                bool coverage = graph.filterCoverage(round);
+                if (coverage) {
+                        graph.mergeSingleNodes();
+                        if (!graph.continueEdit(bigestN50, nodeFileName,arcFileName,metaDataFileName))
+                                break;
+                        #ifdef DEBUG
+                        graph.compareToSolution();
+                        #endif
                 }
                 //*******************************************************
+                graph.updateCutOffValue(round);
                 bool bubble=false;
                 bubble= graph.bubbleDetection(round);
-
                 if (bubble) {
                         graph.mergeSingleNodes();
                         if (!graph.continueEdit(bigestN50, nodeFileName,arcFileName,metaDataFileName))
@@ -290,16 +289,15 @@ void Brownie::stageFour()
                 }
                 //*******************************************************
 
-                graph.extractStatistic(1);
+                graph.extractStatistic(round);
                 #ifdef DEBUG
-                cout<<"estimated Arc Coverage Mean: "<<graph.estimatedArcCoverageMean<<endl;
-                cout<<"estimated Arc Coverage STD: "<<graph.estimatedArcCoverageSTD<<endl;
                 cout<<"estimated Kmer Coverage Mean: "<<graph.estimatedKmerCoverage<<endl;
                 cout<<"estimated Kmer Coverage STD: "<<graph.estimatedMKmerCoverageSTD<<endl;
                 #endif
                 //*******************************************************
                 bool link=false;
                 if (bigestN50>minN50) {
+                        graph.updateCutOffValue(round);
                         link =graph.removeIncorrectLink();
                         #ifdef DEBUG
                         graph.compareToSolution();
@@ -313,17 +311,16 @@ void Brownie::stageFour()
                         #ifdef DEBUG
                         graph.compareToSolution();
                         #endif
-
                 }
                 //*******************************************************
                 bool deleted=false;
                 if (bigestN50>minN50) {
+                        graph.updateCutOffValue(round);
                         deleted=graph.deleteUnreliableNodes( round);
                         #ifdef DEBUG
                         graph.compareToSolution();
                         #endif
                 }
-
                 if (deleted) {
                         graph.mergeSingleNodes();
                         if (!graph.continueEdit(bigestN50, nodeFileName,arcFileName,metaDataFileName))
@@ -333,10 +330,9 @@ void Brownie::stageFour()
                         #endif
                 }
                 //*******************************************************
-                simplified = tips  || chimeric  || coverage || link|| deleted || bubble;
+                simplified = tips   || coverage || link|| deleted || bubble;
                 round++;
         }
-
         cout << " Ghraph correction completed in "
         << Util::stopChrono() << "s." << endl;
         Util::startChrono();
