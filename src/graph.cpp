@@ -365,7 +365,7 @@ bool DBGraph::updateCutOffValue(int round)
         //writing to file to make a plot
         //#ifdef DEBUG
         //if (round>0)
-                plotCovDiagram(frequencyArray);
+         plotCovDiagram(frequencyArray);
         //#endif
         //return true;
 }
@@ -430,9 +430,7 @@ bool DBGraph::filterCoverage(float round)
                         continue;
 
                 double kmerCoverage=n.getExpMult() / n.getMarginalLength();
-                if ((n.getNumRightArcs() != 1||n.getNumLeftArcs() != 1)&&(kmerCoverage>certainVlueCov))
-                        continue;
-                if (kmerCoverage>this->safeValueCov) {
+                if (kmerCoverage>this->certainVlueCov) {
                         if (trueMult[abs(i)] >= 1)
                                 tn++;
                         else
@@ -455,13 +453,13 @@ bool DBGraph::filterCoverage(float round)
                                 fn++;
                 }
         }
-
-
-        cout << "Number of coverage nodes deleted: " << numFiltered << " gain value is ("<<100*((double)(tp-fp)/(double)(tp+fn))<< "%)"<<endl;
+        cout << "Number of coverage nodes deleted: " << numFiltered<<endl;
+#ifdef DEBUG
+        cout << " gain value is ("<<100*((double)(tp-fp)/(double)(tp+fn))<< "%)"<<endl;
         cout<< "TP:	"<<tp<<"	TN:	"<<tn<<"	FP:	"<<fp<<"	FN:	"<<fn<<endl;
         cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
         cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
-
+#endif
 
         return numFiltered > 0;
 

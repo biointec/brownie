@@ -229,16 +229,14 @@ void Brownie::stageFour()
         cout << "Created graph in "
         << Util::stopChrono() << "s." << endl;
         Util::startChrono();
-        #ifdef DEBUG
+        //#ifdef DEBUG
         graph.compareToSolution();
-        #endif
+        //#endif
         //variables
         bool simplified = true;
         size_t bigestN50=0;
         int round=1;
         size_t minN50=100;
-
-
         while (simplified) {
                 //*******************************************************
                 graph.updateCutOffValue(round);
@@ -247,22 +245,11 @@ void Brownie::stageFour()
                         graph.mergeSingleNodes();
                         if(! graph.continueEdit(bigestN50, nodeFileName,arcFileName,metaDataFileName))
                                 break;
-                        #ifdef DEBUG
+                        //#ifdef DEBUG
                         graph.compareToSolution();
-                        #endif
+                        //#endif
                 }
-                //*******************************************************
-                /*graph.updateCutOffValue(round);
-                bool chimeric = graph.filterChimeric( round);
-                if (chimeric) {
-                        graph.mergeSingleNodes();
-                        if (!graph.continueEdit(bigestN50, nodeFileName,arcFileName,metaDataFileName))
-                                break;
-                        #ifdef DEBUG
-                        graph.compareToSolution();
-                        #endif
 
-                }*/
                 //*******************************************************
                 graph.updateCutOffValue(round);
                 bool coverage = graph.filterCoverage(round);
@@ -270,9 +257,9 @@ void Brownie::stageFour()
                         graph.mergeSingleNodes();
                         if (!graph.continueEdit(bigestN50, nodeFileName,arcFileName,metaDataFileName))
                                 break;
-                        #ifdef DEBUG
+                        //#ifdef DEBUG
                         graph.compareToSolution();
-                        #endif
+                        //#endif
                 }
                 //*******************************************************
                 graph.updateCutOffValue(round);
@@ -282,51 +269,51 @@ void Brownie::stageFour()
                         graph.mergeSingleNodes();
                         if (!graph.continueEdit(bigestN50, nodeFileName,arcFileName,metaDataFileName))
                                 break;
-                        #ifdef DEBUG
+                        //#ifdef DEBUG
                         graph.compareToSolution();
-                        #endif
+                        //#endif
 
                 }
                 //*******************************************************
 
                 graph.extractStatistic(round);
-                #ifdef DEBUG
+                //#ifdef DEBUG
                 cout<<"estimated Kmer Coverage Mean: "<<graph.estimatedKmerCoverage<<endl;
                 cout<<"estimated Kmer Coverage STD: "<<graph.estimatedMKmerCoverageSTD<<endl;
-                #endif
+                //#endif
                 //*******************************************************
                 bool link=false;
                 if (bigestN50>minN50) {
                         graph.updateCutOffValue(round);
                         link =graph.removeIncorrectLink();
-                        #ifdef DEBUG
+                        //#ifdef DEBUG
                         graph.compareToSolution();
-                        #endif
+                        //#endif
                 }
                 if (link) {
                         graph.mergeSingleNodes();
                         if (!graph.continueEdit(bigestN50, nodeFileName,arcFileName,metaDataFileName))
                                 break;
-                        #ifdef DEBUG
+                        //#ifdef DEBUG
                         graph.compareToSolution();
-                        #endif
+                        //#endif
                 }
                 //*******************************************************
                 bool deleted=false;
                 if (bigestN50>minN50) {
                         graph.updateCutOffValue(round);
                         deleted=graph.deleteUnreliableNodes( round);
-                        #ifdef DEBUG
+                        //#ifdef DEBUG
                         graph.compareToSolution();
-                        #endif
+                        //#endif
                 }
                 if (deleted) {
                         graph.mergeSingleNodes();
                         if (!graph.continueEdit(bigestN50, nodeFileName,arcFileName,metaDataFileName))
                                 break;
-                        #ifdef DEBUG
+                        //#ifdef DEBUG
                         graph.compareToSolution();
-                        #endif
+                        //#endif
                 }
                 //*******************************************************
                 simplified = tips   || coverage || link|| deleted || bubble;
