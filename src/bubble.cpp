@@ -187,11 +187,11 @@ struct pathStruct {
 
 };
 struct comparator {
-    bool operator()(const pathStruct& first, const pathStruct& second)
-    {
+        bool operator()(const pathStruct& first, const pathStruct& second)
+        {
 
-        return first.pathLenght>=second.pathLenght;
-    }
+                return first.pathLenght>=second.pathLenght;
+        }
 };
 
 bool DBGraph::bubbleDetection(int round) {
@@ -283,9 +283,9 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                         else
                                 TP++;
                         #endif
-                        removeNode(prevFirstNode);
-                        numOfDel++;
-                        return true;
+                        if(removeNode(prevFirstNode)){
+                                numOfDel++;
+                                return true;}
                 }
                 else{
                         #ifdef DEBUG
@@ -302,9 +302,9 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                         else
                                 TP++;
                         #endif
-                        removeNode(extendFirstNode);
-                        numOfDel++;
-                        return true;
+                        if (removeNode(extendFirstNode)){
+                                numOfDel++;
+                                return true;}
                 }else{
                         #ifdef DEBUG
                         if (trueMult[abs( extendFirstNode.getNodeID())]>0){
@@ -322,9 +322,9 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                         else
                                 TP++;
                         #endif
-                        removeNode(prevFirstNode);
-                        numOfDel++;
-                        return true;
+                        if (removeNode(prevFirstNode)){
+                                numOfDel++;
+                                return true;}
                 }
                 else{
                         #ifdef DEBUG
@@ -343,9 +343,9 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                         else
                                 TP++;
                         #endif
-                        removeNode(extendFirstNode);
-                        numOfDel++;
-                        return true;
+                        if(removeNode(extendFirstNode)){
+                                numOfDel++;
+                                return true;}
                 }else{
                         #ifdef DEBUG
                         if (trueMult[abs( extendFirstNode.getNodeID())]>0){
@@ -370,9 +370,9 @@ bool DBGraph:: removeNotSingleBublles( SSNode &prevFirstNode ,SSNode& extendFirs
                 else
                         TP++;
                 #endif
-                removeNode(prevFirstNode);
-                numOfDel++;
-                return true;
+                if (removeNode(prevFirstNode)){
+                        numOfDel++;
+                        return true;}
         }
         else{
                 #ifdef DEBUG
@@ -389,9 +389,9 @@ bool DBGraph:: removeNotSingleBublles( SSNode &prevFirstNode ,SSNode& extendFirs
                 else
                         TP++;
                 #endif
-                removeNode(extendFirstNode);
-                numOfDel++;
-                return true;
+                if (removeNode(extendFirstNode)){
+                        numOfDel++;
+                        return true;}
         }else{
                 #ifdef DEBUG
                 if (trueMult[abs( extendFirstNode.getNodeID())]>0){

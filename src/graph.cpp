@@ -64,7 +64,7 @@ void DBGraph::initialize()
     safeValueCov=minSafeValueCov;
     redLineValueCov=minRedLineValueCov;
     updateCutOffValueRound=1;
-    maxNodeSizeToDel=settings.getK()*2;
+    maxNodeSizeToDel=settings.getK()*2+1;
 }
 
 int DBGraph::parseLine(char* line)
@@ -218,16 +218,13 @@ bool DBGraph::filterChimeric(int round)
 
 bool DBGraph::updateCutOffValue(int round)
 {
-
         char roundStr[15];
         sprintf(roundStr, "%d", round);
         string strRound =string (roundStr);
         vector<pair<double,pair<size_t , pair<bool, int> > > > allNodes;
         vector<pair< pair< int , int> , pair<double,int> > > frequencyArray;
         size_t validNodes=0;
-
         for (NodeID i =1; i <= numNodes; i++) {
-
                 SSNode n = getSSNode(i);
                 if(!n.isValid())
                         continue;
@@ -238,9 +235,10 @@ bool DBGraph::updateCutOffValue(int round)
                 double nodeMultiplicityR=1;
                 #ifdef DEBUG
                 nodeMultiplicityR=trueMult[abs(n.getNodeID())];
-                if (nodeMultiplicityR)
+                if (nodeMultiplicityR>0)
                         correctNode=true;
                 #endif
+
                 allNodes.push_back( make_pair(kmerCoverage, make_pair( nodeMultiplicityR, make_pair(correctNode,marginalLength)) ));
         }
         std::sort (allNodes.begin(), allNodes.end());
@@ -392,10 +390,12 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
         sexpcovFile.close();
         expcovFile.close();
         #ifdef DEBUG
-        string address =" "+settings.getTempDirectory()+"cov/plot.dem";
+        string address =" plot.dem";
         string command="gnuplot -e  \"filename='"+filename+"'\" -e \"outputfile='"+outputFileName+"'\""+address;
         system(command.c_str());
         #endif
+
+
 }
 
 struct readStructStr
@@ -450,7 +450,7 @@ bool DBGraph::filterCoverage(float round)
         }
         cout << "Number of coverage nodes deleted: " << numFiltered<<endl;
 #ifdef DEBUG
-        cout << " gain value is ("<<100*((double)(tp-fp)/(double)(tp+fn))<< "%)"<<endl;
+        cout << " Gain value is ("<<100*((double)(tp-fp)/(double)(tp+fn))<< "%)"<<endl;
         cout<< "TP:	"<<tp<<"	TN:	"<<tn<<"	FP:	"<<fp<<"	FN:	"<<fn<<endl;
         cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
         cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;

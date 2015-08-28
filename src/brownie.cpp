@@ -83,8 +83,8 @@ void Brownie::stageOne()
         cout << "Writing kmer file...";
         cout.flush();
         Util::startChrono();
-        readParser->writeAllKmers(getKmerFilename());
-        //readParser->writeKmersWithCovGTOne(getKmerFilename());
+        //readParser->writeAllKmers(getKmerFilename());
+        readParser->writeKmersWithCovGTOne(getKmerFilename());
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
         delete readParser;
@@ -199,8 +199,12 @@ void Brownie::stageFour()
                                  getArcFilename(3),
                                  getMetaDataFilename(3));
         cout<<"initial kmerCoverage : "<<testgraph.estimatedKmerCoverage<<endl;
-        string command="mkdir "+settings.getTempDirectory()+"cov  && rm "+settings.getTempDirectory() + "cov/*.pdf && rm "+settings.getTempDirectory() + "cov/*.dat";
+        string command="mkdir "+settings.getTempDirectory()+"cov";
         system(command.c_str());
+        command="rm "+settings.getTempDirectory() + "cov/* && rm "+settings.getTempDirectory() + "cov/*.dat";
+        cout<<command<<endl;
+        system(command.c_str());
+
         testgraph.clipTips(0);
         testgraph.mergeSingleNodes();
         testgraph.filterCoverage(0);
@@ -232,6 +236,7 @@ void Brownie::stageFour()
         graph.compareToSolution();
         //#endif
         //variables
+
         bool simplified = true;
         size_t bigestN50=0;
         int round=1;
@@ -323,7 +328,7 @@ void Brownie::stageFour()
         Util::startChrono();
         #ifdef DEBUG
         graph.sanityCheck();
-        command="pdftk"+settings.getTempDirectory()+ "cov/*.pdf cat output allpdfFiles.pdf";
+        command="pdftk "+settings.getTempDirectory()+ "cov/*.pdf cat output allpdfFiles.pdf";
         system(command.c_str());
         #endif
         graph.clear();

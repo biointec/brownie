@@ -344,18 +344,19 @@ bool cmssn(const SSNode& first, const SSNode & second ) {
 void DBGraph::extractStatistic(int round) {
         vector <SSNode> nodeArray;
         int percentage=5;
-        size_t sumOfReadStcov=0;
-        size_t sumOfMarginalLenght=0;
+        double sumOfReadStcov=0;
+
         size_t totalLength=0;
+
         double coverage=0;
         double StandardErrorMean=0;
         double avg=0;
         for ( NodeID lID = 1; lID <= numNodes; lID++ ) {
 
-                SSNode leftNode = getSSNode ( lID );
-                if(leftNode.isValid()) {
-                        totalLength=totalLength+leftNode.getMarginalLength();
-                        nodeArray.push_back(leftNode);
+                SSNode node = getSSNode ( lID );
+                if(node.isValid() && node.getMarginalLength()) {
+                        totalLength=totalLength+node.getMarginalLength();
+                        nodeArray.push_back(node);
 
                 }
 
@@ -363,7 +364,9 @@ void DBGraph::extractStatistic(int round) {
         sort(nodeArray.begin(), nodeArray.end(),cmssn );
         size_t i=0;
         double sumOfCoverage=0;
-        while(sumOfMarginalLenght<((totalLength*percentage)/100)) {
+        double sumOfMarginalLenght=0;
+        double sizeLimit= ((totalLength*percentage)/100)>settings.getGenomeSize()?settings.getGenomeSize():((totalLength*percentage)/100);
+        while(sumOfMarginalLenght<sizeLimit) {
                 SSNode tempNode=nodeArray[i];
                 sumOfMarginalLenght=sumOfMarginalLenght+tempNode.getMarginalLength();
                 sumOfReadStcov=sumOfReadStcov+tempNode.getReadStartCov();
@@ -385,7 +388,8 @@ void DBGraph::extractStatistic(int round) {
         }
         if(num>0)
                 StandardErrorMean=sqrt( sumOfSTD/num);
-        estimatedMKmerCoverageSTD=StandardErrorMean;//          sqrt(num)*std;
+        if (round==0)
+                estimatedMKmerCoverageSTD=StandardErrorMean;//          sqrt(num)*std;
 
         for ( NodeID lID = 1; lID <= numNodes; lID++ ) {
 
