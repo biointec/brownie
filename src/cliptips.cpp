@@ -21,6 +21,7 @@
 
 #include "graph.h"
 
+
 using namespace std;
 
 void DBGraph::removeTip ( SSNode &lNode, SSNode &rNode )

@@ -83,7 +83,8 @@ void Brownie::stageOne()
         cout << "Writing kmer file...";
         cout.flush();
         Util::startChrono();
-        readParser->writeKmersWithCovGTOne(getKmerFilename());
+        readParser->writeAllKmers(getKmerFilename());
+        //readParser->writeKmersWithCovGTOne(getKmerFilename());
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
         delete readParser;
@@ -188,7 +189,7 @@ void Brownie::stageFour()
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
 
-       /* if (!stageFourNecessary()) g{
+       /*if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 4..." << endl << endl;
                 return;
@@ -198,7 +199,7 @@ void Brownie::stageFour()
                                  getArcFilename(3),
                                  getMetaDataFilename(3));
         cout<<"initial kmerCoverage : "<<testgraph.estimatedKmerCoverage<<endl;
-        string command="rm cov/*.pdf && rm cov/*.dat";
+        string command="mkdir "+settings.getTempDirectory()+"cov  && rm "+settings.getTempDirectory() + "cov/*.pdf && rm "+settings.getTempDirectory() + "cov/*.dat";
         system(command.c_str());
         testgraph.clipTips(0);
         testgraph.mergeSingleNodes();
@@ -206,10 +207,8 @@ void Brownie::stageFour()
         testgraph.mergeSingleNodes();
         testgraph.extractStatistic(0);
         DBGraph graph(settings);
-
         graph.estimatedKmerCoverage=testgraph.estimatedKmerCoverage;
         graph.estimatedMKmerCoverageSTD=testgraph.estimatedMKmerCoverageSTD;
-
         cout<<"estimated Kmer Coverage Mean: "<<graph.estimatedKmerCoverage<<endl;
         cout<<"estimated Kmer Coverage STD: "<<graph.estimatedMKmerCoverageSTD<<endl;
         testgraph.clear();
@@ -324,7 +323,7 @@ void Brownie::stageFour()
         Util::startChrono();
         #ifdef DEBUG
         graph.sanityCheck();
-        command="pdftk cov/*.pdf cat output allpdfFiles.pdf";
+        command="pdftk"+settings.getTempDirectory()+ "cov/*.pdf cat output allpdfFiles.pdf";
         system(command.c_str());
         #endif
         graph.clear();
@@ -362,6 +361,11 @@ int main(int argc, char** args)
 {
         try {
                 Brownie brownie(argc, args);
+                bool debug=false;
+                #ifdef DEBUG
+                debug=true;
+                #endif
+                if(!debug)
                 brownie.printInFile();
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
                 << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL << endl;

@@ -342,50 +342,40 @@ bool cmssn(const SSNode& first, const SSNode & second ) {
         // expcovFile.close();
 }*/
 void DBGraph::extractStatistic(int round) {
-
-        vector<pair<double,double> > tempArray;
         vector <SSNode> nodeArray;
         int percentage=5;
-        long double sumOfReadStcov=0;
-        long double sumOfMarginalLenght=0;
-        long double totalLength=0;
+        size_t sumOfReadStcov=0;
+        size_t sumOfMarginalLenght=0;
+        size_t totalLength=0;
         double coverage=0;
         double StandardErrorMean=0;
         double avg=0;
         for ( NodeID lID = 1; lID <= numNodes; lID++ ) {
-                if ( lID != 0  ) {
-                        SSNode leftNode = getSSNode ( lID );
-                        if(leftNode.isValid()) {
-                                totalLength=totalLength+leftNode.getMarginalLength();
-                                nodeArray.push_back(leftNode);
 
-                        }
+                SSNode leftNode = getSSNode ( lID );
+                if(leftNode.isValid()) {
+                        totalLength=totalLength+leftNode.getMarginalLength();
+                        nodeArray.push_back(leftNode);
+
                 }
+
         }
         sort(nodeArray.begin(), nodeArray.end(),cmssn );
-        int i=0;
+        size_t i=0;
+        double sumOfCoverage=0;
         while(sumOfMarginalLenght<((totalLength*percentage)/100)) {
                 SSNode tempNode=nodeArray[i];
                 sumOfMarginalLenght=sumOfMarginalLenght+tempNode.getMarginalLength();
                 sumOfReadStcov=sumOfReadStcov+tempNode.getReadStartCov();
-                i++;
-        }
-        avg=sumOfReadStcov/sumOfMarginalLenght;
-        i=0;
-        sumOfMarginalLenght=0;
-        double arcCovAvg=0;
-        int arcCovNum=0;
-        int size=nodeArray.size();
-        double sumOfCoverage=0;
-        while((i<50||sumOfMarginalLenght<((totalLength*percentage)/100))&& i<size) {
-                SSNode tempNode=nodeArray[i];
-                sumOfMarginalLenght=sumOfMarginalLenght+tempNode.getMarginalLength();
                 sumOfCoverage=sumOfCoverage+tempNode.getExpMult();
                 i++;
         }
+        cout<<"number of big nodes for mean and std estimation"<<i<<endl;
+        cout<<"sum of marginal lengh:"<<sumOfMarginalLenght<<endl;
+        cout<<"sum of coverage:"<<sumOfCoverage<<endl;
+        avg=sumOfReadStcov/sumOfMarginalLenght;
         estimatedKmerCoverage=(sumOfCoverage/sumOfMarginalLenght);
-        int num=i;
-        sumOfMarginalLenght=0;
+        size_t num=i;
         double sumOfSTD=0;
         i=0;
         while(i<num) {
@@ -396,102 +386,90 @@ void DBGraph::extractStatistic(int round) {
         if(num>0)
                 StandardErrorMean=sqrt( sumOfSTD/num);
         estimatedMKmerCoverageSTD=StandardErrorMean;//          sqrt(num)*std;
-        //estimatedMKmerCoverageSTD=std*sqrt(num);
-        for ( NodeID lID = 0; lID <= numNodes; lID++ ) {
-                if ( lID == 0  )
-                        continue;
-                // map<NodeID,set<int,int> >nodesExpMult;
+
+        for ( NodeID lID = 1; lID <= numNodes; lID++ ) {
+
                 SSNode leftNode = getSSNode ( lID );
-                if (!leftNode.isValid()) {
+                if (!leftNode.isValid())
                         continue;
+                int nodeMultiplicity=1;
+                double numerator=0;
+                double newValue=avg*nodeMultiplicity*leftNode.getMarginalLength();
+                double newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
+
+                while(newProbability>numerator) {
+                        nodeMultiplicity++;
+                        numerator=newProbability;
+                        newValue=avg*nodeMultiplicity*leftNode.getMarginalLength();
+                        newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
                 }
-                if(leftNode.isValid()) {
-                        int nodeMultiplicity=1;
-                        double numerator=0;
-                        double newValue=avg*nodeMultiplicity*leftNode.getMarginalLength();
-                        double newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
 
-                        int realMul=trueMult[lID];
-                        if (realMul>1) {
-                                int stop=0;
-                                stop++;
-                        }
-                        while(newProbability>numerator) {
-                                nodeMultiplicity++;
-                                numerator=newProbability;
-                                newValue=avg*nodeMultiplicity*leftNode.getMarginalLength();
-                                newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
-                        }
+                nodeMultiplicity--;
 
-                        nodeMultiplicity--;
-                        double denominator=0;
-                        double currentProb=numerator;
-
-                        double inCorrctnessRatio=0;
-                        int i=nodeMultiplicity-1;
-                        if(i>0) {
-                                double newValue=avg*i*leftNode.getMarginalLength();
-                                newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
-                                denominator=denominator+newProbability;
-                                i--;
-                                while(i>=0&& abs(newProbability-currentProb)> .00000001) {
-                                        currentProb=newProbability;
-                                        newValue=avg*i*leftNode.getMarginalLength();
-                                        newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
-                                        denominator=denominator+newProbability;
-                                        i--;
-                                }
-                        }
-                        i=nodeMultiplicity+1;
-                        newValue=avg*i*leftNode.getMarginalLength();
+                double denominator=0;
+                double currentProb=numerator;
+                double inCorrctnessRatio=0;
+                int i=nodeMultiplicity-1;
+                if(i>0) {
+                        double newValue=avg*i*leftNode.getMarginalLength();
                         newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
                         denominator=denominator+newProbability;
-                        i++;
-                        while(i>0&& abs(newProbability-currentProb)> .00000001) {
+                        i--;
+                        while(i>=0&& abs(newProbability-currentProb)> .00000001) {
                                 currentProb=newProbability;
                                 newValue=avg*i*leftNode.getMarginalLength();
                                 newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
                                 denominator=denominator+newProbability;
-                                i++;
+                                i--;
                         }
+                }
+                i=nodeMultiplicity+1;
+                newValue=avg*i*leftNode.getMarginalLength();
+                newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
+                denominator=denominator+newProbability;
+                i++;
+                while(i>0&& abs(newProbability-currentProb)> .00000001) {
+                        currentProb=newProbability;
+                        newValue=avg*i*leftNode.getMarginalLength();
+                        newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
+                        denominator=denominator+newProbability;
+                        i++;
+                }
 
-                        newValue=avg*nodeMultiplicity*leftNode.getMarginalLength();
-                        if(leftNode.getReadStartCov()<newValue)
-                                newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
-                        else
-                                newProbability=gsl_ran_poisson_pdf(newValue,newValue);
-                        inCorrctnessRatio=gsl_ran_poisson_pdf(newValue,newValue)/newProbability;
-                        if (nodeMultiplicity==1) {
-                                int shiftedStReadCov=leftNode.getReadStartCov()+avg*leftNode.getMarginalLength();
-                                //i=2
-                                newValue=2*avg*leftNode.getMarginalLength();
-                                numerator=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
+                newValue=avg*nodeMultiplicity*leftNode.getMarginalLength();
+                if(leftNode.getReadStartCov()<newValue)
+                        newProbability=gsl_ran_poisson_pdf(leftNode.getReadStartCov(),newValue);
+                else
+                        newProbability=gsl_ran_poisson_pdf(newValue,newValue);
+                inCorrctnessRatio=gsl_ran_poisson_pdf(newValue,newValue)/newProbability;
+                /*if (nodeMultiplicity==1) {
+                        int shiftedStReadCov=leftNode.getReadStartCov()+avg*leftNode.getMarginalLength();
+                        //i=2
+                        newValue=2*avg*leftNode.getMarginalLength();
+                        numerator=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
 
-                                //for i=1
-                                newValue=avg*leftNode.getMarginalLength();
-                                denominator=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
-                                i=3;
+                        //for i=1
+                        newValue=avg*leftNode.getMarginalLength();
+                        denominator=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
+                        i=3;
+                        newValue=avg*i*leftNode.getMarginalLength();
+                        newProbability=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
+                        currentProb=numerator;
+
+                        while(abs(newProbability-currentProb)> .00000001) {
+                                i++;
+                                denominator=denominator+newProbability;
+                                currentProb=newProbability;
                                 newValue=avg*i*leftNode.getMarginalLength();
                                 newProbability=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
-                                currentProb=numerator;
-
-                                while(abs(newProbability-currentProb)> .00000001) {
-                                        i++;
-                                        denominator=denominator+newProbability;
-                                        currentProb=newProbability;
-                                        newValue=avg*i*leftNode.getMarginalLength();
-                                        newProbability=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
-                                }
                         }
+                }*/
 
-                        double confidenceRatio=numerator/denominator;
-                        nodesExpMult[leftNode.getNodeID()]=make_pair(nodeMultiplicity,make_pair( confidenceRatio,inCorrctnessRatio));
-                        }
+                double confidenceRatio=numerator/denominator;
+                nodesExpMult[leftNode.getNodeID()]=make_pair(nodeMultiplicity,make_pair( confidenceRatio,inCorrctnessRatio));
+
         }
-        sumOfMarginalLenght=0;
-        i=0;
-        num=0;
-        // expcovFile.close();
+
 }
 
 
@@ -522,9 +500,7 @@ bool DBGraph::deleteUnreliableNodes( int round) {
         double min=tempArray2.at(floor(i*.90));
         max=max<5?max:5;
         min=min>100?min:100;
-        for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
-                if (lID==0)
-                        continue;
+        for ( NodeID lID =1; lID <= numNodes; lID++ ) {
                 SSNode leftNode = getSSNode ( lID );
                 if(!leftNode.isValid())
                         continue;

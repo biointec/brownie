@@ -236,14 +236,6 @@ bool DBGraph::updateCutOffValue(int round)
                 int marginalLength=n.getMarginalLength();//+ settings.getK();
                 bool correctNode=false;
                 double nodeMultiplicityR=1;
-                /*if (nodesExpMult.size()>0){
-                        pair<int, pair<double,double> > resultR=nodesExpMult[abs( n.getNodeID())];
-                        nodeMultiplicityR=0;
-                        double confidenceRatio=resultR.second.first;
-                        double inCorrctnessRatio=resultR.second.second;
-                        nodeMultiplicityR=resultR.first;
-                        marginalLength=marginalLength;
-                }*/
                 #ifdef DEBUG
                 nodeMultiplicityR=trueMult[abs(n.getNodeID())];
                 if (nodeMultiplicityR)
@@ -252,30 +244,28 @@ bool DBGraph::updateCutOffValue(int round)
                 allNodes.push_back( make_pair(kmerCoverage, make_pair( nodeMultiplicityR, make_pair(correctNode,marginalLength)) ));
         }
         std::sort (allNodes.begin(), allNodes.end());
-        size_t j=allNodes.size();
+        /*size_t j=allNodes.size();
         size_t sumOfbigNodes=0;
 
         while(j>0 && sumOfbigNodes<settings.getGenomeSize()){
                 j--;
                 sumOfbigNodes=sumOfbigNodes+allNodes[j].second.second.second*allNodes[j].second.first;
         }
-        this->cutOffvalue=allNodes[j].first;
+        this->cutOffvalue=allNodes[j].first;*/
         unsigned int i=0;
-        double Interval=(estimatedKmerCoverage*2)/200;
-        double rightLimit=estimatedKmerCoverage*10;
-        if (rightLimit>coverage) {
-                rightLimit=coverage;
-        }
-        if (Interval<.1* (round+1))
+        size_t numOfBins=sqrt(allNodes.size());
+
+        /*double Interval=(estimatedKmerCoverage+estimatedMKmerCoverageSTD*3)/numOfBins;
+         * if (Interval<.1* (round+1))
                 Interval=.1* (round+1);
         if (Interval>.5*(round+1))
-                Interval=.5*(round+1)>Interval?Interval:.5*(round+1);
-
+                Interval=.5*(round+1)>Interval?Interval:.5*(round+1);*/
+        double Interval=1;
         unsigned int m=0;
         unsigned int n=0;
         i=0;
         double  St=allNodes[0].first;
-        while (true) {
+        while (i<allNodes.size()-1) {
                 double intervalCount=0;
                 int sumOfMarginalLenght=0;
                 int correctNodeMarginalLength=0;
@@ -286,12 +276,10 @@ bool DBGraph::updateCutOffValue(int round)
                         if (allNodes[i].second.second.first)
                                 correctNodeMarginalLength=correctNodeMarginalLength+allNodes[i].second.second.second;
                 }
-                if (i==validNodes-1)
-                        break;
-                St=St+Interval;
                 double representative=St+Interval/2;
                 if (intervalCount!=0)
                         frequencyArray.push_back(make_pair(make_pair( sumOfMarginalLenght, correctNodeMarginalLength) , make_pair(representative,intervalCount)));
+                St=St+Interval;
         }
         if (validNodes/100>10)
                 validNodes=10;
@@ -371,6 +359,7 @@ bool DBGraph::updateCutOffValue(int round)
 }
 void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > >& frequencyArray){
         ofstream expcovFile;
+        ofstream sexpcovFile;
         std::string roundstr="";
         if (updateCutOffValueRound<10)
                 roundstr="00"+std::to_string( updateCutOffValueRound);
@@ -378,27 +367,33 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
                 roundstr="0"+std::to_string( updateCutOffValueRound);
         else
                 roundstr=std::to_string( updateCutOffValueRound);
-        string filename= "cov/cov_"+roundstr+".dat";
-        string outputFileName= "cov/cov_"+roundstr+".pdf";
+        string filename=settings.getTempDirectory()+ "cov/cov_"+roundstr+".dat";
+        string sFileName=settings.getTempDirectory()+"cov/scov_"+roundstr+".dat";
+        string outputFileName= settings.getTempDirectory()+"cov/cov_"+roundstr+".pdf";
         expcovFile.open( filename.c_str());
+        sexpcovFile.open(sFileName.c_str());
         this->updateCutOffValueRound++;
-        expcovFile<<"certainValue: "<<this->certainVlueCov<<endl;
-        expcovFile<<"safeValue: "<<this->safeValueCov<<endl;
-        expcovFile<<"redLineValue: "<<this->redLineValueCov<<endl;
-        expcovFile<<"cutOffvalue: "<<this->cutOffvalue<<endl;
-        expcovFile<<"estimatedKmerCoverage: "<<this->estimatedKmerCoverage<<endl;
-        expcovFile<<"estimatedMKmerCoverageSTD: "<<this->estimatedMKmerCoverageSTD<<endl;
-        expcovFile<<"representative_1     representative_2     sumOfMarginalLength     sumOfcorrectLength      sumOfIncorrectLength"<<endl;
+        expcovFile<<"certainValue:"<<this->certainVlueCov<<endl;
+        expcovFile<<"safeValue:"<<this->safeValueCov<<endl;
+        expcovFile<<"redLineValue:"<<this->redLineValueCov<<endl;
+        expcovFile<<"cutOffvalue:"<<this->cutOffvalue<<endl;
+        expcovFile<<"estimatedKmerCoverage:"<<this->estimatedKmerCoverage<<endl;
+        expcovFile<<"estimatedMKmerCoverageSTD:"<<this->estimatedMKmerCoverageSTD<<endl;
+        expcovFile<<"representative_1\trepresentative_2\tsumOfMarginalLength\tsumOfcorrectLength\tsumOfIncorrectLength"<<endl;
+        sexpcovFile<<"representative_1,representative_2,sumOfcorrectLength,sumOfIncorrectLength"<<endl;
         int i=0;
         double added=(frequencyArray[1].second.first-frequencyArray[0].second.first)/2;
         while(i<frequencyArray.size()) {
                 pair<double,int> pre=frequencyArray[i].second;
-                expcovFile<<pre.first<< "       "<<pre.first+added<<"     "<<frequencyArray[i].first.first<<"   "<< frequencyArray[i].first.second<<"     "<< frequencyArray[i].first.first-frequencyArray[i].first.second <<endl;
+                expcovFile<<pre.first<< "\t"<<pre.first+added<<"\t"<<frequencyArray[i].first.first<<"\t"<< frequencyArray[i].first.second<<"\t"<< frequencyArray[i].first.first-frequencyArray[i].first.second <<endl;
+                sexpcovFile<<pre.first<< ","<< pre.first+added<<","<<frequencyArray[i].first.second<<","<< frequencyArray[i].first.first-frequencyArray[i].first.second <<endl;
                 i++;
         }
+        sexpcovFile.close();
         expcovFile.close();
         #ifdef DEBUG
-        string command="gnuplot -e  \"filename='"+filename+"'\" -e \"outputfile='"+outputFileName+"'\" cov/plot.dem";
+        string address =" "+settings.getTempDirectory()+"cov/plot.dem";
+        string command="gnuplot -e  \"filename='"+filename+"'\" -e \"outputfile='"+outputFileName+"'\""+address;
         system(command.c_str());
         #endif
 }
@@ -511,7 +506,6 @@ bool DBGraph::removeIncorrectLink()
                                         double confidenceRatioL=result.second.first;
                                         double inCorrctnessRatioL=result.second.second;
                                         double nodeMultiplicityL=result.first;
-
                                         if(nodeMultiplicityL==1&& (confidenceRatioL/inCorrctnessRatioL)>10)
                                                 j++;
                                 }
@@ -571,7 +565,7 @@ bool DBGraph::removeIncorrectLink()
                 }
 
         }
-        cout<<"The number of deleted arc are:"<<num<<endl;
+        cout<<"The number of deleted arcs are:"<<num<<endl;
         return modify;
 
 }
