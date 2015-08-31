@@ -373,9 +373,6 @@ void DBGraph::extractStatistic(int round) {
                 sumOfCoverage=sumOfCoverage+tempNode.getExpMult();
                 i++;
         }
-        cout<<"number of big nodes for mean and std estimation"<<i<<endl;
-        cout<<"sum of marginal lengh:"<<sumOfMarginalLenght<<endl;
-        cout<<"sum of coverage:"<<sumOfCoverage<<endl;
         avg=sumOfReadStcov/sumOfMarginalLenght;
         estimatedKmerCoverage=(sumOfCoverage/sumOfMarginalLenght);
         size_t num=i;

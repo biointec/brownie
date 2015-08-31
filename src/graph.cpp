@@ -54,9 +54,9 @@ void DBGraph::initialize()
     //correct it later it should read this information from setting file, but setting dosn't have such infomratin right now
     readLength=100;//settings.getReadLength();
     coverage=100;//settings.getCoverage();
-    double minCertainVlueCov=2;
-    double minSafeValueCov=2;
-    double minRedLineValueCov=3;
+    minCertainVlueCov=2;
+    minSafeValueCov=2.5;
+    minRedLineValueCov=3;
     kmerSize= settings.getK();
     estimatedKmerCoverage=(coverage/readLength)*(readLength-kmerSize+1)/12;
     estimatedMKmerCoverageSTD=sqrt( estimatedKmerCoverage);
@@ -64,7 +64,7 @@ void DBGraph::initialize()
     safeValueCov=minSafeValueCov;
     redLineValueCov=minRedLineValueCov;
     updateCutOffValueRound=1;
-    maxNodeSizeToDel=settings.getK()*2+1;
+    maxNodeSizeToDel=settings.getK()*2+readLength+1;
 }
 
 int DBGraph::parseLine(char* line)
@@ -335,15 +335,15 @@ bool DBGraph::updateCutOffValue(int round)
                 redLineValue=maxThreshold;
         if (this->redLineValueCov<redLineValue)
                 this->redLineValueCov=redLineValue;*/
-        this->redLineValueCov=estimatedKmerCoverage-estimatedMKmerCoverageSTD*3>minRedLineValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*3:minRedLineValueCov;
-        this->safeValueCov=estimatedKmerCoverage-estimatedMKmerCoverageSTD*4>minSafeValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*4:minSafeValueCov;
-        this->certainVlueCov=estimatedKmerCoverage-estimatedMKmerCoverageSTD*5>minCertainVlueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*5:minCertainVlueCov;
+        this->redLineValueCov=estimatedKmerCoverage-estimatedMKmerCoverageSTD*3>this->minRedLineValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*3:this->minRedLineValueCov;
+        this->safeValueCov=estimatedKmerCoverage-estimatedMKmerCoverageSTD*4>this->minSafeValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*4:this->minSafeValueCov;
+        this->certainVlueCov=estimatedKmerCoverage-estimatedMKmerCoverageSTD*5>this->minCertainVlueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*5:this->minCertainVlueCov;
         if (this->redLineValueCov>minRedLineValueCov)
-                minRedLineValueCov=this->redLineValueCov;
+               this->minRedLineValueCov=this->redLineValueCov;
         if(this->safeValueCov>minSafeValueCov)
-                minSafeValueCov=this->safeValueCov;
+                this->minSafeValueCov=this->safeValueCov;
         if(this->certainVlueCov>minCertainVlueCov)
-                minCertainVlueCov=this->certainVlueCov;
+                this->minCertainVlueCov=this->certainVlueCov;
 
         cout<<"certainValue: "<<this->certainVlueCov<<endl;
         cout<<"safeValue: "<<this->safeValueCov<<endl;
@@ -460,8 +460,8 @@ bool DBGraph::filterCoverage(float round)
 
 }
 bool DBGraph::removeNode(SSNode & rootNode) {
-        if (rootNode.getMarginalLength()>maxNodeSizeToDel)
-                return false;
+       if (rootNode.getMarginalLength()>maxNodeSizeToDel)
+              return false;
 
         for ( ArcIt it2 = rootNode.leftBegin(); it2 != rootNode.leftEnd(); it2++ ) {
                 SSNode llNode = getSSNode ( it2->getNodeID() );
