@@ -312,7 +312,9 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
         sexpcovFile.close();
         expcovFile.close();
         if (updateCutOffValueRound==1){
-                ExpMaxClustering exp(sFileName);
+                string correctCluster=settings.getTempDirectory()+"correcNodeCluster.dta";
+                string erroneousCluster=settings.getTempDirectory()+"erroneousCluster.dat";
+                ExpMaxClustering exp(sFileName,erroneousCluster,correctCluster,.01,1, 50 );
                 exp.doClassification();
                 this->redLineValueCov= exp.intersectionPoint;
                 this->safeValueCov=this->redLineValueCov*.8;

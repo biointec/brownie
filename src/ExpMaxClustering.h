@@ -92,6 +92,9 @@ private:
         void findIntersectionPoint();
 
 public:
+        ExpMaxClustering(string FileName, string firstClusterFileName, string secondClusterFileName,float divergenceValue,float initialMeanOfFirstCluster,float initialMeanOfSecondCluster){
+                initialization(FileName, firstClusterFileName,secondClusterFileName,divergenceValue,initialMeanOfFirstCluster, initialMeanOfSecondCluster );
+        }
 
         ExpMaxClustering(string fileName){
                 initialization(fileName, "erronousNodes.dat","correctNodes.dat",.01,1, 50 );
