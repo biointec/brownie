@@ -335,7 +335,7 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                         #endif
                 }
         }
-        if(exteIsSingle!=-1&&!preIsSingle ) {
+        if(exteIsSingle&&!preIsSingle ) {
                 if ((extCov<this->safeValueCov)) {
                         #ifdef DEBUG
                         if(trueMult[abs( extendFirstNode.getNodeID())]>0)
@@ -356,7 +356,7 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                 }
         }
         //when the starting nodes of both parallel paths has more than one ingoing or arcgoing arcs
-        if (exteIsSingle==-1&&preIsSingle==-1)
+        if (!exteIsSingle&&!preIsSingle)
                 return removeNotSingleBublles(prevFirstNode,extendFirstNode, TP,TN,FP,FN, numOfDel);
         return false;
 }

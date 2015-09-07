@@ -344,8 +344,6 @@ double NW_Alignment::alignment(string &s1, string &s2)
 
         }
     }
-
-
     string news1="";
     string news2="";
     i=n-1;

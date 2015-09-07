@@ -233,8 +233,8 @@ bool DBGraph::clipTips(int round)
                 SSNode startNode = ( rightDE ) ? getSSNode ( -id ) : getSSNode ( id );
                 SSNode currNode = startNode;
                 double cov=currNode.getExpMult()/currNode.getMarginalLength();
-
-                if (cov>this->redLineValueCov) {//||currNode.getMarginalLength()>100
+                bool singleNode=rightDE&&leftDE;
+                if (!singleNode&& cov>this->redLineValueCov  || singleNode&& cov>this->safeValueCov) {//||currNode.getMarginalLength()>100
                         #ifdef DEBUG
                         if (trueMult[abs( startNode.getNodeID())]>0) {
                                 tn++;

@@ -31,7 +31,7 @@
 #include <fstream>
 
 #include <gsl/gsl_math.h>
-
+#include "ExpMaxClustering.h"
 using namespace std;
 
 DSNode* SSNode::nodes = NULL;
@@ -233,32 +233,18 @@ bool DBGraph::updateCutOffValue(int round)
                 int marginalLength=n.getMarginalLength();//+ settings.getK();
                 bool correctNode=false;
                 double nodeMultiplicityR=1;
-                #ifdef DEBUG
+                //#ifdef DEBUG
                 nodeMultiplicityR=trueMult[abs(n.getNodeID())];
                 if (nodeMultiplicityR>0)
                         correctNode=true;
-                #endif
+                //#endif
 
                 allNodes.push_back( make_pair(kmerCoverage, make_pair( nodeMultiplicityR, make_pair(correctNode,marginalLength)) ));
         }
         std::sort (allNodes.begin(), allNodes.end());
-        /*size_t j=allNodes.size();
-        size_t sumOfbigNodes=0;
-
-        while(j>0 && sumOfbigNodes<settings.getGenomeSize()){
-                j--;
-                sumOfbigNodes=sumOfbigNodes+allNodes[j].second.second.second*allNodes[j].second.first;
-        }
-        this->cutOffvalue=allNodes[j].first;*/
         unsigned int i=0;
         size_t numOfBins=sqrt(allNodes.size());
-
-        /*double Interval=(estimatedKmerCoverage+estimatedMKmerCoverageSTD*3)/numOfBins;
-         * if (Interval<.1* (round+1))
-                Interval=.1* (round+1);
-        if (Interval>.5*(round+1))
-                Interval=.5*(round+1)>Interval?Interval:.5*(round+1);*/
-        double Interval=1;
+        double Interval=.1;
         unsigned int m=0;
         unsigned int n=0;
         i=0;
@@ -279,71 +265,7 @@ bool DBGraph::updateCutOffValue(int round)
                         frequencyArray.push_back(make_pair(make_pair( sumOfMarginalLenght, correctNodeMarginalLength) , make_pair(representative,intervalCount)));
                 St=St+Interval;
         }
-        if (validNodes/100>10)
-                validNodes=10;
-        double flucValue=validNodes*(round+1);
-        if (frequencyArray.size()==0)
-                return false;
-        pair<double,int> pre=frequencyArray[0].second;
-        pair<double,int> current;
-        double currentDist=0;
-        double maxDist=0;
-
-        pair<double,int> bestAnswer;
-        double redLineValue=0;
-        double certainValue=0;
-        double safeValue=0;
-        i=0;
-
-        i=1;
-       /* while(i<frequencyArray.size()) {
-                current=frequencyArray[i].second;
-                currentDist= pre.second-current.second;
-                if (currentDist<flucValue*-1) {
-                        redLineValue=pre.first;
-                        break;
-                } else {
-                        if (currentDist>maxDist) {
-                                maxDist=currentDist;
-                                bestAnswer=pre;
-                                safeValue=current.first;
-                        }
-                }
-                pre=current;
-                i++;
-        }
-
-        if (safeValue>redLineValue)
-                redLineValue=safeValue;
-        double maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*3>minCertainVlueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*3:minCertainVlueCov;
-        //double maxThreshold=this->cutOffvalue/5>minCertainVlueCov?this->cutOffvalue/5:minCertainVlueCov;
-        if (bestAnswer.first>maxThreshold)
-                certainValue=maxThreshold;
-        else
-                certainValue=bestAnswer.first;
-        if (this->certainVlueCov<certainValue)
-                this->certainVlueCov=certainValue;
-        maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*3>minSafeValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*3:minSafeValueCov;
-        //maxThreshold=this->cutOffvalue/4>minCertainVlueCov?this->cutOffvalue/4:minCertainVlueCov;
-        if (safeValue>maxThreshold)
-                safeValue=maxThreshold;
-        if (this->safeValueCov<safeValue)
-                this->safeValueCov=safeValue;
-        maxThreshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*2>minRedLineValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*2:minRedLineValueCov;
-        //maxThreshold=this->cutOffvalue/3>minCertainVlueCov?this->cutOffvalue/3:minCertainVlueCov;
-        if (redLineValue>maxThreshold)
-                redLineValue=maxThreshold;
-        if (this->redLineValueCov<redLineValue)
-                this->redLineValueCov=redLineValue;*/
-        this->redLineValueCov=estimatedKmerCoverage-estimatedMKmerCoverageSTD*3>this->minRedLineValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*3:this->minRedLineValueCov;
-        this->safeValueCov=estimatedKmerCoverage-estimatedMKmerCoverageSTD*4>this->minSafeValueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*4:this->minSafeValueCov;
-        this->certainVlueCov=estimatedKmerCoverage-estimatedMKmerCoverageSTD*5>this->minCertainVlueCov?estimatedKmerCoverage-estimatedMKmerCoverageSTD*5:this->minCertainVlueCov;
-        if (this->redLineValueCov>minRedLineValueCov)
-               this->minRedLineValueCov=this->redLineValueCov;
-        if(this->safeValueCov>minSafeValueCov)
-                this->minSafeValueCov=this->safeValueCov;
-        if(this->certainVlueCov>minCertainVlueCov)
-                this->minCertainVlueCov=this->certainVlueCov;
+        plotCovDiagram(frequencyArray);
 
         cout<<"certainValue: "<<this->certainVlueCov<<endl;
         cout<<"safeValue: "<<this->safeValueCov<<endl;
@@ -351,11 +273,12 @@ bool DBGraph::updateCutOffValue(int round)
         //writing to file to make a plot
         //#ifdef DEBUG
         //if (round>0)
-         plotCovDiagram(frequencyArray);
+
         //#endif
         //return true;
 }
 void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > >& frequencyArray){
+
         ofstream expcovFile;
         ofstream sexpcovFile;
         std::string roundstr="";
@@ -370,7 +293,6 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
         string outputFileName= settings.getTempDirectory()+"cov/cov_"+roundstr+".pdf";
         expcovFile.open( filename.c_str());
         sexpcovFile.open(sFileName.c_str());
-        this->updateCutOffValueRound++;
         expcovFile<<"certainValue:"<<this->certainVlueCov<<endl;
         expcovFile<<"safeValue:"<<this->safeValueCov<<endl;
         expcovFile<<"redLineValue:"<<this->redLineValueCov<<endl;
@@ -389,11 +311,21 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
         }
         sexpcovFile.close();
         expcovFile.close();
+        if (updateCutOffValueRound==1){
+                ExpMaxClustering exp(sFileName);
+                exp.doClassification();
+                this->redLineValueCov= exp.intersectionPoint;
+                this->safeValueCov=this->redLineValueCov*.8;
+                this->certainVlueCov=this->redLineValueCov*.6;
+
+        }
+        this->updateCutOffValueRound++;
         #ifdef DEBUG
         string address =" plot.dem";
         string command="gnuplot -e  \"filename='"+filename+"'\" -e \"outputfile='"+outputFileName+"'\""+address;
         system(command.c_str());
         #endif
+
 
 
 }
@@ -460,8 +392,8 @@ bool DBGraph::filterCoverage(float round)
 
 }
 bool DBGraph::removeNode(SSNode & rootNode) {
-       if (rootNode.getMarginalLength()>maxNodeSizeToDel)
-              return false;
+      // if (rootNode.getMarginalLength()>maxNodeSizeToDel)
+      //        return false;
 
         for ( ArcIt it2 = rootNode.leftBegin(); it2 != rootNode.leftEnd(); it2++ ) {
                 SSNode llNode = getSSNode ( it2->getNodeID() );
