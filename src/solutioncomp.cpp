@@ -175,7 +175,7 @@ void DBGraph::writeCytoscapeGraph(int ID)
             confidenceRatio=result.second.first;
             correctnessRatio=result.second.second;
         }
-        ofs << *it << "\t" << trueMult[abs(*it)] << "\t" << node.getExpMult() << "\t"
+        ofs << *it << "\t" << trueMult[abs(*it)] << "\t" << node.getNodeKmerCov() << "\t"
             << node.getMarginalLength() << "\t"<<double(node.getReadStartCov()/node.getMarginalLength()) <<"\t"<<nodeMultiplicity<<"\t"<< confidenceRatio<<"\t"<< correctnessRatio <<"\t"<<node.getSequence() << endl;
     }
     ofs.close();
@@ -262,7 +262,7 @@ void DBGraph::writeLocalCytoscapeGraph(int ID, NodeID srcID, size_t maxDepth)
             confidenceRatio=result.second.first;
             correctnessRatio=result.second.second;
         }
-        ofs << *it << "\t" << trueMult[abs(*it)] << "\t" << node.getExpMult() << "\t"
+        ofs << *it << "\t" << trueMult[abs(*it)] << "\t" << node.getNodeKmerCov() << "\t"
             << node.getMarginalLength() << "\t"<<double(node.getReadStartCov()/node.getMarginalLength()) <<"\t"<<nodeMultiplicity<<"\t"<< confidenceRatio<<"\t"<< correctnessRatio <<"\t"<<node.getSequence() << endl;
     }
     ofs.close();

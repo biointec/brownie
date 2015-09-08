@@ -92,7 +92,7 @@ bool DBGraph::clipTipFromNode ( SSNode &startNode )
         //comment by mahdi
         //  if (currNode.getExpMult() / currNode.getMarginalLength() >  this->estimatedKmerCoverage*.2 )
         //    return false;
-        double  probalility=  gsl_cdf_gaussian_P((currNode.getExpMult()/currNode.getMarginalLength()-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
+        double  probalility=  gsl_cdf_gaussian_P((currNode.getNodeKmerCov()-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
         if (probalility>.2)
                 return false;
 
@@ -122,7 +122,7 @@ bool DBGraph::clipTipFromNode ( SSNode &startNode )
 
                 //    if (prevNode.getExpMult() / prevNode.getMarginalLength() >  this->estimatedKmerCoverage*.2 )
                 //         return false;
-                double  probalility=  gsl_cdf_gaussian_P((prevNode.getExpMult()/prevNode.getMarginalLength()-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
+                double  probalility=  gsl_cdf_gaussian_P((prevNode.getNodeKmerCov()-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
                 if (probalility>.2)
                         return false;
 
@@ -232,9 +232,10 @@ bool DBGraph::clipTips(int round)
                 }
                 SSNode startNode = ( rightDE ) ? getSSNode ( -id ) : getSSNode ( id );
                 SSNode currNode = startNode;
-                double cov=currNode.getExpMult()/currNode.getMarginalLength();
+                //double cov=currNode.getExpMult()/currNode.getMarginalLength();
+
                 bool singleNode=rightDE&&leftDE;
-                if (!singleNode&& cov>this->redLineValueCov  || singleNode&& cov>this->safeValueCov) {//||currNode.getMarginalLength()>100
+                if (!singleNode&& currNode.getNodeKmerCov()>this->redLineValueCov  || singleNode&& currNode.getNodeKmerCov()>this->safeValueCov) {//||currNode.getMarginalLength()>100
                         #ifdef DEBUG
                         if (trueMult[abs( startNode.getNodeID())]>0) {
                                 tn++;

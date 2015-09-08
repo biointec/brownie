@@ -158,7 +158,7 @@ public:
         /**
          * Default constructor
          */
-        DSNode() : leftID(0), rightID(0), flag(0), visited(false), anchorFlag(false), expMult(0), readStartCov(0) {
+        DSNode() : leftID(0), rightID(0), flag(0), visited(false), anchorFlag(false), expMult(0), readStartCov(0), kmerCov(0) {
                 arcInfo.up = 0;
         }
 

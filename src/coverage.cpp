@@ -370,7 +370,7 @@ void DBGraph::extractStatistic(int round) {
                 SSNode tempNode=nodeArray[i];
                 sumOfMarginalLenght=sumOfMarginalLenght+tempNode.getMarginalLength();
                 sumOfReadStcov=sumOfReadStcov+tempNode.getReadStartCov();
-                sumOfCoverage=sumOfCoverage+tempNode.getExpMult();
+                sumOfCoverage=sumOfCoverage+  tempNode.getKmerCov();  //tempNode.getExpMult();
                 i++;
         }
         avg=sumOfReadStcov/sumOfMarginalLenght;
@@ -380,7 +380,7 @@ void DBGraph::extractStatistic(int round) {
         i=0;
         while(i<num) {
                 SSNode tempNode=nodeArray[i];
-                sumOfSTD=sumOfSTD+((tempNode.getExpMult()/tempNode.getMarginalLength())-estimatedKmerCoverage)*((tempNode.getExpMult()/tempNode.getMarginalLength())-estimatedKmerCoverage);
+                sumOfSTD=sumOfSTD+((tempNode.getNodeKmerCov())-estimatedKmerCoverage)*((tempNode.getNodeKmerCov())-estimatedKmerCoverage);
                 i++;
         }
         if(num>0)
@@ -522,7 +522,7 @@ bool DBGraph::deleteUnreliableNodes( int round) {
 
                         if (leftNode.getNumLeftArcs()==0)
                                 continue;
-                        if (leftNode.getExpMult()/leftNode.getMarginalLength()<this->redLineValueCov)
+                        if (leftNode.getNodeKmerCov()<this->redLineValueCov)
                                 change=removeNode(leftNode);
                         if(change) {
                                 modify=true;
@@ -535,7 +535,7 @@ bool DBGraph::deleteUnreliableNodes( int round) {
                                 if(leftNode.getNumRightArcs()- nodeMultiplicity>=1) {
                                         do {
 
-                                                if (leftNode.getExpMult()/leftNode.getMarginalLength()<this->redLineValueCov)
+                                                if (leftNode.getNodeKmerCov()<this->redLineValueCov)
                                                         change=deleteExtraRightLink(leftNode, round);
 
                                         } while ((change&& leftNode.getNumRightArcs()- nodeMultiplicity>=1 ));
@@ -744,7 +744,7 @@ void DBGraph::setAnchorNodes()
                 }
 
                 cout << "Anchor: " << id << " (length: " << node.getMarginalLength()
-                << "): " << node.getExpMult() << " +/- " << node.getReadStartCov();
+                << "): " << node.getNodeKmerCov() << " +/- " << node.getReadStartCov();
 
                 cout << ( trueMult[id] == 1 ? "" : " (ERROR)" ) << endl;
         }
@@ -792,7 +792,8 @@ bool DBGraph::mergeSingleNodes()
                 left.deleteRightArc ( rID );
                 right.deleteLeftArc ( lID );
                 left.inheritRightArcs ( right );
-                left.setExpMult ( left.getExpMult() + right.getExpMult() );
+                //left.setExpMult ( left.getExpMult() + right.getExpMult() );
+                left.setKmerCov(left.getKmerCov()+right.getKmerCov());
                 //comment by mahdi
                 left.setReadStartCov(left.getReadStartCov()+right.getReadStartCov());
                 right.invalidate();
@@ -845,8 +846,11 @@ bool DBGraph::deleteSuspiciousNodes() {
                         continue;
                 }
 
-                double leftCov=leftNode.getExpMult()/leftNode.getMarginalLength();
-                double rightCov=rNode.getExpMult()/rNode.getMarginalLength();
+                //double leftCov=leftNode.getExpMult()/leftNode.getMarginalLength();
+                //double rightCov=rNode.getExpMult()/rNode.getMarginalLength();
+
+                double leftCov=leftNode.getNodeKmerCov();
+                double rightCov=rNode.getNodeKmerCov();
 
                 if (leftCov < rightCov) {
 
@@ -946,7 +950,7 @@ bool DBGraph::arcFilteringBasedOnExpMultiplicity()
                         toDel.deleteLeftArc ( id );
                         numArcsDetatched++;
                         if ( getSSNode ( toDelete[i] ).getFlag() == 1 ) {
-                                cout << "Incorrectly removed arcs between node " << id << " (" << node.getMarginalLength() << "): " << node.getExpMult() << " +/- " << node.getReadStartCov() << " and node " << toDelete[i] << " (" << toDel.getMarginalLength() << "): " << toDel.getExpMult() << " +/- " << toDel.getReadStartCov() << endl;
+                                cout << "Incorrectly removed arcs between node " << id << " (" << node.getMarginalLength() << "): " << node.getNodeKmerCov() << " +/- " << node.getReadStartCov() << " and node " << toDelete[i] << " (" << toDel.getMarginalLength() << "): " << toDel.getNodeKmerCov() << " +/- " << toDel.getReadStartCov() << endl;
                                 incorrDetach++;
                         }
                 }
@@ -992,7 +996,7 @@ bool DBGraph::arcFilteringBasedOnSignExpMultiplicity()
                         toDel.deleteLeftArc ( id );
                         numArcsDetatched++;
                         if ( toDel.getFlag() == 1 ) {
-                                cout << "Incorrectly removed arcs between node " << id << " (" << node.getMarginalLength() << "): " << node.getExpMult() << " +/- " << node.getReadStartCov() << " and node " << toDelete[i] << " (" << toDel.getMarginalLength() << "): " << toDel.getExpMult() << " +/- " << toDel.getReadStartCov() << endl;
+                                cout << "Incorrectly removed arcs between node " << id << " (" << node.getMarginalLength() << "): " << node.getNodeKmerCov() << " +/- " << node.getReadStartCov() << " and node " << toDelete[i] << " (" << toDel.getMarginalLength() << "): " << toDel.getNodeKmerCov() << " +/- " << toDel.getReadStartCov() << endl;
                                 incorrDetach++;
                         }
                 }
@@ -1054,7 +1058,7 @@ bool DBGraph::flowConservationBasedArcFiltering()
                                         continue;
                                 }
 
-                                toDelete.insert ( pair<double, NodeID> ( right.getExpMult(), it->getNodeID() ) );
+                                toDelete.insert ( pair<double, NodeID> ( right.getNodeKmerCov(), it->getNodeID() ) );
                         }
 
                         int maxDelete = ( rightMult -leftMult );
@@ -1071,7 +1075,7 @@ bool DBGraph::flowConservationBasedArcFiltering()
                                 if ( getDSNode ( abs ( it->second ) ).getFlag() == 1 ) {
                                         incorrDetach++;
                                         cout << " Wrong !!!!!!! " << endl;
-                                        cout << nodeToDelete.getExpMult() << " +/- " << nodeToDelete.getReadStartCov() << endl;
+                                        cout << nodeToDelete.getNodeKmerCov() << " +/- " << nodeToDelete.getReadStartCov() << endl;
                                 } else {
                                         // cout << " Correct" << endl;
                                 }

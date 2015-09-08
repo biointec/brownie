@@ -98,7 +98,7 @@ struct pathStruct {
                         SSNode node=tempQueue.front();
                         if(node.getNumLeftArcs()==1&&node.getNumRightArcs()==1) {
                                 tempQueue.pop();
-                                nodeCov=nodeCov+(node.getExpMult()/node.getMarginalLength());
+                                nodeCov=nodeCov+(node.getNodeKmerCov());
                                 i++;
                         } else {
                                 break;
@@ -273,8 +273,8 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                 preIsSingle=false;
         if(extendFirstNode.getNumLeftArcs()>1||extendFirstNode.getNumRightArcs()>1)
                 exteIsSingle=false;
-        double preCov= prevFirstNode.getExpMult()/prevFirstNode.getMarginalLength();
-        double extCov=extendFirstNode.getExpMult()/extendFirstNode.getMarginalLength();
+        double preCov= prevFirstNode.getNodeKmerCov();// prevFirstNode.getExpMult()/prevFirstNode.getMarginalLength();
+        double extCov=extendFirstNode.getNodeKmerCov();//extendFirstNode.getExpMult()/extendFirstNode.getMarginalLength();
         if(preIsSingle && exteIsSingle) {
                 if ( preCov<this->redLineValueCov && preCov<extCov)  {
                         #ifdef DEBUG
@@ -361,8 +361,8 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
         return false;
 }
 bool DBGraph:: removeNotSingleBublles( SSNode &prevFirstNode ,SSNode& extendFirstNode, size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel){
-        double preCov= prevFirstNode.getExpMult()/prevFirstNode.getMarginalLength();
-        double extCov=extendFirstNode.getExpMult()/extendFirstNode.getMarginalLength();
+        double preCov=prevFirstNode.getNodeKmerCov();// prevFirstNode.getExpMult()/prevFirstNode.getMarginalLength();
+        double extCov=extendFirstNode.getNodeKmerCov();//extendFirstNode.getExpMult()/extendFirstNode.getMarginalLength();
         if (preCov<extCov && preCov<this->certainVlueCov){
                 #ifdef DEBUG
                 if (trueMult[abs( prevFirstNode.getNodeID())]>0)

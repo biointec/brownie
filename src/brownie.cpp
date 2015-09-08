@@ -189,11 +189,11 @@ void Brownie::stageFour()
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
 
-        /* if (!stageFourNecessary()) {
+         if (!stageFourNecessary()) {
                          cout << "Files produced by this stage appear to be present, "
                          "skipping stage 4..." << endl << endl;
                          return;
-        }*/
+        }
         DBGraph testgraph(settings);
         testgraph.createFromFile(getNodeFilename(3),
                                  getArcFilename(3),
@@ -370,7 +370,7 @@ int main(int argc, char** args)
                 debug=true;
                 #endif
                 if(!debug)
-                        brownie.printInFile();
+                       brownie.printInFile();
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
                 << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL << endl;
                 cout << "Today is " << Util::getTime() << endl;

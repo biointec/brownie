@@ -64,7 +64,7 @@ void DBGraph::initialize()
     safeValueCov=minSafeValueCov;
     redLineValueCov=minRedLineValueCov;
     updateCutOffValueRound=1;
-    maxNodeSizeToDel=settings.getK()*2+readLength+1;
+    maxNodeSizeToDel=readLength*3;
 }
 
 int DBGraph::parseLine(char* line)
@@ -171,7 +171,7 @@ bool DBGraph::filterChimeric(int round)
                         continue;
                 if (n.getMarginalLength() < settings.getK())  //????
                         continue;
-                if (n.getExpMult() / n.getMarginalLength() > this->redLineValueCov || n.getMarginalLength()>this->maxNodeSizeToDel )
+                if (n.getNodeKmerCov() > this->redLineValueCov || n.getMarginalLength()>this->maxNodeSizeToDel )
                         continue;
                 SSNode rrNode = getSSNode(n.rightBegin()->getNodeID());
                 if (rrNode.getNodeID()==-n.getNodeID())
@@ -229,7 +229,7 @@ bool DBGraph::updateCutOffValue(int round)
                 if(!n.isValid())
                         continue;
                 validNodes++;
-                double kmerCoverage=(double)n.getExpMult() / (double)n.getMarginalLength();
+                double kmerCoverage=n.getNodeKmerCov();
                 int marginalLength=n.getMarginalLength();//+ settings.getK();
                 bool correctNode=false;
                 double nodeMultiplicityR=1;
@@ -243,11 +243,7 @@ bool DBGraph::updateCutOffValue(int round)
         }
         std::sort (allNodes.begin(), allNodes.end());
         unsigned int i=0;
-        size_t numOfBins=sqrt(allNodes.size());
         double Interval=.1;
-        unsigned int m=0;
-        unsigned int n=0;
-        i=0;
         double  St=allNodes[0].first;
         while (i<allNodes.size()-1) {
                 double intervalCount=0;
@@ -316,9 +312,9 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
                 string erroneousCluster=settings.getTempDirectory()+"erroneousCluster.dat";
                 ExpMaxClustering exp(sFileName,erroneousCluster,correctCluster,.01,1, 50 );
                 exp.doClassification();
-                this->redLineValueCov= exp.intersectionPoint;
-                this->safeValueCov=this->redLineValueCov*.8;
-                this->certainVlueCov=this->redLineValueCov*.6;
+                this->redLineValueCov= exp.intersectionPoint*.95;
+                this->safeValueCov=this->redLineValueCov*.85;
+                this->certainVlueCov=this->redLineValueCov*.75;
 
         }
         this->updateCutOffValueRound++;
@@ -357,9 +353,7 @@ bool DBGraph::filterCoverage(float round)
                 SSNode n = getSSNode(i);
                 if(!n.isValid())
                         continue;
-
-                double kmerCoverage=n.getExpMult() / n.getMarginalLength();
-                if (kmerCoverage>this->certainVlueCov) {
+                if (n.getNodeKmerCov()>this->certainVlueCov) {
                         if (trueMult[abs(i)] >= 1)
                                 tn++;
                         else
@@ -394,8 +388,8 @@ bool DBGraph::filterCoverage(float round)
 
 }
 bool DBGraph::removeNode(SSNode & rootNode) {
-      // if (rootNode.getMarginalLength()>maxNodeSizeToDel)
-      //        return false;
+       //if (rootNode.getMarginalLength()>maxNodeSizeToDel)
+       //       return false;
 
         for ( ArcIt it2 = rootNode.leftBegin(); it2 != rootNode.leftEnd(); it2++ ) {
                 SSNode llNode = getSSNode ( it2->getNodeID() );
@@ -740,6 +734,7 @@ void DBGraph::createFromFile(const string& nodeFilename,
         node.setSequence(descriptor);
 
         node.setExpMult(expMult);
+        node.setKmerCov(expMult);
         //comment by mahdi
         node.setReadStartCov(readStartCov);
 
