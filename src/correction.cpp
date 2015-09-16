@@ -52,29 +52,18 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
         ifstream readsFile;
         readsFile.open(readFileName.c_str(),ios::in);
         ofstream outFastq;
-
         outFastq.open(library.getOutputFileName(), ios::out);
-
-        
-        string nodeContent;
-        string guessedRead;
-        string correctRead;
-        string qualityProfile;
-        string erroneousRead;
-        string  strID;
-
-
-
         double numOfReads=0;
         int numOfSupportedReads=0;
-
-
-        unsigned int readLength=0;
         clock_t begin=clock();
 
-	int batchSize = 10000;
+	int batchSize = OUTPUT_FREQUENCY;
 	while (readsFile.is_open()) {
 		vector<readStructStr> reads;
+		
+		/*
+			Read sequentially
+		*/
 		for (int i = 0; i < batchSize; ++i) {
 			readStructStr readInfo;
 			if (getline(readsFile, readInfo.strID)
@@ -91,29 +80,23 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
                 }
                 numOfReads++;
 
-                if ( (int)numOfReads % OUTPUT_FREQUENCY == 0 ) {
-                        clock_t endt=clock();
-                        double passedTime=double(endt-begin)/(double) (CLOCKS_PER_SEC*60);
-                        double progress = ((double)numOfReads/(double)numOfAllreads)*100;
-                        double remainingTime=((100-progress)*passedTime)/progress;
-                        cout << "Processing read number " << numOfReads<<"/"<<numOfAllreads
-                        <<" which  means: " << progress<<"%  progress. Approximate remaining time is " <<remainingTime <<" minutes. Error correction is less than " <<(numOfSupportedReads/numOfReads)*100 <<"%"<<"\r";
-                        cout.flush();
-                }
-
-
                 readInfo.intID=numOfReads;
 				reads.push_back(readInfo);
 			} else {
 				readsFile.close();
 			}
 		}
+		
+		/*
+			process in parallel
+		*/
+		#pragma omp parallel for reduction(+:numOfSupportedReads)
 		for (int i = 0; i < reads.size(); ++i) 
 		{
 
 
                 readStructStr readInfo = reads[i];
-                readLength=readInfo.erroneousReadContent.length();
+                unsigned int readLength=readInfo.erroneousReadContent.length();
                 bool found=false;
 
                 if (readLength<50)
@@ -128,16 +111,16 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
                 //graphIsMissing
 
                 SSNode leftNode;
-                erroneousRead=readInfo.erroneousReadContent;
-                correctRead=readInfo.corrctReadContent;
-                qualityProfile=readInfo.qualityProfile;
-                strID=readInfo.strID;
+                string erroneousRead=readInfo.erroneousReadContent;
+                string correctRead=readInfo.corrctReadContent;
+                string qualityProfile=readInfo.qualityProfile;
+                string strID=readInfo.strID;
 
 
                 int kmerStart=0;
 
                 TString read =erroneousRead;
-                guessedRead=erroneousRead;
+                string guessedRead=erroneousRead;
 
                 //find in regular way
 
@@ -266,7 +249,7 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
 
                 }
                 if (found)
-                        numOfSupportedReads++;
+                        numOfSupportedReads += 1;
                 
                 if(guessedRead.length()>readLength) {
                         //cout <<readInfo.intID<<endl;
@@ -280,6 +263,10 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
                 //save the correction so we can write it to file later
                 readInfo.corrctReadContent = guessedRead;
         }
+        
+		/*
+			write sequentially
+		*/
 		for (int i = 0; i < reads.size(); ++i) {
 			readStructStr readInfo = reads[i];
 			//write ID
@@ -294,12 +281,23 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
 			//write qualityProfile
 			outFastq << readInfo.qualityProfile << endl;
 		}
+		
+		clock_t endt=clock();
+		double passedTime=double(endt-begin)/(double) (CLOCKS_PER_SEC*60);
+		double progress = ((double)numOfReads/(double)numOfAllreads)*100;
+		double remainingTime=((100-progress)*passedTime)/progress;
+		cout << "Processing read number " << numOfReads << "/" << numOfAllreads
+			 << " which  means: " << progress
+			 << "%  progress. Approximate remaining time is " << remainingTime
+			 << " minutes. Error correction is less than "
+			 << (numOfSupportedReads / numOfReads) * 100 << "%" << "\r";
+		cout.flush();
 	}
 		outFastq.close();
 		cout << endl
 			 << "Number of reads which are found in graph: " << numOfSupportedReads
 			 << " out of " << numOfReads
-			 << " which is " << (numOfSupportedReads/numOfReads)*100
+			 << " which is " << (numOfSupportedReads / numOfReads) * 100
 			 << "%" << endl;
 }
 
