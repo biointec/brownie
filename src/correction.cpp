@@ -55,7 +55,7 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
 
         outFastq.open(library.getOutputFileName(), ios::out);
 
-        readStructStr readInfo;
+        
         string nodeContent;
         string guessedRead;
         string correctRead;
@@ -72,11 +72,14 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
         unsigned int readLength=0;
         clock_t begin=clock();
 
-        while(getline(readsFile,readInfo.strID )&&getline(readsFile,readInfo.erroneousReadContent )) {
-
-
-                if (FASTQ==type)
-                {
+	int batchSize = 10000;
+	while (readsFile.is_open()) {
+		vector<readStructStr> reads;
+		for (int i = 0; i < batchSize; ++i) {
+			readStructStr readInfo;
+			if (getline(readsFile, readInfo.strID)
+				&& getline(readsFile, readInfo.erroneousReadContent)) {
+				if (FASTQ==type) {
                         getline(readsFile,readInfo.orientation );
                         getline(readsFile,readInfo.qualityProfile );
                 } else {
@@ -100,6 +103,16 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
 
 
                 readInfo.intID=numOfReads;
+				reads.push_back(readInfo);
+			} else {
+				readsFile.close();
+			}
+		}
+		for (int i = 0; i < reads.size(); ++i) 
+		{
+
+
+                readStructStr readInfo = reads[i];
                 readLength=readInfo.erroneousReadContent.length();
                 bool found=false;
 
@@ -254,9 +267,7 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
                 }
                 if (found)
                         numOfSupportedReads++;
-                string fastqStrID=readInfo.strID;
-                fastqStrID.erase(0, 1);
-                fastqStrID="@"+fastqStrID;
+                
                 if(guessedRead.length()>readLength) {
                         //cout <<readInfo.intID<<endl;
                         string refstr=guessedRead.substr(0, readLength);
@@ -266,12 +277,32 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
                         cout <<readInfo.intID<<endl;
                         guessedRead=readInfo.erroneousReadContent;
                 }
-                outFastq<<fastqStrID<<endl<<guessedRead<<endl<<readInfo.orientation<<endl<<readInfo.qualityProfile<<endl;
+                //save the correction so we can write it to file later
+                readInfo.corrctReadContent = guessedRead;
         }
-        cout<<endl <<"Number of reads which are found in graph: "<< numOfSupportedReads<<" out of "<< numOfReads <<" which is "<< (numOfSupportedReads/numOfReads)*100 <<"%"<<endl;
-        readsFile.close();
-        outFastq.close();
+		for (int i = 0; i < reads.size(); ++i) {
+			readStructStr readInfo = reads[i];
+			//write ID
+			string fastqStrID=readInfo.strID;
+			fastqStrID.erase(0, 1);
+			fastqStrID="@"+fastqStrID;
+			outFastq << fastqStrID << endl;
+			//write correction
+			outFastq << readInfo.corrctReadContent << endl;
+			//write orientation
+			outFastq << readInfo.orientation << endl;
+			//write qualityProfile
+			outFastq << readInfo.qualityProfile << endl;
+		}
+	}
+		outFastq.close();
+		cout << endl
+			 << "Number of reads which are found in graph: " << numOfSupportedReads
+			 << " out of " << numOfReads
+			 << " which is " << (numOfSupportedReads/numOfReads)*100
+			 << "%" << endl;
 }
+
 void DBGraph::errorCorrection(LibraryContainer &libraries) {
 
         for (size_t i = 0; i <libraries.getSize(); i++) {
