@@ -79,7 +79,8 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
                         }
                 }
                 numOfReads++;
-
+				readInfo.strID.erase(0, 1);
+				readInfo.strID = "@" + readInfo.strID;
                 readInfo.intID=numOfReads;
 				reads.push_back(readInfo);
 			} else {
@@ -90,6 +91,7 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
 		/*
 			process in parallel
 		*/
+		
 		#pragma omp parallel for reduction(+:numOfSupportedReads)
 		for (int i = 0; i < reads.size(); ++i) 
 		{
@@ -114,7 +116,6 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
                 string erroneousRead=readInfo.erroneousReadContent;
                 string correctRead=readInfo.corrctReadContent;
                 string qualityProfile=readInfo.qualityProfile;
-                string strID=readInfo.strID;
 
 
                 int kmerStart=0;
@@ -270,10 +271,7 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
 		for (int i = 0; i < reads.size(); ++i) {
 			readStructStr readInfo = reads[i];
 			//write ID
-			string fastqStrID=readInfo.strID;
-			fastqStrID.erase(0, 1);
-			fastqStrID="@"+fastqStrID;
-			outFastq << fastqStrID << endl;
+			outFastq << readInfo.strID << endl;
 			//write correction
 			outFastq << readInfo.corrctReadContent << endl;
 			//write orientation
