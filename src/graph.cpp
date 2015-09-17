@@ -32,6 +32,9 @@
 
 #include <gsl/gsl_math.h>
 #include "ExpMaxClustering.h"
+
+#include "kmernode.h"
+
 using namespace std;
 
 DSNode* SSNode::nodes = NULL;
@@ -1032,4 +1035,18 @@ size_t DBGraph::getN50()
     cout << "The largest node contains " << nodeLengths.back() << " basepairs." << endl;
     return n50;
 
+}
+
+void DBGraph::populateTable() {
+        table = new KmerNodeTable(settings, numNodes);
+        table->populateTable ( nodes );
+}
+bool DBGraph::kmerExistsInGraph(Kmer const &kmer) const {
+        return getNodePosPair(kmer).isValid();
+}
+NodePosPair DBGraph::getNodePosPair(Kmer const &kmer) const {
+        return table->find(kmer);
+}
+double DBGraph::getReadLength() const {
+        return readLength;
 }

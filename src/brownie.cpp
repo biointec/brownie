@@ -24,6 +24,7 @@
 #include "settings.h"
 #include "kmeroverlap.h"
 #include "graph.h"
+#include "correction.h"
 #include "kmertable.h"
 
 #include <string>
@@ -354,7 +355,8 @@ void Brownie::stageFive()
         //graph.writeCytoscapeGraph(0);
         cout<<"N50 size is: " <<graph.getN50()<<endl;
         Util::startChrono();
-        graph.errorCorrection(libraries);
+        ReadCorrection rc(graph, settings);
+        rc.errorCorrection(libraries);
         cout << "Error correction completed in "
         << Util::stopChrono() << "s." << endl;
         cout << "Stage 5 finished.\n" << endl;

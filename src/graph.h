@@ -56,6 +56,7 @@ class DSNode;
 class Arc;
 class Settings;
 class KmerNodeTable;
+class NodePosPair;
 class NodeEndTable;
 class NodeEndRef;
 class LibraryContainer;
@@ -503,7 +504,7 @@ public:
     NodeID getNumArcs() const {
         return numArcs;
     }
-
+    
     /**
      * Create a graph from file
      * @param nodeFilename Filename for the nodes
@@ -591,7 +592,23 @@ public:
     map<NodeID, pair_k> nodesExpMult;
     typedef multimap<NodeID, pair_k>::iterator mapIterator;
 
-
+    /**
+     * Populates the table as required by the ReadCorrection procedure
+     */
+    void populateTable();
+    /**
+     * Find Kmer in the Kmernodetable
+     */
+    NodePosPair getNodePosPair(Kmer const &kmer) const;
+    /**
+     * Checks if the Kmer exists in the KmerNodeTable
+     */
+    bool kmerExistsInGraph(Kmer const &kmer) const;
+    /**
+     * get readLength
+     */
+    double getReadLength() const;
+    
 };
 
 #endif
