@@ -341,40 +341,19 @@ public:
     void WriteReadsToTextFile();
 
     void test();
-    int findDifference(string a, string b, string &qualityProfile, int startOfRead);
-    int findDifference(string a, string b);
+
     double findDifference2(string a, string b);
     bool alignToKmer(string& read,const string& kmer, int readLine, int& startPoint, bool& kmerReverse);
     bool votingCorrection(vector<pair< pair<double,double>, bool> >  &tempArray,map<long , string > &cacheTable, string kmer);
     char findMax(int a, int c, int g, int t,int maxNum, int &num);
-    void errorCorrection(LibraryContainer &libraries);
-    void CorrectErrorsInLibrary(ReadLibrary &library);
 
-    bool cheakForAnswer( Kmer kmer, int  startOfRead, string & correctRead, string & erroneousRead,string & guessedRead , string &qualityProfile ,readCorrectionStatus &status);
-    void correctRemainingReads();
-    void correctReadsWithMeM() ;
-    vector<string> makeRefForessaMEM();
-    //string makeRefForessaMEM();
-    string findCorrectKmerWithessaMEM(TString &read, string & erroneousRead, string reference);
-    sparseSA* init_essaMEM(string &ref, std::string meta);
-    bool recursiveCompare(SSNode leftNode,string nodeContent,int  startOfNode,int startOfRead, string & correctRead, string & erroneousRead,string & guessedRead , string &qualityProfile,readCorrectionStatus &status);
-    string applyINDchanges(string reference, string read);
-    bool checkForIndels(string ref, string query,const int maxError,string& qualityProfile, string& newRead );
-    bool recKmerCorrection(string &kmerStr,const string & qualityProfile ,int kmerStart ,int round) ;
-    int lowQualityPos(string  quality,int startOfRead,string kmer, int round);
-    int firstError(string first, string second, string quality);
-    bool changeRead(string &erroneousRead, string firstKmerStr ,const string & qualityProfile, int round);
-    int makeFileForErrorCorrection();
+
     char getReverseChar(char c);
     void findAvgCov();
     bool charDiff(string a, string b, int k);
 
     bool filterChimeric(int round);
     bool continueEdit(size_t& bigestN50, string& nodeFileName, string &arcFileName,string &metaDataFilename);
-    bool findBestMatch(vector<string>& results, string erroneousRead, string qualityProfile,bool rightDir , string& bestrightMatch, SSNode &leftNode,  int readLength);
-    bool findBestMatch(vector<string>& rightResults, string rightRemainigInRead, string rightRemainingInQuality,bool rightDir, string& bestrightMatch);
-    void getAllRightSolutions(SSNode leftNode, string readPart,string qualityProfile, unsigned int depth, std::vector<std::string> & results );
-    void getAllLeftSolutions(SSNode leftNode,string readPart,string qualityProfile , unsigned int depth, std::vector<std::string> & results);
     bool clipTips(int round);
     // void filterCoverage();
 
