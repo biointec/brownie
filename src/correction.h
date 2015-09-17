@@ -44,7 +44,7 @@ public:
         void readInputReads(vector<readStructStr> &reads, double &numOfReads);
         void correctRead(readStructStr &readInfo, int &numOfSupportedReads);
         void errorCorrection(LibraryContainer &libraries);
-        bool cheakForAnswer(Kmer kmer, int startOfRead, string & correctRead,
+        bool checkForAnswer(Kmer kmer, int startOfRead, string & correctRead,
                             string & erroneousRead, string & guessedRead,
                             string &qualityProfile,
                             readCorrectionStatus &status);

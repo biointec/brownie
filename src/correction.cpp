@@ -76,7 +76,7 @@ void ReadCorrection::correctRead(readStructStr &readInfo, int &numOfSupportedRea
         if (erroneousRead.length()>=kmerSize) {
                 for ( TStringIt it = read.begin(); it != read.end(); it++ ) {
                         Kmer kmer = *it;
-                        if (!cheakForAnswer( kmer,  startOfRead, correctRead,  erroneousRead,guessedRead , qualityProfile, status ) ) {
+                        if (!checkForAnswer( kmer,  startOfRead, correctRead,  erroneousRead,guessedRead , qualityProfile, status ) ) {
                                 startOfRead++;
                                 if (status==anotherKmer||status==kmerNotfound) {
                                         continue;
@@ -94,7 +94,7 @@ void ReadCorrection::correctRead(readStructStr &readInfo, int &numOfSupportedRea
                         if (!dbg.kmerExistsInGraph(tempstr)) {
                                 if(recKmerCorrection(tempstr, qualityProfile, kmerStart, 1)) {
                                         Kmer kmer = tempstr;
-                                        if (cheakForAnswer( kmer,  kmerStart, correctRead,  erroneousRead,guessedRead , qualityProfile,status )) {
+                                        if (checkForAnswer( kmer,  kmerStart, correctRead,  erroneousRead,guessedRead , qualityProfile,status )) {
                                                 found=true;
                                                 break;
                                         }
@@ -153,7 +153,7 @@ void ReadCorrection::correctRead(readStructStr &readInfo, int &numOfSupportedRea
                                                 bestShiftLeft=shiftLeft;
                                                 Kmer kmer = bestRefstr;
                                                 startOfRead=bestMatch.query-bestShiftLeft;
-                                                if (cheakForAnswer( kmer,  startOfRead, correctRead,  erroneousRead,guessedRead , qualityProfile ,status)) {
+                                                if (checkForAnswer( kmer,  startOfRead, correctRead,  erroneousRead,guessedRead , qualityProfile ,status)) {
                                                         found=true;
                                                         break;
                                                 }
@@ -257,7 +257,7 @@ void ReadCorrection::errorCorrection(LibraryContainer &libraries) {
                 CorrectErrorsInLibrary(&input);
         }
 }
-bool ReadCorrection::cheakForAnswer( Kmer kmer, int  startOfRead, string & correctRead, string & erroneousRead,string & guessedRead , string &qualityProfile ,readCorrectionStatus &status) {
+bool ReadCorrection::checkForAnswer( Kmer kmer, int  startOfRead, string & correctRead, string & erroneousRead,string & guessedRead , string &qualityProfile ,readCorrectionStatus &status) {
         NodePosPair result = dbg.getNodePosPair(kmer);
         if (!result.isValid()) {
                 return false;
