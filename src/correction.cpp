@@ -41,7 +41,6 @@ void ReadCorrection::readInputReads(vector<readStructStr> &reads, double &numOfR
                                 getline(readsFile,readInfo.qualityProfile );
                         } else {
                                 readInfo.orientation='+';
-                                //readInfo.qualityProfile=readInfo.erroneousReadContent;
                                 for (unsigned int i = 0; i < readInfo.qualityProfile.length(); i++) {
                                        readInfo.qualityProfile[i]='#';
                                 }
@@ -65,10 +64,6 @@ void ReadCorrection::correctRead(readStructStr &readInfo, int &numOfSupportedRea
                 stop++;
         }
         readCorrectionStatus status=kmerNotfound;
-        //fullHealing,
-        //parHealing,
-        //kmerNotfound,
-        //graphIsMissing
         SSNode leftNode;
         string erroneousRead=readInfo.erroneousReadContent;
         string correctRead=readInfo.corrctReadContent;
@@ -97,10 +92,6 @@ void ReadCorrection::correctRead(readStructStr &readInfo, int &numOfSupportedRea
                 while (kmerStart+kmerSize<readLength && erroneousRead.length()>=kmerSize) {
                         string tempstr=erroneousRead.substr(kmerStart,kmerSize);
                         if (!dbg.kmerExistsInGraph(tempstr)) {
-                                /*
-                                NodePosPair result=table->find(tempstr);
-                                if(!result.isValid())
-                                */
                                 if(recKmerCorrection(tempstr, qualityProfile, kmerStart, 1)) {
                                         Kmer kmer = tempstr;
                                         if (cheakForAnswer( kmer,  kmerStart, correctRead,  erroneousRead,guessedRead , qualityProfile,status )) {
@@ -180,7 +171,6 @@ void ReadCorrection::correctRead(readStructStr &readInfo, int &numOfSupportedRea
         }
         //all attempt for error correction finished, now write the guessed Read into the file
         if (guessedRead.length()!=readInfo.qualityProfile.length()) {
-                // cout <<readInfo.intID<<endl;
                 if (guessedRead.length()>readInfo.qualityProfile.length()) {
                         string str =guessedRead.substr(0, readInfo.qualityProfile.length());
                 guessedRead=str;
@@ -194,7 +184,6 @@ void ReadCorrection::correctRead(readStructStr &readInfo, int &numOfSupportedRea
         numOfSupportedReads += 1;
         }
         if(guessedRead.length()>readLength) {
-                //cout <<readInfo.intID<<endl;
                 string refstr=guessedRead.substr(0, readLength);
                 guessedRead=refstr;
         }
@@ -303,22 +292,12 @@ bool ReadCorrection::recKmerCorrection(string &kmerStr,const string & qualityPro
                 if (dbg.kmerExistsInGraph(kmerStr)) {
                         return true;
                 }
-                /*
-                NodePosPair result = dbg.table->find(kmerStr);
-                if (result.isValid())
-                        return true;
-                */
         }
         if (currentBase!='T') {
                 kmerStr[pos-kmerStart]='T';
                 if (dbg.kmerExistsInGraph(kmerStr)) {
                         return true;
                 }
-                /*
-                NodePosPair result = dbg.table->find(kmerStr);
-                if (result.isValid())
-                        return true;
-                */
         }
 
         if(currentBase!='C') {
@@ -326,11 +305,6 @@ bool ReadCorrection::recKmerCorrection(string &kmerStr,const string & qualityPro
                 if (dbg.kmerExistsInGraph(kmerStr)) {
                         return true;
                 }
-                /*
-                NodePosPair result = dbg.table->find(kmerStr);
-                if (result.isValid())
-                        return true;
-                */
         }
 
         if(currentBase!='G') {
@@ -338,11 +312,6 @@ bool ReadCorrection::recKmerCorrection(string &kmerStr,const string & qualityPro
                 if (dbg.kmerExistsInGraph(kmerStr)) {
                         return true;
                 }
-                /*
-                NodePosPair result = dbg.table->find(kmerStr);
-                if (result.isValid())
-                        return true;
-                */
         }
         if (currentBase!='A') {
                 kmerStr[pos-kmerStart]='A';
@@ -516,9 +485,6 @@ bool ReadCorrection::recursiveCompare(SSNode leftNode,string nodeContent,int  st
         std::vector<std::string> leftResults;
         if(expandFromLeft) {
                 if (leftNode.getNumLeftArcs()>0) {
-                        //writeLocalCytoscapeGraph(leftNode.getNodeID(),leftNode.getNodeID(),150);
-                        //SSNode newLeftNode=  dbg.getSSNode(leftNode.getNodeID()*-1);
-                        //getAllRightSolutions2(newLeftNode,leftRemainingInRead,leftRemainingInQuality,leftRemainingInRead.length(),leftResults);
                         getAllLeftSolutions(leftNode,leftRemainingInRead,leftRemainingInQuality ,leftRemainingInRead.length(),leftResults);
                         if (leftResults.size()>0) {
                                 if( findBestMatch(leftResults,leftRemainingInRead ,leftRemainingInQuality,false ,bestLeftMatch, leftNode, readLenth)) {
@@ -573,12 +539,10 @@ bool ReadCorrection::findBestMatch(vector<string>& results, string erroneousRead
                 if (rightDir==false) {
                         std::reverse(strItem.begin(), strItem.end());
                 }
-                //double newErrorDist=findDifference(strItem,erroneousRead, qualityProfile, 0);
                 double newSim=Nw.get_similarity_per(strItem,erroneousRead);
 
                 if (newSim>minSim) {
                         bestrightMatch=*it;
-                        //cout<<bestrightMatch<<endl;
                         minSim=newSim;
                         find= true;
                         if (newSim==100)
@@ -620,7 +584,7 @@ int ReadCorrection::findDifference(string a, string b) {
         }
         int dif=a.length()>b.length()?a.length()-b.length():b.length()-a.length();
         d=d+dif;
-        return d;//+dif;
+        return d;
 
 }
 typedef std::pair < SSNode,string> nodePath;
@@ -645,7 +609,7 @@ void ReadCorrection::getAllRightSolutions(SSNode rootNode, string readPart,strin
                         cout<<"this read took more than half minute to process";
                         break;
                 }
-                SSNode leftNode= r.first; // currentRoot.first;
+                SSNode leftNode= r.first;
                 string currentPath=r.second;
                 for ( ArcIt it = leftNode.rightBegin(); it != leftNode.rightEnd(); it++ ) {
                         SSNode rrNode = dbg.getSSNode ( it->getNodeID() );
