@@ -26,6 +26,34 @@ bool sortMemResultbySize ( match_t left, match_t right )
 {
         return left.len>right.len;
 }
+
+
+void readInputReads(vector<readStructStr> &reads, ifstream &readsFile, int const &batchSize, FileType const &type, double &numOfReads) {
+        for (int i = 0; i < batchSize; ++i) {
+                readStructStr readInfo;
+                if (getline(readsFile, readInfo.strID)
+                    && getline(readsFile, readInfo.erroneousReadContent)) {
+                        if (FASTQ==type) {
+                                getline(readsFile,readInfo.orientation );
+                                getline(readsFile,readInfo.qualityProfile );
+                        } else {
+                                readInfo.orientation='+';
+                                //readInfo.qualityProfile=readInfo.erroneousReadContent;
+                                for (unsigned int i = 0; i < readInfo.qualityProfile.length(); i++) {
+                                       readInfo.qualityProfile[i]='#';
+                                }
+                        }
+                        numOfReads++;
+                        readInfo.strID.erase(0, 1);
+                        readInfo.strID = "@" + readInfo.strID;
+                        readInfo.intID=numOfReads;
+                        reads.push_back(readInfo);
+                } else {
+                        readsFile.close();
+                }
+        }
+}
+
 void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
 
         cout <<endl<<"welcome to error correction part"<<endl;
@@ -57,44 +85,22 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
         int numOfSupportedReads=0;
         clock_t begin=clock();
 
-	int batchSize = OUTPUT_FREQUENCY;
-	while (readsFile.is_open()) {
-		vector<readStructStr> reads;
-		
-		/*
-			Read sequentially
-		*/
-		for (int i = 0; i < batchSize; ++i) {
-			readStructStr readInfo;
-			if (getline(readsFile, readInfo.strID)
-				&& getline(readsFile, readInfo.erroneousReadContent)) {
-				if (FASTQ==type) {
-                        getline(readsFile,readInfo.orientation );
-                        getline(readsFile,readInfo.qualityProfile );
-                } else {
-                        readInfo.orientation='+';
-                        //readInfo.qualityProfile=readInfo.erroneousReadContent;
-                        for (unsigned int i=0; i<readInfo.qualityProfile.length(); i++) {
-                                readInfo.qualityProfile[i]='#';
-                        }
-                }
-                numOfReads++;
-				readInfo.strID.erase(0, 1);
-				readInfo.strID = "@" + readInfo.strID;
-                readInfo.intID=numOfReads;
-				reads.push_back(readInfo);
-			} else {
-				readsFile.close();
-			}
-		}
-		
-		/*
-			process in parallel
-		*/
-		
-		#pragma omp parallel for reduction(+:numOfSupportedReads)
-		for (int i = 0; i < reads.size(); ++i) 
-		{
+        int batchSize = OUTPUT_FREQUENCY;
+        while (readsFile.is_open()) {
+                vector<readStructStr> reads;
+                
+                /*
+                        Read sequentially
+                */
+                readInputReads(reads, readsFile, batchSize, type, numOfReads);
+                
+                /*
+                        process in parallel
+                */
+                
+                #pragma omp parallel for reduction(+:numOfSupportedReads)
+                for (int i = 0; i < reads.size(); ++i) 
+                {
 
 
                 readStructStr readInfo = reads[i];
@@ -265,38 +271,38 @@ void DBGraph::CorrectErrorsInLibrary(ReadLibrary &library) {
                 readInfo.corrctReadContent = guessedRead;
         }
         
-		/*
-			write sequentially
-		*/
-		for (int i = 0; i < reads.size(); ++i) {
-			readStructStr readInfo = reads[i];
-			//write ID
-			outFastq << readInfo.strID << endl;
-			//write correction
-			outFastq << readInfo.corrctReadContent << endl;
-			//write orientation
-			outFastq << readInfo.orientation << endl;
-			//write qualityProfile
-			outFastq << readInfo.qualityProfile << endl;
-		}
-		
-		clock_t endt=clock();
-		double passedTime=double(endt-begin)/(double) (CLOCKS_PER_SEC*60);
-		double progress = ((double)numOfReads/(double)numOfAllreads)*100;
-		double remainingTime=((100-progress)*passedTime)/progress;
-		cout << "Processing read number " << numOfReads << "/" << numOfAllreads
-			 << " which  means: " << progress
-			 << "%  progress. Approximate remaining time is " << remainingTime
-			 << " minutes. Error correction is less than "
-			 << (numOfSupportedReads / numOfReads) * 100 << "%" << "\r";
-		cout.flush();
-	}
-		outFastq.close();
-		cout << endl
-			 << "Number of reads which are found in graph: " << numOfSupportedReads
-			 << " out of " << numOfReads
-			 << " which is " << (numOfSupportedReads / numOfReads) * 100
-			 << "%" << endl;
+                /*
+                        write sequentially
+                */
+                for (int i = 0; i < reads.size(); ++i) {
+                        readStructStr readInfo = reads[i];
+                        //write ID
+                        outFastq << readInfo.strID << endl;
+                        //write correction
+                        outFastq << readInfo.corrctReadContent << endl;
+                        //write orientation
+                        outFastq << readInfo.orientation << endl;
+                        //write qualityProfile
+                        outFastq << readInfo.qualityProfile << endl;
+                }
+                
+                clock_t endt=clock();
+                double passedTime=double(endt-begin)/(double) (CLOCKS_PER_SEC*60);
+                double progress = ((double)numOfReads/(double)numOfAllreads)*100;
+                double remainingTime=((100-progress)*passedTime)/progress;
+                cout << "Processing read number " << numOfReads << "/" << numOfAllreads
+                         << " which  means: " << progress
+                         << "%  progress. Approximate remaining time is " << remainingTime
+                         << " minutes. Error correction is less than "
+                         << (numOfSupportedReads / numOfReads) * 100 << "%" << "\r";
+                cout.flush();
+        }
+        outFastq.close();
+        cout << endl
+             << "Number of reads which are found in graph: " << numOfSupportedReads
+             << " out of " << numOfReads
+             << " which is " << (numOfSupportedReads / numOfReads) * 100
+             << "%" << endl;
 }
 
 void DBGraph::errorCorrection(LibraryContainer &libraries) {
@@ -348,16 +354,16 @@ sparseSA*  DBGraph::init_essaMEM(string &ref, std::string meta) {
         bool printSubstring = false;
         bool printRevCompForw = false;
         sparseSA * sa;
-        sa = new sparseSA(ref,				//reference
-                          refdescr,			//
-                          startpos,			//
-                          false,			//to use or not to use 4 column format
-                          1,				//sparseness
-                          false,			//suffixlinks
-                          true,				//child arrays
-                          1,				//skip parameter
-                          printSubstring,	//
-                          printRevCompForw	//
+        sa = new sparseSA(ref,                                //reference
+                          refdescr,                        //
+                          startpos,                        //
+                          false,                        //to use or not to use 4 column format
+                          1,                                //sparseness
+                          false,                        //suffixlinks
+                          true,                                //child arrays
+                          1,                                //skip parameter
+                          printSubstring,        //
+                          printRevCompForw        //
         );
         sa->construct();
         return sa;
