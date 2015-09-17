@@ -590,111 +590,87 @@ void ReadCorrection::getAllRightSolutions(SSNode const &rootNode,
                                           string const &readPart,
                                           string const &qualityProfile,
                                           unsigned int depth,
-                                          std::vector<std::string> &results) {
-        string root="";
-        nodePath p = std::make_pair(rootNode ,root  );
-        std::stack<nodePath> mystack;
-        clock_t begin=clock();
-        mystack.push(make_pair(rootNode,root));
-        while (!mystack.empty()) {
-                pair<SSNode, string> r=mystack.top();
-                mystack.pop();
-                clock_t endt=clock();
-                double passedTime=double(endt-begin)/(double) (CLOCKS_PER_SEC*60);
-                if (passedTime>.5) {
-                        cout<<"this read took more than half minute to process";
-                        break;
-                }
-                SSNode leftNode= r.first;
-                string currentPath=r.second;
-                for ( ArcIt it = leftNode.rightBegin(); it != leftNode.rightEnd(); it++ ) {
-                        SSNode rrNode = dbg.getSSNode ( it->getNodeID() );
-                        if (rrNode.getNodeID()==-leftNode.getNodeID()|| !rrNode.isValid())
-                                continue;
-                        string ndoeContent=rrNode.getSequence();
-                        string content=ndoeContent.substr(kmerSize-1, ndoeContent.length());
-                        string newPath=currentPath+content;
-                        if (newPath.length() <depth) {
-                                double errorCommonThreshold=newPath.length()*.3*25;
-                                double errorDif=findDifference(newPath,readPart, qualityProfile, 0);
-                                if (newPath.length()>kmerSize ) {
-                                        if (errorDif<errorCommonThreshold) {
-                                                nodePath newPair = std::make_pair( rrNode,newPath  );
-                                                mystack.push(newPair);
-                                        }
-                                } else
-                                        mystack.push(make_pair(rrNode,newPath));
-                        }
-                        else {
-                                string newStr=newPath.substr(0,depth);
-                                results.push_back(newStr);
-                        }
-                        if (results.size()>200)
-                                break;
-                }
-        }
+                                          std::vector<std::string> &results){
+        getAllSolutions(rootNode, readPart, qualityProfile, depth, results, 1);
 }
 
 void ReadCorrection::getAllLeftSolutions(SSNode const &rootNode,
                                          string const &readPart,
                                          string const &qualityProfile,
                                          unsigned int depth,
-                                         std::vector<std::string> &results) {
-        typedef std::pair < SSNode,string> nodePath;
-        std::stack<nodePath> mystack;
-        string root="";
-        nodePath p = std::make_pair(rootNode ,root  );
-        mystack.push(p);
-        clock_t begin=clock();
-        while (!mystack.empty()) {
-                pair<SSNode, string> r=mystack.top();
-                mystack.pop();
-                clock_t endt=clock();
-                double passedTime=double(endt-begin)/(double) (CLOCKS_PER_SEC*60);
-                if (passedTime>.5) {
-                        cout<<"this read took more than half minute to process";
-                        break;
-                }
-                SSNode leftNode=r.first;
-                string currentPath=r.second;
-                for ( ArcIt it = leftNode.leftBegin(); it != leftNode.leftEnd(); it++ ) {
-                        SSNode llNode = dbg.getSSNode ( it->getNodeID() );
-                        if (llNode.getNodeID()==-leftNode.getNodeID()|| !llNode.isValid())
-                                continue;
-                        string ndoeContent=llNode.getSequence();
-                        string content=ndoeContent.substr(0, ndoeContent.length()-kmerSize+1);
-                        string newPath=content+currentPath;
-                        if (newPath.length() <depth) {
-                                string tempNewPath=newPath;
-                                string tempQualityProfile=qualityProfile;
-                                string tempReadPart=readPart;
-                                double errorDif= findDifference(tempNewPath,tempReadPart, tempQualityProfile, 0);
-                                double errorCommonThreshold=newPath.length()*.2*25;
-                                if (newPath.length()>kmerSize ) {
-
-                                        std::reverse(tempNewPath.begin(), tempNewPath.end());
-                                        std::reverse(tempQualityProfile.begin(), tempQualityProfile.end());
-                                        std::reverse(tempReadPart.begin(), tempReadPart.end());
-                                        if (errorDif<errorCommonThreshold) {
-                                                nodePath newPair = std::make_pair( llNode,newPath  );
-                                                mystack.push(newPair);
-
-                                        } else {
-                                                int stop=0;
-                                                stop++;
-                                        }
-                                } else {
-                                        nodePath newPair = std::make_pair( llNode,newPath  );
-                                        mystack.push(newPair);
-                                }
-                        } else {
-                                string newStr=newPath.substr(newPath.length()-depth,depth);
-                                results.push_back(newStr);
-                        }
-                }
-                if (results.size()>200)
-                        break;
-        }
+                                         std::vector<std::string> &results){
+        getAllSolutions(rootNode, readPart, qualityProfile, depth, results, 0);
 }
 
+void ReadCorrection::getAllSolutions(SSNode const &rootNode,
+                                     string const &readPart,
+                                     string const &qualityProfile,
+                                     unsigned int depth,
+                                     std::vector<std::string> &results,
+                                     bool forward) {
+        string root="";
+        std::stack<nodePath> mystack;
+        clock_t begin = clock();
+        mystack.push(make_pair(rootNode, root));
+        while (!mystack.empty()) {
+                pair<SSNode, string> r = mystack.top();
+                mystack.pop();
+                SSNode leftNode = r.first;
+                string currentPath = r.second;
+                
+                for (ArcIt it = (forward ? leftNode.rightBegin() : leftNode.leftBegin());
+                     it !=  (forward ? leftNode.rightEnd() : leftNode.leftEnd());
+                     ++it) {
+                     
+                        SSNode rrNode = dbg.getSSNode(it->getNodeID());
+                        if (rrNode.getNodeID() == -leftNode.getNodeID() || !rrNode.isValid())
+                                continue;
+                        string nodeContent = rrNode.getSequence();
+                        string content;
+                        string newPath;
+                        if (forward) {
+                                content = nodeContent.substr(kmerSize - 1, nodeContent.length());
+                                newPath = currentPath + content;
+                        } else {
+                                content = nodeContent.substr(0, nodeContent.length() - (kmerSize - 1));
+                                newPath = content + currentPath;
+                        }
+                        
+                        if (newPath.length() < depth) {
+                                if (newPath.length() > kmerSize ) {
+                                        double errorDif;
+                                        double errorCommonThreshold = newPath.length() * .3 * 25;
+                                        if (forward) {
+                                                errorDif = findDifference(newPath, readPart, qualityProfile, 0);
+                                        } else {
+                                                string tempNewPath = newPath;
+                                                string tempQualityProfile = qualityProfile;
+                                                string tempReadPart = readPart;
+                                                std::reverse(tempNewPath.begin(), tempNewPath.end());
+                                                std::reverse(tempQualityProfile.begin(), tempQualityProfile.end());
+                                                std::reverse(tempReadPart.begin(), tempReadPart.end());
+                                                errorDif = findDifference(tempNewPath, tempReadPart, tempQualityProfile, 0);
+                                        }
+                                        if (errorDif < errorCommonThreshold) {
+                                                nodePath newPair = std::make_pair(rrNode, newPath  );
+                                                mystack.push(newPair);
+                                        }
+                                } else {
+                                        mystack.push(make_pair(rrNode, newPath));
+                                }
+                        } else {
+                                string newStr = newPath.substr(0,depth);
+                                results.push_back(newStr);
+                        }
+                        if (results.size() > 200) //stop because it is taking too much effort
+                                break;
+                }
+                clock_t endt = clock();
+                double passedTime = (double) (endt - begin) / (double) (CLOCKS_PER_SEC * 60);
+                if (passedTime > .5) { //stop because it is taking too much time
+                        cout << "this read took more than half minute to process";
+                        break;
+                }
+        }
+}
 

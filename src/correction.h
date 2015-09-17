@@ -79,6 +79,9 @@ private:
                                  string const &qualityProfile,
                                  unsigned int depth,
                                  std::vector<std::string> & results);
+        void getAllSolutions(SSNode const &rootNode, string const &readPart,
+                             string const &qualityProfile, unsigned int depth,
+                             std::vector<std::string> &results, bool forward);
 public:
         ReadCorrection(DBGraph &g, Settings &s);
         void errorCorrection(LibraryContainer &libraries);
