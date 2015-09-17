@@ -301,7 +301,7 @@ bool ReadCorrection::checkForAnswer(Kmer const &kmer, int startOfRead,
 bool ReadCorrection::recKmerCorrection(string &kmerStr,
                                        string const &qualityProfile,
                                        int kmerStart, int round) {
-        if(round>5) {
+        if(round > 5) {
                 return false;
         }
         string oriKmer = kmerStr;
@@ -319,11 +319,14 @@ bool ReadCorrection::recKmerCorrection(string &kmerStr,
         for(char const &x : bases) {
                 if (currentBase != x) {
                         kmerStr[pos - kmerStart] = x;
-                        return recKmerCorrection(kmerStr, qualityProfile,
-                                                 kmerStart, round + 1);
+                        if (recKmerCorrection(kmerStr, qualityProfile,
+                                              kmerStart, round + 1)) {
+                                return true;
+                        }
                 }
         }
-        return true;
+        //no corrections found
+        return false;
 }
 
 int ReadCorrection::lowQualityPos(string quality, int startOfRead,
