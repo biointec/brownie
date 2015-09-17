@@ -222,10 +222,9 @@ void ReadCorrection::correctRead(readStructStr &readInfo,
         readInfo.corrctReadContent = guessedRead;
 }
 
-void ReadCorrection::printProgress(clock_t const &begin,
-                                   double const &numOfReads,
-                                   double const &numOfAllReads,
-                                   double const &numOfSupportedReads) {
+void ReadCorrection::printProgress(clock_t const &begin, double numOfReads,
+                                   double numOfAllReads,
+                                   double numOfSupportedReads) {
         clock_t endt=clock();
         double passedTime=double(endt-begin)/(double) (CLOCKS_PER_SEC*60);
         double progress = ((double)numOfReads/(double)numOfAllReads)*100;
@@ -275,7 +274,7 @@ void ReadCorrection::errorCorrection(LibraryContainer &libraries) {
         }
 }
 
-bool ReadCorrection::checkForAnswer(Kmer kmer, int startOfRead,
+bool ReadCorrection::checkForAnswer(Kmer const &kmer, int startOfRead,
                                     string &correctRead, string &erroneousRead,
                                     string &guessedRead, string &qualityProfile,
                                     readCorrectionStatus &status) {
@@ -308,7 +307,7 @@ bool ReadCorrection::recKmerCorrection(string &kmerStr,
         string oriKmer = kmerStr;
         int pos = lowQualityPos(qualityProfile, kmerStart, oriKmer, round);
         char currentBase = kmerStr[pos - kmerStart];
-        char bases[4] = {'A', 'T', 'C', 'G'};
+        char bases[4] = {'A', 'C', 'G', 'T'};
         for(char const &x : bases) {
                 if (currentBase != x) {
                         kmerStr[pos - kmerStart] = x;
@@ -327,8 +326,8 @@ bool ReadCorrection::recKmerCorrection(string &kmerStr,
         return true;
 }
 
-int ReadCorrection::lowQualityPos(string quality, int startOfRead, string kmer,
-                                  int round) {
+int ReadCorrection::lowQualityPos(string quality, int startOfRead,
+                                  string const &kmer, int round) {
         int i = startOfRead;
         char lowValue = '~';
         int lowIndex = i;
@@ -358,7 +357,8 @@ int ReadCorrection::lowQualityPos(string quality, int startOfRead, string kmer,
         return lowIndex;
 }
 
-string ReadCorrection::applyINDchanges(string reference, string read) {
+string ReadCorrection::applyINDchanges(string const &reference,
+                                       string const &read) {
         unsigned int i = 0;
         unsigned int j = 0;
         string newRead="";
@@ -385,7 +385,7 @@ string ReadCorrection::applyINDchanges(string reference, string read) {
         return newRead;
 }
 
-bool ReadCorrection::checkForIndels(string ref, string query,
+bool ReadCorrection::checkForIndels(string const &ref, string query,
                                     int const maxError, string &qualityProfile,
                                     string &newRead) {
         NW_Alignment Nw;
@@ -403,7 +403,8 @@ bool ReadCorrection::checkForIndels(string ref, string query,
         return false;
 }
 
-bool ReadCorrection::recursiveCompare(SSNode leftNode, string nodeContent, 
+bool ReadCorrection::recursiveCompare(SSNode const &leftNode,
+                                      string const &nodeContent, 
                                       int startOfNode, int startOfRead,
                                       string &correctRead,
                                       string &erroneousRead,
@@ -464,7 +465,7 @@ bool ReadCorrection::recursiveCompare(SSNode leftNode, string nodeContent,
                 if (leftNode.getNumRightArcs()>0) {
                         getAllRightSolutions(leftNode,rightRemainigInRead,rightRemainingInQuality, rightRemainigInRead.length(),rightResults );
                         if (rightResults.size()>0) {
-                                if (findBestMatch(rightResults,rightRemainigInRead ,rightRemainingInQuality,true ,bestrightMatch, leftNode, readLenth)) {
+                                if (findBestMatch(rightResults,rightRemainigInRead ,rightRemainingInQuality,true ,bestrightMatch, readLenth)) {
                                         guessedRead.replace(readRightExtreme,bestrightMatch.length(),bestrightMatch);
                                         rightFound=true;
                                 }
@@ -482,7 +483,7 @@ bool ReadCorrection::recursiveCompare(SSNode leftNode, string nodeContent,
                 if (leftNode.getNumLeftArcs()>0) {
                         getAllLeftSolutions(leftNode,leftRemainingInRead,leftRemainingInQuality ,leftRemainingInRead.length(),leftResults);
                         if (leftResults.size()>0) {
-                                if( findBestMatch(leftResults,leftRemainingInRead ,leftRemainingInQuality,false ,bestLeftMatch, leftNode, readLenth)) {
+                                if( findBestMatch(leftResults,leftRemainingInRead ,leftRemainingInQuality,false ,bestLeftMatch, readLenth)) {
                                         guessedRead.replace(0,bestLeftMatch.length(),bestLeftMatch);
                                         leftFound=true;
                                 }
@@ -512,9 +513,9 @@ bool ReadCorrection::recursiveCompare(SSNode leftNode, string nodeContent,
 }
 
 bool ReadCorrection::findBestMatch(vector<string> &results,
-                                   string erroneousRead, string qualityProfile,
-                                   bool rightDir, string &bestrightMatch,
-                                   SSNode &leftNode, int readLength) {
+                                   string erroneousRead,
+                                   string qualityProfile,
+                                   bool rightDir, string &bestrightMatch, int readLength) {
         std::string first = results[0];
         bool find = false;
         if(rightDir == false) {
@@ -541,8 +542,10 @@ bool ReadCorrection::findBestMatch(vector<string> &results,
         return find;
 }
 
-int ReadCorrection::findDifference(string guessedRead, string originalRead,
-                                   string &qualityProfile, int startOfRead) {
+int ReadCorrection::findDifference(string const &guessedRead,
+                                   string const &originalRead,
+                                   string const &qualityProfile,
+                                   int startOfRead) {
         unsigned int i = startOfRead;
         unsigned int j = 0;
         unsigned int d = 0;
@@ -562,7 +565,7 @@ int ReadCorrection::findDifference(string guessedRead, string originalRead,
         return d;
 }
 
-int ReadCorrection::findDifference(string a, string b) {
+int ReadCorrection::findDifference(string const &a, string const &b) {
         unsigned int i = 0;
         unsigned int j = 0;
         unsigned int d = 0;
@@ -583,8 +586,9 @@ int ReadCorrection::findDifference(string a, string b) {
 typedef std::pair<SSNode, string> nodePath;
 typedef std::pair<nodePath, int> minHeapElement;
 
-void ReadCorrection::getAllRightSolutions(SSNode rootNode, string readPart,
-                                          string qualityProfile,
+void ReadCorrection::getAllRightSolutions(SSNode const &rootNode,
+                                          string const &readPart,
+                                          string const &qualityProfile,
                                           unsigned int depth,
                                           std::vector<std::string> &results) {
         string root="";
@@ -631,9 +635,11 @@ void ReadCorrection::getAllRightSolutions(SSNode rootNode, string readPart,
         }
 }
 
-void ReadCorrection::getAllLeftSolutions(SSNode rootNode,string readPart,string qualityProfile , unsigned int depth, std::vector<std::string> & results) {
-
-        unsigned int kmerSize=settings.getK();
+void ReadCorrection::getAllLeftSolutions(SSNode const &rootNode,
+                                         string const &readPart,
+                                         string const &qualityProfile,
+                                         unsigned int depth,
+                                         std::vector<std::string> &results) {
         typedef std::pair < SSNode,string> nodePath;
         std::stack<nodePath> mystack;
         string root="";

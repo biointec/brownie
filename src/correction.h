@@ -44,38 +44,40 @@ private:
         void correctReads(vector<readStructStr> &reads,
                           int &numOfSupportedReads);
         void writeOutputReads(vector<readStructStr> const &reads);
-        void printProgress(clock_t const &begin, double const &numOfReads,
-                           double const &numOfAllReads,
-                           double const &numOfSupportedReads);
+        void printProgress(clock_t const &begin, double numOfReads,
+                           double numOfAllReads,
+                           double numOfSupportedReads);
         void correctRead(readStructStr &readInfo, int &numOfSupportedReads);
-        bool checkForAnswer(Kmer kmer, int startOfRead, string & correctRead,
-                            string & erroneousRead, string & guessedRead,
-                            string &qualityProfile,
+        bool checkForAnswer(Kmer const &kmer, int startOfRead,
+                            string &correctRead, string &erroneousRead,
+                            string &guessedRead, string &qualityProfile,
                             readCorrectionStatus &status);
-        bool recKmerCorrection(string &kmerStr, const string & qualityProfile,
+        bool recKmerCorrection(string &kmerStr, string const &qualityProfile,
                                int kmerStart, int round);
-        int lowQualityPos(string quality, int startOfRead, string kmer,
-                          int round);
-        string applyINDchanges(string reference, string read);
-        bool checkForIndels(string ref, string query, int const maxError,
-                            string& qualityProfile, string& newRead);
-        bool recursiveCompare(SSNode leftNode,string nodeContent,
-                              int startOfNode,int startOfRead,
+        int lowQualityPos(string quality, int startOfRead,
+                          string const &kmer, int round);
+        string applyINDchanges(string const &reference, string const &read);
+        bool checkForIndels(string const &ref, string query,
+                            int maxError, string &qualityProfile,
+                            string &newRead);
+        bool recursiveCompare(SSNode const &leftNode, string const &nodeContent,
+                              int startOfNode, int startOfRead,
                               string &correctRead, string &erroneousRead,
                               string &guessedRead, string &qualityProfile,
                               readCorrectionStatus &status);
-        bool findBestMatch(vector<string>& results, string erroneousRead,
+        bool findBestMatch(vector<string> &results, string erroneousRead,
                            string qualityProfile, bool rightDir,
-                           string &bestrightMatch, SSNode &leftNode,
-                           int readLength);
-        int findDifference(string guessedRead, string originalRead,
-                           string &qualityProfile, int startOfRead);
-        int findDifference(string a, string b);
-        void getAllRightSolutions(SSNode rootNode, string readPart,
-                                  string qualityProfile, unsigned int depth,
+                           string &bestrightMatch, int readLength);
+        int findDifference(string const &guessedRead, string const &originalRead,
+                           string const &qualityProfile, int startOfRead);
+        int findDifference(string const &a, string const &b);
+        void getAllRightSolutions(SSNode const &rootNode, string const &readPart,
+                                  string const &qualityProfile,
+                                  unsigned int depth,
                                   std::vector<std::string> &results);
-        void getAllLeftSolutions(SSNode rootNode, string readPart,
-                                 string qualityProfile, unsigned int depth,
+        void getAllLeftSolutions(SSNode const &rootNode, string const &readPart,
+                                 string const &qualityProfile,
+                                 unsigned int depth,
                                  std::vector<std::string> & results);
 public:
         ReadCorrection(DBGraph &g, Settings &s);
