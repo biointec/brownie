@@ -56,6 +56,28 @@ void ReadCorrection::readInputReads(vector<readStructStr> &reads, double &numOfR
         }
 }
 
+void ReadCorrection::correctReads(vector<readStructStr> &reads, int &numOfSupportedReads) {
+        int supportedReads = 0;
+        #pragma omp parallel for reduction(+:supportedReads)
+        for (int i = 0; i < reads.size(); ++i) {
+                correctRead(reads[i], supportedReads);
+        }
+        numOfSupportedReads += supportedReads;
+}
+
+void ReadCorrection::writeOutputReads(vector<readStructStr> const &reads) {
+        for (int i = 0; i < reads.size(); ++i) {
+                readStructStr readInfo = reads[i];
+                //write ID
+                outFastq << readInfo.strID << endl;
+                //write correction
+                outFastq << readInfo.corrctReadContent << endl;
+                //write orientation
+                outFastq << readInfo.orientation << endl;
+                //write qualityProfile
+                outFastq << readInfo.qualityProfile << endl;
+        }
+}
 void ReadCorrection::correctRead(readStructStr &readInfo, int &numOfSupportedReads) {
         unsigned int readLength=readInfo.erroneousReadContent.length();
         bool found=false;
@@ -195,55 +217,44 @@ void ReadCorrection::correctRead(readStructStr &readInfo, int &numOfSupportedRea
         readInfo.corrctReadContent = guessedRead;
 }
 
-
+void ReadCorrection::printProgress(clock_t const &begin,
+                                   double const &numOfReads,
+                                   double const &numOfAllReads,
+                                   double const &numOfSupportedReads) {
+        clock_t endt=clock();
+        double passedTime=double(endt-begin)/(double) (CLOCKS_PER_SEC*60);
+        double progress = ((double)numOfReads/(double)numOfAllReads)*100;
+        double remainingTime=((100-progress)*passedTime)/progress;
+        cout << "Processing read number " << numOfReads << "/" << numOfAllReads
+                         << " which  means: " << progress
+                         << "%  progress. Approximate remaining time is "
+                         << remainingTime
+                         << " minutes. Error correction is less than "
+                         << (numOfSupportedReads / numOfReads) * 100 << "%"
+                         << "\r";
+        cout.flush();
+}
 void ReadCorrection::CorrectErrorsInLibrary(ReadLibrary *input) {
         library = input;
-        size_t numOfAllreads = library->getNumOfReads();
+        size_t numOfAllReads = library->getNumOfReads();
         double numOfReads = 0;
         int numOfSupportedReads = 0;
         //opening file for input and output
         readsFile.open(library->getFilename().c_str(), ios::in);
         outFastq.open(library->getOutputFileName(), ios::out);
-        
         clock_t begin=clock();
-
-
         while (readsFile.is_open()) {
                 vector<readStructStr> reads;
                 readInputReads(reads, numOfReads);
-                #pragma omp parallel for reduction(+:numOfSupportedReads)
-                for (int i = 0; i < reads.size(); ++i) {
-                        correctRead(reads[i], numOfSupportedReads);
-                }
-                for (int i = 0; i < reads.size(); ++i) {
-                        readStructStr readInfo = reads[i];
-                        //write ID
-                        outFastq << readInfo.strID << endl;
-                        //write correction
-                        outFastq << readInfo.corrctReadContent << endl;
-                        //write orientation
-                        outFastq << readInfo.orientation << endl;
-                        //write qualityProfile
-                        outFastq << readInfo.qualityProfile << endl;
-                }
-                
-                clock_t endt=clock();
-                double passedTime=double(endt-begin)/(double) (CLOCKS_PER_SEC*60);
-                double progress = ((double)numOfReads/(double)numOfAllreads)*100;
-                double remainingTime=((100-progress)*passedTime)/progress;
-                cout << "Processing read number " << numOfReads << "/" << numOfAllreads
-                         << " which  means: " << progress
-                         << "%  progress. Approximate remaining time is " << remainingTime
-                         << " minutes. Error correction is less than "
-                         << (numOfSupportedReads / numOfReads) * 100 << "%" << "\r";
-                cout.flush();
+                correctReads(reads, numOfSupportedReads);
+                writeOutputReads(reads);
+                printProgress(begin, numOfReads, numOfAllReads,
+                              numOfSupportedReads);
         }
         outFastq.close();
-        cout << endl
-             << "Number of reads which are found in graph: " << numOfSupportedReads
-             << " out of " << numOfReads
-             << " which is " << (numOfSupportedReads / numOfReads) * 100
-             << "%" << endl;
+        cout << endl << "Number of reads which are found in graph: "
+             << numOfSupportedReads << " out of " << numOfReads << " which is "
+             << (numOfSupportedReads / numOfReads) * 100 << "%" << endl;
 }
 
 void ReadCorrection::errorCorrection(LibraryContainer &libraries) {
@@ -251,9 +262,9 @@ void ReadCorrection::errorCorrection(LibraryContainer &libraries) {
         for (size_t i = 0; i <libraries.getSize(); i++) {
                 ReadLibrary &input =libraries.getInput(i);
 
-                cout << "Processing file " << i+1 << "/" << libraries.getSize() << ": "
-                << input.getFilename() << ", type: " << input.getFileType()
-                << endl;
+                cout << "Processing file " << i+1 << "/" << libraries.getSize()
+                     << ": " << input.getFilename() << ", type: "
+                     << input.getFileType() << endl;
                 CorrectErrorsInLibrary(&input);
         }
 }
