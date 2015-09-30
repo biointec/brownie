@@ -176,6 +176,8 @@ bool DBGraph::clipTips ( bool hard )
         &DBGraph::clipTipFromNode;
 
         for ( NodeID id = 1; id <= numNodes; id++ ) {
+                if (id==0)
+                        continue;
 
                 DSNode &node = getDSNode ( id );
                 if ( !node.isValid() ) {
@@ -224,6 +226,7 @@ bool DBGraph::clipTips(int round)
                 if ( !node.isValid() ) {
                         continue;
                 }
+
                 // check for dead ends
                 bool leftDE = ( node.getNumLeftArcs() == 0 );
                 bool rightDE = ( node.getNumRightArcs() == 0 );
@@ -231,11 +234,35 @@ bool DBGraph::clipTips(int round)
                         continue;
                 }
                 SSNode startNode = ( rightDE ) ? getSSNode ( -id ) : getSSNode ( id );
-                SSNode currNode = startNode;
-                //double cov=currNode.getExpMult()/currNode.getMarginalLength();
 
                 bool singleNode=rightDE&&leftDE;
-                if (!singleNode&& currNode.getNodeKmerCov()>this->redLineValueCov  || singleNode&& currNode.getNodeKmerCov()>this->safeValueCov) {//||currNode.getMarginalLength()>100
+                double cov=startNode.getNodeKmerCov();
+                if (singleNode &&startNode.getNodeKmerCov()<this->certainVlueCov )
+                {
+                        if (removeNode(startNode)){
+                                #ifdef DEBUG
+                                if (trueMult[abs( startNode.getNodeID())]>0) {
+                                        fp++;
+                                } else {
+                                        tp++;
+                                }
+                                #endif
+                        }
+                        else{
+                                #ifdef DEBUG
+                                if (trueMult[abs( startNode.getNodeID())]>0) {
+                                        tn++;
+                                } else {
+                                        fn++;
+                                }
+                                #endif
+                        }
+                        continue;
+                }
+                if (singleNode)
+                        continue;
+
+                if (startNode.getNodeKmerCov()>this->redLineValueCov){//  ) {//||currNode.getMarginalLength()>100
                         #ifdef DEBUG
                         if (trueMult[abs( startNode.getNodeID())]>0) {
                                 tn++;
@@ -271,7 +298,7 @@ bool DBGraph::clipTips(int round)
                 if (nodes[i].isValid())
                         numRemaining++;
 
-                size_t numClipped = numInitial - numRemaining;
+        size_t numClipped = numInitial - numRemaining;
         cout << "Clipped " << numClipped << "/" << numInitial << " nodes." << endl;
         #ifdef DEBUG
         cout<< "TP:	"<<tp<<"	TN:	"<<tn<<"	FP:	"<<fp<<"	FN:	"<<fn<<endl;

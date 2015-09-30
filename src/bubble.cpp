@@ -197,21 +197,19 @@ struct comparator {
 bool DBGraph::bubbleDetection(int round) {
         cout<<"*********************<<Bubble Detection starts>>......................................... "<<endl;
         priority_queue<pathStruct,vector<pathStruct>,comparator > MinHeap;
-        int maxLength=settings.getK()*2;
+        int maxLength=maxNodeSizeToDel;//settings.getK()*2;
         size_t numOfDel=0;
         bool remove=false;
         size_t TP=0,TN=0,FP=0,FN=0;
         for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
-                if ( lID == 0 ) {
+                if ( lID == 0 )
                         continue;
-                }
                 SSNode leftNode = getSSNode ( lID );
-                if ( !leftNode.isValid() ) {
+                if ( !leftNode.isValid() )
                         continue;
-                }
-                if(leftNode.getNumRightArcs()<2) {
+
+                if(leftNode.getNumRightArcs()<2)
                         continue;
-                }
                 pathStruct rootPath(leftNode);
                 MinHeap.push(rootPath);
                 std::set<NodeID> visitedNodes;
@@ -276,7 +274,7 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
         double preCov= prevFirstNode.getNodeKmerCov();// prevFirstNode.getExpMult()/prevFirstNode.getMarginalLength();
         double extCov=extendFirstNode.getNodeKmerCov();//extendFirstNode.getExpMult()/extendFirstNode.getMarginalLength();
         if(preIsSingle && exteIsSingle) {
-                if ( preCov<this->redLineValueCov && preCov<extCov)  {
+                if ( preCov<this->cutOffvalue && preCov<extCov)  {
                         #ifdef DEBUG
                         if (trueMult[abs( prevFirstNode.getNodeID())]>0)
                                 FP++;
@@ -295,7 +293,7 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                                 FN++;
                         #endif
                 }
-                if (extCov<this->redLineValueCov && extCov<preCov ) {
+                if (extCov<this->cutOffvalue && extCov<preCov ) {
                         #ifdef DEBUG
                         if(trueMult[abs( extendFirstNode.getNodeID())]>0)
                                 FP++;
@@ -315,7 +313,7 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                 }
         }
         if(preIsSingle && !exteIsSingle) {
-                if (preCov<this->safeValueCov ) {
+                if (preCov<this->cutOffvalue ) {
                         #ifdef DEBUG
                         if (trueMult[abs( prevFirstNode.getNodeID())]>0)
                                 FP++;
@@ -336,7 +334,7 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                 }
         }
         if(exteIsSingle&&!preIsSingle ) {
-                if ((extCov<this->safeValueCov)) {
+                if ((extCov<this->cutOffvalue)) {
                         #ifdef DEBUG
                         if(trueMult[abs( extendFirstNode.getNodeID())]>0)
                                 FP++;
@@ -356,14 +354,14 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                 }
         }
         //when the starting nodes of both parallel paths has more than one ingoing or arcgoing arcs
-        if (!exteIsSingle&&!preIsSingle)
-                return removeNotSingleBublles(prevFirstNode,extendFirstNode, TP,TN,FP,FN, numOfDel);
+      //  if (!exteIsSingle&&!preIsSingle)
+      //          return removeNotSingleBublles(prevFirstNode,extendFirstNode, TP,TN,FP,FN, numOfDel);
         return false;
 }
 bool DBGraph:: removeNotSingleBublles( SSNode &prevFirstNode ,SSNode& extendFirstNode, size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel){
         double preCov=prevFirstNode.getNodeKmerCov();// prevFirstNode.getExpMult()/prevFirstNode.getMarginalLength();
         double extCov=extendFirstNode.getNodeKmerCov();//extendFirstNode.getExpMult()/extendFirstNode.getMarginalLength();
-        if (preCov<extCov && preCov<this->certainVlueCov){
+        if (preCov<extCov && preCov<this->cutOffvalue){
                 #ifdef DEBUG
                 if (trueMult[abs( prevFirstNode.getNodeID())]>0)
                         FP++;
@@ -382,7 +380,7 @@ bool DBGraph:: removeNotSingleBublles( SSNode &prevFirstNode ,SSNode& extendFirs
                         FN++;
                 #endif
         }
-        if (extCov<preCov && extCov<this->certainVlueCov){
+        if (extCov<preCov && extCov<this->cutOffvalue){
                 #ifdef DEBUG
                 if(trueMult[abs( extendFirstNode.getNodeID())]>0)
                         FP++;

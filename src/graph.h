@@ -313,11 +313,13 @@ public:
     size_t n50;
     int numberOfValidNodes;
     size_t sizeOfGraph;
+    double erroneousClusterMean;
+    double correctClusterMean;
     /**
      * Careful concatenation, taking into account the estimated multiplicity
      */
     void initialize();
-    bool mergeSingleNodes();
+    bool mergeSingleNodes(bool force);
 
     bool bubbleDetection(int round);
     bool removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel);
