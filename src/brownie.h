@@ -150,6 +150,8 @@ public:
          * @return True or false
          */
         bool stageFourNecessary() const {
+                if (settings.getSkipStage4())
+                        return false;
                 if (!ReadLibrary::fileExists(getNodeFilename(4)))
                         return true;
                 if (!ReadLibrary::fileExists(getArcFilename(4)))
@@ -162,6 +164,8 @@ public:
          * @return True of false
          */
         bool stageFiveNecessary() const {
+                if (settings.getSkipStage5())
+                        return false;
                 return true;
         }
         void printInFile();

@@ -1050,3 +1050,40 @@ NodePosPair DBGraph::getNodePosPair(Kmer const &kmer) const {
 double DBGraph::getReadLength() const {
         return readLength;
 }
+
+void DBGraph::writeGraphExplicit() const
+{
+        if (!settings.getSkipStage5()) {
+        	return;
+        }
+        vector<size_t> nodeLengths;
+        ofstream nodeFile("DBGraph.txt");
+
+        size_t numExtractedNodes = 0, numExtractedArcs = 0;
+        for (NodeID id = 1; id <= numNodes; id++) {
+                SSNode node = getSSNode(id);
+
+                if (!node.isValid())
+                        continue;
+
+                numExtractedNodes++;
+
+                nodeFile << "NODE" << "\t" << numExtractedNodes << "\t"
+                         << node.getLength() << "\n"
+                         << node.getSequence() << "\n";
+
+                KmerOverlap ol;
+                nodeFile << "LEFT ARCS" << "\t" << (int)node.getNumLeftArcs();
+                for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
+                        nodeFile << "\t" << it->getNodeID();
+                }
+
+                nodeFile << "\nRIGHT ARCS" << "\t" << (int)node.getNumRightArcs();
+                for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++) {
+                        nodeFile << "\t" << it->getNodeID();
+                }
+                nodeFile << "\n";
+        }
+
+        nodeFile.close();
+}

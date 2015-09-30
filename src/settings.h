@@ -57,6 +57,9 @@ private:
     bool doubleStranded;            // double stranded sequences
     std::string pathtotemp;         // directory specified by user
 
+    bool skip_stage_4;
+    bool skip_stage_5;
+
 public:
     /**
      * Default constructor
@@ -137,6 +140,12 @@ public:
     }
     void setGenomeSize(){
        this->genomeSize=genomeSize;
+    }
+    bool getSkipStage4() const {
+       return skip_stage_4;
+    }
+    bool getSkipStage5() const {
+       return skip_stage_5;
     }
     //end of modification by mahdi
 };

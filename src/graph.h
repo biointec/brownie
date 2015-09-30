@@ -587,7 +587,10 @@ public:
      * get readLength
      */
     double getReadLength() const;
-    
+    /*
+     *	
+     */
+    void writeGraphExplicit() const;
 };
 
 #endif

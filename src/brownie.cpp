@@ -176,7 +176,9 @@ void Brownie::stageThree()
         #ifdef DEBUG
         graph.sanityCheck();
         #endif
-
+        
+        graph.writeGraphExplicit();
+        
         graph.clear();
         cout << "Stage 3 finished.\n" << endl;
 }
@@ -190,7 +192,7 @@ void Brownie::stageFour()
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
 
-         if (!stageFourNecessary()) {
+        if (!stageFourNecessary()) {
                          cout << "Files produced by this stage appear to be present, "
                          "skipping stage 4..." << endl << endl;
                          return;
@@ -336,6 +338,11 @@ void Brownie::stageFour()
 
 void Brownie::stageFive()
 {
+        if (!stageFiveNecessary()) {
+                         cout << "Files produced by this stage appear to be present, "
+                         "skipping stage 5..." << endl << endl;
+                         return;
+        }
         cout << "Entering stage 5" << endl;
         cout << "================" << endl;
         DBGraph graph(settings);

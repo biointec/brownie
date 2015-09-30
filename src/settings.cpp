@@ -72,6 +72,9 @@ void Settings::printUsage() const
         cout << " [file_options]\n";
         cout << "  -o\t--output\t\toutput file name [default = inputfile.corr]\n\n";
 
+        cout << "  \t--graph\t\tskip read correction";
+        cout << "  \t--perfectgraph\t\tskip read and graph correction";
+
         cout << " examples:\n";
         cout << "  ./brownie inputA.fastq\n";
         cout << "  ./brownie -k 29 -t 4 -g 2800000 -o outputA.fasta inputA.fasta -o outputB.fasta inputB.fastq\n";
@@ -82,7 +85,7 @@ void Settings::printUsage() const
 // ============================================================================
 
 Settings::Settings() : kmerSize(31), numThreads(std::thread::hardware_concurrency()),
-        genomeSize(0), doubleStranded(true) {}
+        genomeSize(0), doubleStranded(true), skip_stage_4(false), skip_stage_5(false) {}
 
 void Settings::parseCommandLineArguments(int argc, char** args,
                                          LibraryContainer& libCont)
@@ -119,6 +122,11 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                         i++;
                         if (i < argc)
                                 pathtotemp = args[i];
+                } else if (arg == "--graph") {
+                        skip_stage_5 = true;
+                } else if (arg == "--perfectgraph") {
+                        skip_stage_4 = true;
+                        skip_stage_5 = true;
                 } else if ((arg == "-o") || (arg == "--output")) {
                         i++;
                         if (i < argc)
