@@ -1054,9 +1054,12 @@ double DBGraph::getReadLength() const {
         return readLength;
 }
 
-void DBGraph::writeGraphExplicit() const
+void DBGraph::writeGraphExplicit(int stage) const
 {
-        if (!settings.getSkipStage5()) {
+        if (stage == 3 && !settings.getSkipStage4()) {
+        	return;
+        }
+        if (stage == 4 && !settings.getSkipStage5()) {
         	return;
         }
         vector<size_t> nodeLengths;

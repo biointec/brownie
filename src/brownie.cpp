@@ -177,7 +177,7 @@ void Brownie::stageThree()
         graph.sanityCheck();
         #endif
         
-        graph.writeGraphExplicit();
+        graph.writeGraphExplicit(3);
         
         graph.clear();
         cout << "Stage 3 finished.\n" << endl;
@@ -285,6 +285,9 @@ void Brownie::stageFour()
         command="pdftk "+settings.getTempDirectory()+ "cov/*.pdf cat output allpdfFiles.pdf";
         system(command.c_str());
         #endif
+        
+        graph.writeGraphExplicit(4);
+        
         graph.clear();
         cout << "Stage 4 finished.\n" << endl;
 }
