@@ -687,7 +687,6 @@ bool DBGraph::findBestMatch(vector<string>& results, string erroneousRead, strin
                 }
                 //double newErrorDist=findDifference(strItem,erroneousRead, qualityProfile, 0);
                 double newSim=Nw.get_similarity_per(strItem,erroneousRead);
-
                 if (newSim>minSim) {
                         bestrightMatch=*it;
                         //cout<<bestrightMatch<<endl;
@@ -822,13 +821,12 @@ void DBGraph:: getAllLeftSolutions(SSNode rootNode,string readPart,string qualit
                                 string tempNewPath=newPath;
                                 string tempQualityProfile=qualityProfile;
                                 string tempReadPart=readPart;
+                                std::reverse(tempNewPath.begin(), tempNewPath.end());
+                                std::reverse(tempQualityProfile.begin(), tempQualityProfile.end());
+                                std::reverse(tempReadPart.begin(), tempReadPart.end());
                                 double errorDif= findDifference(tempNewPath,tempReadPart, tempQualityProfile, 0);
                                 double errorCommonThreshold=newPath.length()*.2*25;
                                 if (newPath.length()>kmerSize ) {
-
-                                        std::reverse(tempNewPath.begin(), tempNewPath.end());
-                                        std::reverse(tempQualityProfile.begin(), tempQualityProfile.end());
-                                        std::reverse(tempReadPart.begin(), tempReadPart.end());
                                         if (errorDif<errorCommonThreshold) {
                                                 nodePath newPair = std::make_pair( llNode,newPath  );
                                                 mystack.push(newPair);

@@ -62,18 +62,18 @@ public:
 
 
 class ExpMaxClustering{
-public:
-        double intersectionPoint;
+
+
 private:
         float perErronousClusterMean;
         float perCorrectClusterMean;
-        float curErronousClusterMean;
-        float curCorrectClusterMean;
+
         string erronousNodesFileName;
         string correctNodesFileName;
         std::string frequencyFileName;
         float divergenceThreshold;
         commonUtil util;
+
 
         void initialization(string FileName, string firstClusterFileName, string secondClusterFileName,float divergenceValue,float initialMeanOfFirstCluster,float initialMeanOfSecondCluster  ){
                 divergenceThreshold=divergenceValue;
@@ -84,6 +84,7 @@ private:
                 frequencyFileName=FileName;
                 erronousNodesFileName=firstClusterFileName;//"erronousCluster.dat";
                 correctNodesFileName=secondClusterFileName;//"correctCluster.dat";
+                numOfClusters=2;
         }
         float calculateMean(string clusterFileName);
         bool isErroneous(double index);
@@ -92,6 +93,10 @@ private:
         void findIntersectionPoint();
 
 public:
+        double intersectionPoint;
+        size_t numOfClusters;
+        float curErronousClusterMean;
+        float curCorrectClusterMean;
         ExpMaxClustering(string FileName, string firstClusterFileName, string secondClusterFileName,float divergenceValue,float initialMeanOfFirstCluster,float initialMeanOfSecondCluster){
                 initialization(FileName, firstClusterFileName,secondClusterFileName,divergenceValue,initialMeanOfFirstCluster, initialMeanOfSecondCluster );
         }
@@ -100,7 +105,8 @@ public:
                 initialization(fileName, "erronousNodes.dat","correctNodes.dat",.01,1, 50 );
         }
         ExpMaxClustering(){
-                initialization("scov_001.dat", "erronousNodes.dat","correctNodes.dat",.01,1, 50 );
+                //initialization("scov_001.dat", "erronousNodes.dat","correctNodes.dat",.01,1, 50 );
         }
         void doClassification();
+        void findIntersectionPoint(double curErronousClusterMean , double curCorrectClusterMean);
 };

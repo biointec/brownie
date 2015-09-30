@@ -65,6 +65,9 @@ void DBGraph::initialize()
     redLineValueCov=minRedLineValueCov;
     updateCutOffValueRound=1;
     maxNodeSizeToDel=readLength*3;
+    cutOffvalue=redLineValueCov;
+
+    sizeOfGraph=settings.getGenomeSize()*2;
 }
 
 int DBGraph::parseLine(char* line)
@@ -171,38 +174,12 @@ bool DBGraph::filterChimeric(int round)
                         continue;
                 if (n.getMarginalLength() < settings.getK())  //????
                         continue;
-                if (n.getNodeKmerCov() > this->redLineValueCov || n.getMarginalLength()>this->maxNodeSizeToDel )
+                if (n.getNodeKmerCov() > this->redLineValueCov)
                         continue;
                 SSNode rrNode = getSSNode(n.rightBegin()->getNodeID());
                 if (rrNode.getNodeID()==-n.getNodeID())
                         continue;
-
-                // first, disconnect the right node from all its right neighbors
-
-                for (ArcIt it = n.rightBegin(); it != n.rightEnd(); it++) {
-
-                        SSNode rrNode = getSSNode(it->getNodeID());
-                        if (rrNode.getNodeID()==-n.getNodeID())
-                                continue;
-                        bool result = rrNode.deleteLeftArc(n.getNodeID());
-                        assert(result);
-                        //break;
-                }
-
-                // first, disconnect the right node from all its right neighbors
-                for (ArcIt it = n.leftBegin(); it != n.leftEnd(); it++) {
-                        SSNode llNode = getSSNode(it->getNodeID());
-                        if (llNode.getNodeID()==-n.getNodeID())
-                                continue;
-                        bool result = llNode.deleteRightArc(n.getNodeID());
-                        assert(result);
-                        //break;
-                }
-
-                n.deleteAllLeftArcs();
-                n.deleteAllRightArcs();
-                n.invalidate();
-
+                removeNode(n);
                 numFiltered++;
                 #ifdef DEBUG
                 if (trueMult[i] >= 1)
@@ -245,6 +222,7 @@ bool DBGraph::updateCutOffValue(int round)
         unsigned int i=0;
         double Interval=.1;
         double  St=allNodes[0].first;
+
         while (i<allNodes.size()-1) {
                 double intervalCount=0;
                 int sumOfMarginalLenght=0;
@@ -260,12 +238,31 @@ bool DBGraph::updateCutOffValue(int round)
                 if (intervalCount!=0)
                         frequencyArray.push_back(make_pair(make_pair( sumOfMarginalLenght, correctNodeMarginalLength) , make_pair(representative,intervalCount)));
                 St=St+Interval;
+                if (St>this->estimatedKmerCoverage*3)
+                        break;
         }
         plotCovDiagram(frequencyArray);
-
+        double ratio=1;
+        if (round<3)
+                ratio=ratio+(double)round/10;
+        this->redLineValueCov= this->cutOffvalue*ratio;
+        ratio=.7;
+        if (round<3)
+                ratio=ratio+(double)round/10;
+        else
+                ratio=1;
+        this->safeValueCov=this->cutOffvalue*ratio;
+        ratio=.4;
+        if (round<5)
+                ratio=ratio+(double)round/10;
+        else
+                ratio=.8;
+        this->certainVlueCov=this->cutOffvalue*ratio;
+        this->updateCutOffValueRound++;
         cout<<"certainValue: "<<this->certainVlueCov<<endl;
         cout<<"safeValue: "<<this->safeValueCov<<endl;
         cout<<"redLineValue: "<<this->redLineValueCov<<endl;
+        getN50();
         //writing to file to make a plot
         //#ifdef DEBUG
         //if (round>0)
@@ -310,21 +307,27 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
         if (updateCutOffValueRound==1){
                 string correctCluster=settings.getTempDirectory()+"correcNodeCluster.dta";
                 string erroneousCluster=settings.getTempDirectory()+"erroneousCluster.dat";
-                ExpMaxClustering exp(sFileName,erroneousCluster,correctCluster,.01,1, 50 );
+                ExpMaxClustering exp(sFileName,erroneousCluster,correctCluster,.01,1, estimatedKmerCoverage );
                 exp.doClassification();
-                this->redLineValueCov= exp.intersectionPoint*.95;
-                this->safeValueCov=this->redLineValueCov*.85;
-                this->certainVlueCov=this->redLineValueCov*.75;
-
+                this->erroneousClusterMean=exp.curErronousClusterMean;
+                this->correctClusterMean=exp.curCorrectClusterMean;
+                this->cutOffvalue=exp.intersectionPoint;
         }
-        this->updateCutOffValueRound++;
+       /* if (updateCutOffValueRound>1){
+                ExpMaxClustering exp;
+                exp.findIntersectionPoint(this->erroneousClusterMean, this->estimatedKmerCoverage);
+                this->erroneousClusterMean=exp.curErronousClusterMean;
+
+                this->correctClusterMean=exp.curCorrectClusterMean;
+                this->cutOffvalue=exp.intersectionPoint;
+        }*/
+
+
         #ifdef DEBUG
         string address =" plot.dem";
         string command="gnuplot -e  \"filename='"+filename+"'\" -e \"outputfile='"+outputFileName+"'\""+address;
         system(command.c_str());
         #endif
-
-
 
 }
 
@@ -388,8 +391,8 @@ bool DBGraph::filterCoverage(float round)
 
 }
 bool DBGraph::removeNode(SSNode & rootNode) {
-       //if (rootNode.getMarginalLength()>maxNodeSizeToDel)
-       //       return false;
+       if (rootNode.getMarginalLength()>maxNodeSizeToDel)
+              return false;
 
         for ( ArcIt it2 = rootNode.leftBegin(); it2 != rootNode.leftEnd(); it2++ ) {
                 SSNode llNode = getSSNode ( it2->getNodeID() );
@@ -988,7 +991,7 @@ size_t DBGraph::getN50()
 
         numExtractedNodes++;
         //check later for adding kmerSize
-        sizeOfGraph=sizeOfGraph+node.getMarginalLength()+kmerSize;
+        sizeOfGraph=sizeOfGraph +node.getMarginalLength()+kmerSize;
         KmerOverlap ol;
         for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
             char c = getSSNode(it->getNodeID()).getRightKmer().peekNucleotideLeft();
