@@ -110,9 +110,9 @@ public:
          * Get the expected multiplicity
          * @return The expected multiplicity
          */
-       // double getExpMult() const {
-        //        return dsNode->getExpMult();
-       // }
+        double getExpMult() const {
+                return dsNode->getExpMult();
+        }
         //added by mahdi
         double getNodeKmerCov(){
                 return (double)dsNode->getKmerCov()/(double)dsNode->getMarginalLength();

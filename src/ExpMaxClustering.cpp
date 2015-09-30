@@ -13,6 +13,7 @@ float ExpMaxClustering::calculateMean(string clusterFileName){
         float avg=0;
         double num=0;
         double index=0;
+
         //cout<<clusterFileName<<endl;
         while (!frequencyStream.eof())
         {
@@ -55,6 +56,8 @@ bool ExpMaxClustering::classifier(){
         }
         string line;
         frequencyStream>>line;
+        bool firstHasItem=false;
+        bool secondHasItem=false;
         while (!frequencyStream.eof())
         {
                 frequencyStream>>line;
@@ -64,11 +67,18 @@ bool ExpMaxClustering::classifier(){
                 numOfIncorrect= util.strToDouble( tokens[3]);
                 //cout<<fixed<<setprecision(2)<<numOfIncorrect<<endl;
                 sumOfBoth=numOfcorrect+numOfIncorrect;
-                if (isErroneous(index))
+                if (isErroneous(index)){
                         erronousNodeStream<<fixed<<setprecision(2)<<index<<"," <<util.ConvertToString(sumOfBoth)<<endl;
-                else
+                        firstHasItem=true;
+                }
+                else{
                         correctNodeStream<<fixed<<setprecision(2)<<index<<","<<fixed <<util.ConvertToString(sumOfBoth)<<endl;
+                        secondHasItem=true;
+                }
+
         }
+        if (!firstHasItem ||!secondHasItem)
+                this->numOfClusters=1;
         correctNodeStream.close();
         erronousNodeStream.close();
         frequencyStream.close();
@@ -88,7 +98,12 @@ void ExpMaxClustering::findIntersectionPoint(){
         intersectionPoint=(curErronousClusterMean-curCorrectClusterMean)* (log(e)/log(c));
         cout<<"The intersection of these curves is :"<<intersectionPoint<<endl;
 }
-
+void ExpMaxClustering::findIntersectionPoint(double curErronousClusterMean , double curCorrectClusterMean){
+        double e=2.718281;
+        double c=curErronousClusterMean/curCorrectClusterMean;
+        intersectionPoint=(curErronousClusterMean-curCorrectClusterMean)* (log(e)/log(c));
+        cout<<"The intersection of these curves is :"<<intersectionPoint<<endl;
+}
 void ExpMaxClustering::doClassification(){
         size_t i=0;
         while(fabs( perErronousClusterMean-curErronousClusterMean)>divergenceThreshold ||fabs( perCorrectClusterMean-curCorrectClusterMean)>divergenceThreshold){
