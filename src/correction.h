@@ -46,8 +46,8 @@ private:
         void printProgress(clock_t const &begin);
         void correctRead(readStructStr &readInfo, int &supportedReads);
         bool checkForAnswer(Kmer const &kmer, int startOfRead,
-                            string &correctRead, string &erroneousRead,
-                            string &guessedRead, string &qualityProfile,
+                            const string &erroneousRead, string &guessedRead,
+                            string const &qualityProfile,
                             readCorrectionStatus &status);
         bool recKmerCorrection(string &kmerStr, string const &qualityProfile,
                                int kmerStart, int round);
@@ -58,27 +58,16 @@ private:
                             int maxError, string const &qualityProfile,
                             string &newRead);
         bool recursiveCompare(SSNode const &leftNode, string const &nodeContent,
-                              int startOfNode, int startOfRead,
-                              string &correctRead, string &erroneousRead,
+                              int startOfNode, int startOfRead, string const &erroneousRead,
                               string &guessedRead, string const &qualityProfile,
                               readCorrectionStatus &status);
         bool findBestMatch(vector<string> const &results, string &erroneousRead,
-                           string &qualityProfile, bool rightDir,
-                           string &bestrightMatch, int readLength);
+                           bool rightDir, string &bestMatch, int readLength);
         int findDifference(string const &guessedRead, string const &originalRead,
                            string const &qualityProfile, int startOfRead);
         int findDifference(string const &a, string const &b);
-        void getAllRightSolutions(SSNode const &rootNode, string const &readPart,
-                                  string const &qualityProfile,
-                                  unsigned int depth,
-                                  std::vector<std::string> &results);
-        void getAllLeftSolutions(SSNode const &rootNode, string const &readPart,
-                                 string const &qualityProfile,
-                                 unsigned int depth,
-                                 std::vector<std::string> & results);
-        void getAllSolutions(SSNode const &rootNode, string const &readPart,
-                             string const &qualityProfile, unsigned int depth,
-                             std::vector<std::string> &results, bool forward);
+        vector<string> getAllSolutions(SSNode const &rootNode, string const &readPart,
+                             string const &qualityProfile, bool forward);
         bool correctionByKmer(readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile);
         bool correctionByMEM(readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile);
         bool correctionByMEM(vector<match_t> &matches, string &reference, readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile);
