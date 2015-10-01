@@ -298,7 +298,7 @@ void ReadCorrection::CorrectErrorsInLibrary(ReadLibrary *input) {
         outFastq.close();
         cout << endl << "Number of reads which are found in graph: "
                 << numOfSupportedReads << " out of " << numOfReads << " which is "
-                << (numOfSupportedReads / numOfReads) * 100 << "%" << endl;
+                << (100 * numOfSupportedReads / numOfReads) << "%" << endl;
 }
 
 /**
@@ -455,6 +455,29 @@ bool ReadCorrection::checkForIndels(string const &ref, string query,
         return false;
 }
 
+bool ReadCorrection::expand(SSNode const &leftNode, string const &erroneousRead, string const &qualityProfile, string &guessedRead, pair<int, int> bounds, bool forward, readCorrectionStatus &status) {
+        bool found = false;
+        int readLength = erroneousRead.length() < qualityProfile.length() ? erroneousRead.length() : qualityProfile.length();
+        if (leftNode.getNumRightArcs() > 0) {
+                string remainingInRead = erroneousRead.substr(bounds.first, bounds.second);
+                string remainingInQuality = qualityProfile.substr(bounds.first, bounds.second);
+                vector<string> rightResults = getAllSolutions(leftNode, remainingInRead, remainingInQuality, forward);
+                if (rightResults.size() > 0) {
+                        string bestMatch;
+                        if (findBestMatch(rightResults, remainingInRead, true, bestMatch, readLength)) {
+                                guessedRead.replace(bounds.first, bestMatch.length(), bestMatch);
+                                found = true;
+                        }
+                }
+                else {
+                        status = graphIsMissing;
+                }
+        } else {
+                status = graphIsMissing;
+        }
+        return found;
+}
+
 /**
  * 
  * @return 
@@ -471,39 +494,47 @@ bool ReadCorrection::recursiveCompare(SSNode const &leftNode,
         int readLength = erroneousRead.length() < qualityProfile.length() ? erroneousRead.length() : qualityProfile.length();
         int nodeLength = nodeContent.length();
 
-
         bool expandFromRight = nodeLength - startOfNode >= readLength - startOfRead ? false : true;
         bool expandFromLeft = startOfNode - startOfRead >= 0 ? false : true;
         bool rightFound = false;
         bool leftFound = false;
-        bool midleFound = false;
+        bool middleFound = false;
 
         int readRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength : nodeLength - startOfNode + startOfRead;
         int readLeftExtreme = startOfNode - startOfRead >= 0 ? 0 : startOfRead - startOfNode;
         string commonInRead = erroneousRead.substr(readLeftExtreme, readRightExtreme - readLeftExtreme);
-        int errorCommonThreshold=sqrt(commonInRead.length()) * 33;
 
         int nodeRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength - startOfRead + startOfNode : nodeLength;
         int nodeLeftExtreme = startOfNode - startOfRead >= 0 ? startOfNode - startOfRead : 0;
         string commonInNode = nodeContent.substr(nodeLeftExtreme, nodeRightExtreme - nodeLeftExtreme );
 
-        if ((expandFromLeft || expandFromRight) &&findDifference(commonInNode,erroneousRead, qualityProfile, readLeftExtreme)<errorCommonThreshold) {
-                guessedRead.replace(readLeftExtreme,commonInRead.length(),commonInNode);
-                midleFound=true;
-        }
+        int errorCommonThreshold = sqrt(commonInRead.length()) * 33;
+        int maxError = dbg.getReadLength() * 33 * .2;
 
-        int maxError = dbg.getReadLength()*33*.2;
-
-        if (!expandFromLeft && !expandFromRight) {
-                int dif=findDifference( commonInNode,erroneousRead, qualityProfile,0);
-                if (dif<maxError) {
+        if (expandFromLeft || expandFromRight) {
+                if (findDifference(commonInNode, erroneousRead, qualityProfile, readLeftExtreme) < errorCommonThreshold) {
+                        //TODO GILES > why left
+                        guessedRead.replace(readLeftExtreme, commonInRead.length(), commonInNode);
+                        middleFound = true;
+                }
+                if (expandFromRight) {
+                        pair<int, int> bounds(readRightExtreme, readLength - readRightExtreme);
+                        rightFound = expand(leftNode, erroneousRead, qualityProfile, guessedRead, bounds, true, status);
+                }
+                if (expandFromLeft) {
+                        pair<int, int> bounds(0, readLeftExtreme);
+                        leftFound = expand(leftNode, erroneousRead, qualityProfile, guessedRead, bounds, false, status);
+                }
+        } else {
+                int dif=findDifference(commonInNode, erroneousRead, qualityProfile, 0);
+                if (dif < maxError) {
                         guessedRead = commonInNode;
                         status = fullHealing;
                         return true;
                 }
                 else {
-                        string newRead="";
-                        if (checkForIndels(commonInNode, erroneousRead,maxError,qualityProfile,newRead) ) {
+                        string newRead;
+                        if (checkForIndels(commonInNode, erroneousRead, maxError, qualityProfile, newRead)) {
                                 guessedRead = newRead;
                                 status = fullHealing;
                                 return true;
@@ -514,62 +545,25 @@ bool ReadCorrection::recursiveCompare(SSNode const &leftNode,
                 }
         }
 
-        string bestrightMatch="";
-        if (expandFromRight) {
-                if (leftNode.getNumRightArcs() > 0) {
-                        string rightRemainingInRead = erroneousRead.substr(readRightExtreme, readLength - readRightExtreme);
-                        string rightRemainingInQuality = qualityProfile.substr(readRightExtreme, readLength - readRightExtreme);
-                        bool forward = true;
-                        vector<string> rightResults = getAllSolutions(leftNode, rightRemainingInRead, rightRemainingInQuality, forward);
-                        if (rightResults.size() > 0) {
-                                if (findBestMatch(rightResults, rightRemainingInRead, true, bestrightMatch, readLength)) {
-                                        guessedRead.replace(readRightExtreme, bestrightMatch.length(), bestrightMatch);
-                                        rightFound = true;
-                                }
-                        }
-                        else {
-                                status = graphIsMissing;
-                        }
-                } else {
-                        status = graphIsMissing;
-                }
-        }
-
-        string bestLeftMatch="";
-        if(expandFromLeft) {
-                if (leftNode.getNumLeftArcs() > 0) {
-                        string leftRemainingInRead = erroneousRead.substr(0, readLeftExtreme);
-                        string leftRemainingInQuality=qualityProfile.substr(0, readLeftExtreme);
-                        bool forward = false;
-                        vector<string> leftResults = getAllSolutions(leftNode, leftRemainingInRead, leftRemainingInQuality, forward);
-                        if (leftResults.size() > 0) {
-                                if(findBestMatch(leftResults, leftRemainingInRead, false, bestLeftMatch, readLength)) {
-                                        guessedRead.replace(0, bestLeftMatch.length(), bestLeftMatch);
-                                        leftFound = true;
-                                }
-                        } else {
-                                status = graphIsMissing;
-                        }
-                } else {
-                        status = graphIsMissing;
-                }
-        }
-
         int dif = findDifference(guessedRead, erroneousRead, qualityProfile, 0);
         if (dif < maxError) {
                 if ((expandFromLeft && !leftFound)
-                        || (expandFromRight && !rightFound)
-                        || !midleFound)
+                                || (expandFromRight && !rightFound)
+                                || !middleFound)
                         status = parHealing;
                 return true;
         }
         else {
-                string newRead="";
+                string newRead;
                 if (checkForIndels(guessedRead, erroneousRead, maxError, qualityProfile, newRead)) {
-                        if ((expandFromLeft&&!leftFound)||(expandFromRight&&!rightFound)||!midleFound)
+                        //TODO GILES > updated value of newRead is not used
+                        if ((expandFromLeft && !leftFound)
+                                        || (expandFromRight && !rightFound)
+                                        || !middleFound)
                                 status = parHealing;
                         return true;
                 }
+                //revert the guess to the state at the start of this method
                 guessedRead = initialGuessedRead;
         }
         return false;
@@ -655,8 +649,8 @@ typedef std::pair<SSNode, string> nodePath;
 typedef std::pair<nodePath, int> minHeapElement;
 
 /**
- * 
- * @return
+ * create a list of all possible solutions in the graph
+ * @return list of 
  */
 vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
                 string const &readPart,
@@ -707,8 +701,7 @@ vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
                                                 errorDif = findDifference(tempNewPath, tempReadPart, tempQualityProfile, 0);
                                         }
                                         if (errorDif < errorCommonThreshold) {
-                                                nodePath newPair = std::make_pair(rrNode, newPath);
-                                                mystack.push(newPair);
+                                                mystack.push(make_pair(rrNode, newPath));
                                         }
                                 } else {
                                         mystack.push(make_pair(rrNode, newPath));
@@ -729,5 +722,7 @@ vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
         }
         return results;
 }
+
+
 
 

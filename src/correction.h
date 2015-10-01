@@ -61,6 +61,7 @@ private:
                               int startOfNode, int startOfRead, string const &erroneousRead,
                               string &guessedRead, string const &qualityProfile,
                               readCorrectionStatus &status);
+        bool expand(SSNode const &leftNode, string const &erroneousRead, string const &qualityProfile, string &guessedRead, pair<int, int> bounds, bool forward, readCorrectionStatus &status);
         bool findBestMatch(vector<string> const &results, string &erroneousRead,
                            bool rightDir, string &bestMatch, int readLength);
         int findDifference(string const &guessedRead, string const &originalRead,
