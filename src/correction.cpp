@@ -60,7 +60,7 @@ void ReadCorrection::readInputReads(vector<readStructStr> &reads) {
 
 void ReadCorrection::correctReads(vector<readStructStr> &reads) {
         int supportedReads = 0;
-        #pragma omp parallel for reduction(+:supportedReads)
+#pragma omp parallel for reduction(+:supportedReads)
         for (int i = 0; i < reads.size(); ++i) {
                 correctRead(reads[i], supportedReads);
         }
@@ -81,12 +81,13 @@ void ReadCorrection::writeOutputReads(vector<readStructStr> const &reads) {
         }
 }
 
-bool ReadCorrection::correctionByKmer(readCorrectionStatus &status, string &erroneousRead, TString &read, string &guessedRead, string &correctRead, string &qualityProfile) {
+bool ReadCorrection::correctionByKmer(readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile) {
         int readLength = erroneousRead.length();
         bool found = false;
         int startOfRead = 0;
         if (erroneousRead.length() >= kmerSize) {
-                for ( TStringIt it = read.begin(); it != read.end(); it++ ) {
+                TString read = erroneousRead;
+                for (TStringIt it = read.begin(); it != read.end(); it++ ) {
                         Kmer kmer = *it;
                         if (!checkForAnswer( kmer,  startOfRead, correctRead,  erroneousRead,guessedRead , qualityProfile, status ) ) {
                                 startOfRead++;
@@ -122,7 +123,7 @@ bool ReadCorrection::correctionByKmer(readCorrectionStatus &status, string &erro
  * Try to correct read using MEMs
  * @return true if correction is found
  */
-bool ReadCorrection::correctionByMEM(vector<match_t> &matches, string &reference, readCorrectionStatus &status, string &erroneousRead, TString &read, string &guessedRead, string &correctRead, string &qualityProfile) {
+bool ReadCorrection::correctionByMEM(vector<match_t> &matches, string &reference, readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile) {
         if (matches.size() > 0) {
                 match_t bestMatch;
                 string bestRefstr = "";
@@ -178,7 +179,8 @@ bool ReadCorrection::correctionByMEM(vector<match_t> &matches, string &reference
         }
         return false;
 }
-bool ReadCorrection::correctionByMEM(readCorrectionStatus &status, string &erroneousRead, TString &read, string &guessedRead, string &correctRead, string &qualityProfile) {
+
+bool ReadCorrection::correctionByMEM(readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile) {
         for(unsigned int r = 0; r < saVec.size(); ++r) {
                 int min_len = kmerSize / 3;
                 bool print = 0; //not sure what it prints if set to 1
@@ -187,7 +189,7 @@ bool ReadCorrection::correctionByMEM(readCorrectionStatus &status, string &erron
                 vector<match_t> matches; //will contain the matches
                 saVec[r]->MEM(query, matches, min_len, print, memCounter, true, 1);
                 sort(matches.begin(), matches.end(), sortMemResultbySize);
-                if(correctionByMEM(matches, references[r], status, erroneousRead, read, guessedRead, correctRead, qualityProfile)) {
+                if(correctionByMEM(matches, references[r], status, erroneousRead, guessedRead, correctRead, qualityProfile)) {
                         return true;
                 }
         }
@@ -197,21 +199,20 @@ bool ReadCorrection::correctionByMEM(readCorrectionStatus &status, string &erron
 void ReadCorrection::correctRead(readStructStr &readInfo, int &supportedReads) {
         unsigned int readLength=readInfo.erroneousReadContent.length();
         if (readLength < 50) {
-        	//TODO GILES > should short reads be skipped?
+                //TODO GILES > should short reads be skipped?
                 int stop = 0;
                 stop++;
         }
         readCorrectionStatus status = kmerNotfound;
         string erroneousRead =  readInfo.erroneousReadContent;
-        TString read = erroneousRead;
         string guessedRead = erroneousRead;
         string correctRead = readInfo.corrctReadContent;
         string qualityProfile = readInfo.qualityProfile;
         //find in regular way
-        bool found = correctionByKmer(status, erroneousRead, read, guessedRead, correctRead, qualityProfile);
+        bool found = correctionByKmer(status, erroneousRead, guessedRead, correctRead, qualityProfile);
         //find with essaMEM
         if (status == kmerNotfound) {
-                found = correctionByMEM(status, erroneousRead, read, guessedRead, correctRead, qualityProfile);
+                found = correctionByMEM(status, erroneousRead, guessedRead, correctRead, qualityProfile);
         }
         //all attempt for error correction finished
         //now write the guessed Read into the file
@@ -274,7 +275,7 @@ void ReadCorrection::CorrectErrorsInLibrary(ReadLibrary *input) {
 
 void ReadCorrection::errorCorrection(LibraryContainer &libraries) {
         for (size_t i = 0; i <libraries.getSize(); i++) {
-                ReadLibrary &input =libraries.getInput(i);
+                ReadLibrary &input = libraries.getInput(i);
 
                 cout << "Processing file " << i+1 << "/" << libraries.getSize()
                         << ": " << input.getFilename() << ", type: "
@@ -398,7 +399,7 @@ string ReadCorrection::applyINDchanges(string const &reference,
 }
 
 bool ReadCorrection::checkForIndels(string const &ref, string query,
-                int const maxError, string &qualityProfile,
+                int const maxError, string const &qualityProfile,
                 string &newRead) {
         NW_Alignment Nw;
         string refCopy1 = ref;
@@ -421,130 +422,137 @@ bool ReadCorrection::recursiveCompare(SSNode const &leftNode,
                 string &correctRead,
                 string &erroneousRead,
                 string &guessedRead,
-                string &qualityProfile,
+                string const &qualityProfile,
                 readCorrectionStatus &status) {
-        NW_Alignment Nw;
-        string initialGuessedRead=guessedRead;
-        int readLenth=erroneousRead.length()<qualityProfile.length()? erroneousRead.length():qualityProfile.length();
-        int nodeLenght=nodeContent.length();
-        int nodeRightExtreme =nodeLenght-startOfNode>=readLenth-startOfRead ?readLenth-startOfRead+startOfNode:nodeLenght;
-        int nodeLeftExtreme =startOfNode-startOfRead>=0 ?startOfNode- startOfRead:0;
-        int readRightExtreme=nodeLenght-startOfNode>=readLenth-startOfRead ?readLenth:nodeLenght-startOfNode+startOfRead;
-        int readLeftExtream=startOfNode-startOfRead>=0? 0:startOfRead-startOfNode;
-        bool expandFromRight=nodeLenght-startOfNode>=readLenth-startOfRead? false:true;
-        bool expandFromLeft=startOfNode-startOfRead>=0 ?false:true;
-        bool rightFound=false;
-        bool leftFound=false;
-        bool midleFound=false;
-        string commonInRead="";
-        commonInRead=erroneousRead.substr(readLeftExtream,readRightExtreme-readLeftExtream);
-        string commonInNode="";
-        commonInNode=nodeContent.substr(nodeLeftExtreme,nodeRightExtreme-nodeLeftExtreme );
-        string leftRemainingInRead="";
-        leftRemainingInRead=erroneousRead.substr(0,readLeftExtream);
-        string rightRemainigInRead= "";
-        rightRemainigInRead=erroneousRead.substr(readRightExtreme,readLenth-readRightExtreme);
-        string leftRemainingInQuality=qualityProfile.substr(0,readLeftExtream);
-        string rightRemainingInQuality=qualityProfile.substr(readRightExtreme,readLenth-readRightExtreme);
+
+        string initialGuessedRead = guessedRead;
+        int readLength = erroneousRead.length() < qualityProfile.length() ? erroneousRead.length() : qualityProfile.length();
+        int nodeLength = nodeContent.length();
+
+
+        bool expandFromRight = nodeLength - startOfNode >= readLength - startOfRead ? false : true;
+        bool expandFromLeft = startOfNode - startOfRead >= 0 ? false : true;
+        bool rightFound = false;
+        bool leftFound = false;
+        bool midleFound = false;
+
+        int readRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength : nodeLength - startOfNode + startOfRead;
+        int readLeftExtreme = startOfNode - startOfRead >= 0 ? 0 : startOfRead - startOfNode;
+        string commonInRead = erroneousRead.substr(readLeftExtreme, readRightExtreme - readLeftExtreme);
         int errorCommonThreshold=sqrt(commonInRead.length()) * 33;
-        if ((expandFromLeft || expandFromRight) &&findDifference(commonInNode,erroneousRead, qualityProfile, readLeftExtream)<errorCommonThreshold) {
-                guessedRead.replace(readLeftExtream,commonInRead.length(),commonInNode);
+
+        int nodeRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength - startOfRead + startOfNode : nodeLength;
+        int nodeLeftExtreme = startOfNode - startOfRead >= 0 ? startOfNode - startOfRead : 0;
+        string commonInNode = nodeContent.substr(nodeLeftExtreme, nodeRightExtreme - nodeLeftExtreme );
+
+        if ((expandFromLeft || expandFromRight) &&findDifference(commonInNode,erroneousRead, qualityProfile, readLeftExtreme)<errorCommonThreshold) {
+                guessedRead.replace(readLeftExtreme,commonInRead.length(),commonInNode);
                 midleFound=true;
         }
-        int maxError=dbg.getReadLength()*33*.2;
+
+        int maxError = dbg.getReadLength()*33*.2;
+
         if (!expandFromLeft && !expandFromRight) {
                 int dif=findDifference( commonInNode,erroneousRead, qualityProfile,0);
                 if (dif<maxError) {
-                        guessedRead=commonInNode;
-                        status=fullHealing;
+                        guessedRead = commonInNode;
+                        status = fullHealing;
                         return true;
                 }
                 else {
                         string newRead="";
                         if (checkForIndels(commonInNode, erroneousRead,maxError,qualityProfile,newRead) ) {
-                                guessedRead=newRead;
-                                status=fullHealing;
+                                guessedRead = newRead;
+                                status = fullHealing;
                                 return true;
                         } else {
-                                status=kmerfound;
+                                status = kmerfound;
                                 return false;
                         }
                 }
         }
+        
         string bestrightMatch="";
-        std::vector<std::string> rightResults;
         if (expandFromRight) {
-                if (leftNode.getNumRightArcs()>0) {
-                        getAllRightSolutions(leftNode,rightRemainigInRead,rightRemainingInQuality, rightRemainigInRead.length(),rightResults );
-                        if (rightResults.size()>0) {
-                                if (findBestMatch(rightResults, rightRemainigInRead, rightRemainingInQuality, true, bestrightMatch, readLenth)) {
-                                        guessedRead.replace(readRightExtreme,bestrightMatch.length(),bestrightMatch);
-                                        rightFound=true;
+                if (leftNode.getNumRightArcs() > 0) {
+                        string rightRemainigInRead= "";
+                        rightRemainigInRead=erroneousRead.substr(readRightExtreme, readLength - readRightExtreme);
+                        string rightRemainingInQuality = qualityProfile.substr(readRightExtreme, readLength - readRightExtreme);
+                        std::vector<std::string> rightResults;
+                        getAllRightSolutions(leftNode, rightRemainigInRead, rightRemainingInQuality, rightRemainigInRead.length(), rightResults );
+                        if (rightResults.size() > 0) {
+                                if (findBestMatch(rightResults, rightRemainigInRead, rightRemainingInQuality, true, bestrightMatch, readLength)) {
+                                        guessedRead.replace(readRightExtreme, bestrightMatch.length(), bestrightMatch);
+                                        rightFound = true;
                                 }
                         }
                         else {
-                                status=graphIsMissing;
+                                status = graphIsMissing;
                         }
                 } else {
-                        status=graphIsMissing;
+                        status = graphIsMissing;
                 }
         }
+
         string bestLeftMatch="";
-        std::vector<std::string> leftResults;
         if(expandFromLeft) {
                 if (leftNode.getNumLeftArcs()>0) {
-                        getAllLeftSolutions(leftNode,leftRemainingInRead,leftRemainingInQuality ,leftRemainingInRead.length(),leftResults);
+                        string leftRemainingInRead="";
+                        leftRemainingInRead=erroneousRead.substr(0,readLeftExtreme);
+                        string leftRemainingInQuality=qualityProfile.substr(0,readLeftExtreme);
+                        std::vector<std::string> leftResults;
+                        getAllLeftSolutions(leftNode, leftRemainingInRead, leftRemainingInQuality, leftRemainingInRead.length(), leftResults);
                         if (leftResults.size()>0) {
-                                if(findBestMatch(leftResults, leftRemainingInRead, leftRemainingInQuality, false, bestLeftMatch, readLenth)) {
+                                if(findBestMatch(leftResults, leftRemainingInRead, leftRemainingInQuality, false, bestLeftMatch, readLength)) {
                                         guessedRead.replace(0,bestLeftMatch.length(),bestLeftMatch);
                                         leftFound=true;
                                 }
                         } else {
-                                status=graphIsMissing;
+                                status = graphIsMissing;
                         }
                 } else {
-                        status=graphIsMissing;
+                        status = graphIsMissing;
                 }
         }
-        int dif=findDifference(guessedRead,erroneousRead, qualityProfile, 0);
+
+        int dif=findDifference(guessedRead, erroneousRead, qualityProfile, 0);
         if (dif<maxError) {
                 if ((expandFromLeft&&!leftFound)||(expandFromRight&&!rightFound)||(!midleFound))
-                        status=parHealing;
+                        status = parHealing;
                 return true;
         }
         else {
                 string newRead="";
-                if (checkForIndels(guessedRead,erroneousRead,maxError,qualityProfile,newRead)) {
+                if (checkForIndels(guessedRead, erroneousRead, maxError, qualityProfile, newRead)) {
                         if ((expandFromLeft&&!leftFound)||(expandFromRight&&!rightFound)||!midleFound)
-                                status=parHealing;
+                                status = parHealing;
                         return true;
                 }
-                guessedRead=initialGuessedRead;
+                guessedRead = initialGuessedRead;
         }
         return false;
 }
 
-bool ReadCorrection::findBestMatch(vector<string> &results,
+bool ReadCorrection::findBestMatch(vector<string> const &results,
                 string &erroneousRead,
                 string &qualityProfile,
                 bool rightDir, string &bestrightMatch, int readLength) {
-        std::string first = results[0];
         bool find = false;
-        if(rightDir == false) {
+        if(!rightDir) {
                 std::reverse(qualityProfile.begin(), qualityProfile.end());
                 std::reverse(erroneousRead.begin(), erroneousRead.end());
         }
         double minSim = 20;
         NW_Alignment Nw;
         std::vector<string>::iterator it;
-        for(it = results.begin(); it != results.end(); ++it) {
-                string strItem = *it;
-                if (rightDir == false) {
+        for(auto const &result : results) {
+                string strItem = result;
+                if (!rightDir) {
                         std::reverse(strItem.begin(), strItem.end());
                 }
                 double newSim = Nw.get_similarity_per(strItem, erroneousRead);
-                if (newSim>minSim) {
-                        bestrightMatch = *it;
+                if (newSim > minSim) {
+                        bestrightMatch = result;
                         minSim = newSim;
                         find = true;
                         if (newSim == 100)
@@ -685,6 +693,7 @@ void ReadCorrection::getAllSolutions(SSNode const &rootNode,
                 }
         }
 }
+
 
 
 

@@ -55,14 +55,14 @@ private:
                           string const &kmer, int round);
         string applyINDchanges(string const &reference, string const &read);
         bool checkForIndels(string const &ref, string query,
-                            int maxError, string &qualityProfile,
+                            int maxError, string const &qualityProfile,
                             string &newRead);
         bool recursiveCompare(SSNode const &leftNode, string const &nodeContent,
                               int startOfNode, int startOfRead,
                               string &correctRead, string &erroneousRead,
-                              string &guessedRead, string &qualityProfile,
+                              string &guessedRead, string const &qualityProfile,
                               readCorrectionStatus &status);
-        bool findBestMatch(vector<string> &results, string &erroneousRead,
+        bool findBestMatch(vector<string> const &results, string &erroneousRead,
                            string &qualityProfile, bool rightDir,
                            string &bestrightMatch, int readLength);
         int findDifference(string const &guessedRead, string const &originalRead,
@@ -79,9 +79,9 @@ private:
         void getAllSolutions(SSNode const &rootNode, string const &readPart,
                              string const &qualityProfile, unsigned int depth,
                              std::vector<std::string> &results, bool forward);
-        bool correctionByKmer(readCorrectionStatus &status, string &erroneousRead, TString &read, string &guessedRead, string &correctRead, string &qualityProfile);
-        bool correctionByMEM(readCorrectionStatus &status, string &erroneousRead, TString &read, string &guessedRead, string &correctRead, string &qualityProfile);
-        bool correctionByMEM(vector<match_t> &matches, string &reference, readCorrectionStatus &status, string &erroneousRead, TString &read, string &guessedRead, string &correctRead, string &qualityProfile);
+        bool correctionByKmer(readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile);
+        bool correctionByMEM(readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile);
+        bool correctionByMEM(vector<match_t> &matches, string &reference, readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile);
 public:
         ReadCorrection(DBGraph &g, Settings &s);
         void errorCorrection(LibraryContainer &libraries);
