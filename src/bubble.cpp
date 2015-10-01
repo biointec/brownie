@@ -271,11 +271,26 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                 preIsSingle=false;
         if(extendFirstNode.getNumLeftArcs()>1||extendFirstNode.getNumRightArcs()>1)
                 exteIsSingle=false;
-        double preCov= prevFirstNode.getNodeKmerCov();// prevFirstNode.getExpMult()/prevFirstNode.getMarginalLength();
-        double extCov=extendFirstNode.getNodeKmerCov();//extendFirstNode.getExpMult()/extendFirstNode.getMarginalLength();
+        double preCov= prevFirstNode.getNodeKmerCov();
+        double extCov=extendFirstNode.getNodeKmerCov();
         if(preIsSingle && exteIsSingle) {
-                if ( preCov<this->cutOffvalue && preCov<extCov)  {
+                bool removePre=preCov<=extCov && preCov<this->cutOffvalue ?true:false;
+                bool removeExt=extCov<preCov  && extCov<this->cutOffvalue ?true:false;
+                if (!removeExt&&!removePre){
                         #ifdef DEBUG
+                        if (trueMult[abs( prevFirstNode.getNodeID())]>0)
+                                TN++;
+                        else
+                                FN++;
+                        if (trueMult[abs(extendFirstNode.getNodeID())]>0)
+                                TN++;
+                        else
+                                FN++;
+                        #endif
+                        return false;
+                }
+                if (removePre){
+                         #ifdef DEBUG
                         if (trueMult[abs( prevFirstNode.getNodeID())]>0)
                                 FP++;
                         else
@@ -283,17 +298,10 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                         #endif
                         if(removeNode(prevFirstNode)){
                                 numOfDel++;
-                                return true;}
+                                return true;
+                        }
                 }
-                else{
-                        #ifdef DEBUG
-                        if (trueMult[abs( prevFirstNode.getNodeID())]>0)
-                                TN++;
-                        else
-                                FN++;
-                        #endif
-                }
-                if (extCov<this->cutOffvalue && extCov<preCov ) {
+                if (removeExt){
                         #ifdef DEBUG
                         if(trueMult[abs( extendFirstNode.getNodeID())]>0)
                                 FP++;
@@ -302,15 +310,12 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                         #endif
                         if (removeNode(extendFirstNode)){
                                 numOfDel++;
-                                return true;}
-                }else{
-                        #ifdef DEBUG
-                        if (trueMult[abs( extendFirstNode.getNodeID())]>0){
-                                TN++;
-                        }else
-                                FN++;
-                        #endif
+                                return true;
+
+                        }
                 }
+                
+
         }
         if(preIsSingle && !exteIsSingle) {
                 if (preCov<this->cutOffvalue ) {
@@ -322,7 +327,9 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                         #endif
                         if (removeNode(prevFirstNode)){
                                 numOfDel++;
-                                return true;}
+                                return true;
+
+                        }
                 }
                 else{
                         #ifdef DEBUG
@@ -343,7 +350,9 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                         #endif
                         if(removeNode(extendFirstNode)){
                                 numOfDel++;
-                                return true;}
+                                return true;
+
+                        }
                 }else{
                         #ifdef DEBUG
                         if (trueMult[abs( extendFirstNode.getNodeID())]>0){

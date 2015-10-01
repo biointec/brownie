@@ -176,9 +176,9 @@ void Brownie::stageThree()
         #ifdef DEBUG
         graph.sanityCheck();
         #endif
-        
+
         graph.writeGraphExplicit(3);
-        
+
         graph.clear();
         cout << "Stage 3 finished.\n" << endl;
 }
@@ -244,7 +244,7 @@ void Brownie::stageFour()
         int round=1;
         size_t minN50=100;
 
-        while (simplified &&  graph.sizeOfGraph>settings.getGenomeSize()) {
+        while (simplified ) {
                 //*******************************************************
                 graph.updateCutOffValue(round);
                 bool tips=graph.clipTips(round);
@@ -252,6 +252,8 @@ void Brownie::stageFour()
                         graph.mergeSingleNodes(false);
                         graph.compareToSolution();
                 }
+                if (graph.sizeOfGraph<settings.getGenomeSize())
+                         break;
                 //*******************************************************
                 graph.updateCutOffValue(round);
                 bool bubble=false;
@@ -275,7 +277,7 @@ void Brownie::stageFour()
                 round++;
 
         }
-
+        while(graph.mergeSingleNodes(true));
         graph.writeGraph( nodeFileName,arcFileName,metaDataFileName);
         cout << " Ghraph correction completed in "
         << Util::stopChrono() << "s." << endl;
@@ -285,9 +287,9 @@ void Brownie::stageFour()
         command="pdftk "+settings.getTempDirectory()+ "cov/*.pdf cat output allpdfFiles.pdf";
         system(command.c_str());
         #endif
-        
+
         graph.writeGraphExplicit(4);
-        
+
         graph.clear();
         cout << "Stage 4 finished.\n" << endl;
 }
@@ -313,13 +315,10 @@ void Brownie::stageFive()
         << graph.getNumArcs() << " arcs)" << endl;
         cout << "Created graph in "
         << Util::stopChrono() << "s." << endl;
-        //#ifdef DEBUG
+        #ifdef DEBUG
         graph.compareToSolution();
-        //#endif
-
-        graph.redLineValueCov=15;
-
         graph.writeCytoscapeGraph(0);
+        #endif
         cout<<"N50 size is: " <<graph.getN50()<<endl;
         Util::startChrono();
         ReadCorrection rc(graph, settings);
