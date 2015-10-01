@@ -293,7 +293,7 @@ bool DBGraph::deleteUnreliableNodes(int round){
                         ArcIt it = leftNode.rightBegin();
                         while(it != leftNode.rightEnd()) {
                                 SSNode currNode = getSSNode(it->getNodeID());
-                                if (currNode.getNodeKmerCov()<cutOffvalue|| (currNode.getNumRightArcs()==0&&currNode.getNumLeftArcs()==1)){
+                                if ((currNode.getNodeKmerCov()<cutOffvalue|| (currNode.getNumRightArcs()==0&&currNode.getNumLeftArcs()==1))&&(currNode.getExpMult()==0)){
                                         if (trueMult[abs(currNode.getNodeID())]>0){
                                                 fp++;
                                         }
@@ -315,7 +315,7 @@ bool DBGraph::deleteUnreliableNodes(int round){
                                 it++;
                         }
 
-                        if(leftNode.getNodeKmerCov()<cutOffvalue&& !change){
+                        if(leftNode.getExpMult()==0&& leftNode.getNodeKmerCov()<cutOffvalue&& !change){
                                 if (trueMult[abs(leftNode.getNodeID())]>0){
                                         fp++;
                                 }
@@ -622,9 +622,12 @@ bool DBGraph::mergeSingleNodes(bool force)
         //the initial was lID=1
         bool change=false;//  deleteSuspiciousNodes();
 
-        for ( NodeID lID = 1; lID <= numNodes; lID++ ) {
+        for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
                 if ( lID == 0 ) {
                         continue;
+                }
+                if (lID==-404||lID==473){
+                        int stop=0;
                 }
                 SSNode left = getSSNode ( lID );
                 if ( !left.isValid() ) {
