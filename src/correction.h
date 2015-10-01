@@ -14,21 +14,18 @@ struct readStructStr
         string erroneousReadContent;
         string qualityProfile ;
         string orientation;
-
 };
 
 class ReadCorrection 
 {
 private:
         enum readCorrectionStatus {
-
                 kmerfound,
                 fullHealing,
                 parHealing,
                 kmerNotfound,
                 graphIsMissing,
                 anotherKmer
-
         };
         DBGraph &dbg;
         ReadLibrary *library;
@@ -36,18 +33,18 @@ private:
         int kmerSize;
         vector<string> references;
         vector<sparseSA*> saVec;
+        int numOfReads;
+        int numOfAllReads;
+        int numOfSupportedReads;
         
         ifstream readsFile;
         ofstream outFastq;
         
-        void readInputReads(vector<readStructStr> &reads, double &numOfReads);
-        void correctReads(vector<readStructStr> &reads,
-                          int &numOfSupportedReads);
+        void readInputReads(vector<readStructStr> &reads);
+        void correctReads(vector<readStructStr> &reads);
         void writeOutputReads(vector<readStructStr> const &reads);
-        void printProgress(clock_t const &begin, double numOfReads,
-                           double numOfAllReads,
-                           double numOfSupportedReads);
-        void correctRead(readStructStr &readInfo, int &numOfSupportedReads);
+        void printProgress(clock_t const &begin);
+        void correctRead(readStructStr &readInfo, int &supportedReads);
         bool checkForAnswer(Kmer const &kmer, int startOfRead,
                             string &correctRead, string &erroneousRead,
                             string &guessedRead, string &qualityProfile,
@@ -65,8 +62,8 @@ private:
                               string &correctRead, string &erroneousRead,
                               string &guessedRead, string &qualityProfile,
                               readCorrectionStatus &status);
-        bool findBestMatch(vector<string> &results, string erroneousRead,
-                           string qualityProfile, bool rightDir,
+        bool findBestMatch(vector<string> &results, string &erroneousRead,
+                           string &qualityProfile, bool rightDir,
                            string &bestrightMatch, int readLength);
         int findDifference(string const &guessedRead, string const &originalRead,
                            string const &qualityProfile, int startOfRead);
@@ -82,6 +79,9 @@ private:
         void getAllSolutions(SSNode const &rootNode, string const &readPart,
                              string const &qualityProfile, unsigned int depth,
                              std::vector<std::string> &results, bool forward);
+        bool correctionByKmer(readCorrectionStatus &status, string &erroneousRead, TString &read, string &guessedRead, string &correctRead, string &qualityProfile);
+        bool correctionByMEM(readCorrectionStatus &status, string &erroneousRead, TString &read, string &guessedRead, string &correctRead, string &qualityProfile);
+        bool correctionByMEM(vector<match_t> &matches, string &reference, readCorrectionStatus &status, string &erroneousRead, TString &read, string &guessedRead, string &correctRead, string &qualityProfile);
 public:
         ReadCorrection(DBGraph &g, Settings &s);
         void errorCorrection(LibraryContainer &libraries);
