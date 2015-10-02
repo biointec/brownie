@@ -64,12 +64,17 @@ private:
         bool expand(SSNode const &leftNode, string const &erroneousRead, string const &qualityProfile, string &guessedRead, pair<int, int> bounds, bool forward, readCorrectionStatus &status);
         bool findBestMatch(vector<string> const &results, string &erroneousRead,
                            bool rightDir, string &bestMatch, int readLength);
+        
         int findDifference(string const &guessedRead, string const &originalRead,
                            string const &qualityProfile, int startOfRead);
         int findDifference(string const &a, string const &b);
         vector<string> getAllSolutions(SSNode const &rootNode, string const &readPart,
                              string const &qualityProfile, bool forward);
-        bool correctionByKmer(readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile);
+        
+        bool correctionByKmer(readCorrectionStatus &status, string const &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile);
+        bool findKmer(readCorrectionStatus &status, string const &erroneousRead, string &guessedRead, string &qualityProfile);
+        bool findSimilarKmer(readCorrectionStatus &status, string const &erroneousRead, string &guessedRead, string &qualityProfile);
+        
         bool correctionByMEM(readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile);
         bool correctionByMEM(vector<match_t> &matches, string &reference, readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile);
 public:

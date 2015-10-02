@@ -93,43 +93,65 @@ void ReadCorrection::writeOutputReads(vector<readStructStr> const &reads) {
 }
 
 /**
- * Try to correct read using Kmers
+ * Try to find a kmer from the read in the graph and correct the read
  * @return true if correction is found
  */
-bool ReadCorrection::correctionByKmer(readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile) {
-        int readLength = erroneousRead.length();
+bool ReadCorrection::findKmer(readCorrectionStatus &status, string const &erroneousRead,
+                string &guessedRead, string &qualityProfile) {
         bool found = false;
+        TString read = erroneousRead;
         int startOfRead = 0;
-        if (erroneousRead.length() >= kmerSize) {
-                TString read = erroneousRead;
-                for (TStringIt it = read.begin(); it != read.end(); it++ ) {
-                        Kmer kmer = *it;
-                        if (!checkForAnswer(kmer, startOfRead, erroneousRead, guessedRead, qualityProfile, status)) {
-                                startOfRead++;
-                                if (status==anotherKmer||status==kmerNotfound) {
-                                        continue;
+        for (TStringIt it = read.begin(); it != read.end(); it++ ) {
+                Kmer kmer = *it;
+                if (!checkForAnswer(kmer, startOfRead, erroneousRead, guessedRead, qualityProfile, status)) {
+                        startOfRead++;
+                        if (status == anotherKmer
+                                        || status == kmerNotfound) {
+                                continue;
+                        }
+                } else {
+                        found = true;
+                        break;
+                }
+        }
+        return found;
+}
+
+/**
+ * Try to find a kmer from the read that is similar to a kmer in the graph and correct the read
+ * @return true if correction is found
+ */
+bool ReadCorrection::findSimilarKmer(readCorrectionStatus &status,
+                string const &erroneousRead, string &guessedRead, string &qualityProfile) {
+        bool found = false;
+        int readLength = erroneousRead.length();
+        for (int kmerStart = 0; kmerStart + kmerSize < readLength
+                        && kmerSize <= readLength; kmerStart += 5) {
+                string tempstr = erroneousRead.substr(kmerStart, kmerSize);
+                if (!dbg.kmerExistsInGraph(tempstr)) {
+                        if(recKmerCorrection(tempstr, qualityProfile, kmerStart, 1)) {
+                                Kmer kmer = tempstr;
+                                if (checkForAnswer(kmer, kmerStart, erroneousRead, guessedRead, qualityProfile, status)) {
+                                        found = true;
+                                        break;
                                 }
-                        } else {
-                                found=true;
-                                break;
                         }
                 }
         }
-        if (status==kmerNotfound) {
-                int kmerStart=0;
-                while (kmerStart+kmerSize<readLength && erroneousRead.length()>=kmerSize) {
-                        string tempstr=erroneousRead.substr(kmerStart,kmerSize);
-                        if (!dbg.kmerExistsInGraph(tempstr)) {
-                                if(recKmerCorrection(tempstr, qualityProfile, kmerStart, 1)) {
-                                        Kmer kmer = tempstr;
-                                        if (checkForAnswer(kmer, kmerStart, erroneousRead, guessedRead, qualityProfile, status)) {
-                                                found=true;
-                                                break;
-                                        }
-                                }
-                        }
-                        kmerStart=kmerStart+5;
-                }
+        return found;
+}
+
+/**
+ * Try to correct read using Kmers
+ * @return true if correction is found
+ */
+bool ReadCorrection::correctionByKmer(readCorrectionStatus &status, string const &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile) {
+        bool found = false;
+        if (erroneousRead.length() >= kmerSize) {
+                found = findKmer(status, erroneousRead, guessedRead, qualityProfile);
+        }
+        if (status == kmerNotfound) {
+                found = findSimilarKmer(status, erroneousRead, guessedRead, qualityProfile);
         }
         return found;
 }
@@ -722,6 +744,8 @@ vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
         }
         return results;
 }
+
+
 
 
 
