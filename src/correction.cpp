@@ -477,16 +477,19 @@ bool ReadCorrection::checkForIndels(string const &ref, string query,
         return false;
 }
 
-bool ReadCorrection::expand(SSNode const &leftNode, string const &erroneousRead, string const &qualityProfile, string &guessedRead, pair<int, int> bounds, bool forward, readCorrectionStatus &status) {
+bool ReadCorrection::expand(SSNode const &leftNode, string const &erroneousRead,
+                string const &qualityProfile, string &guessedRead,
+                pair<int, int> bounds, bool forward,
+                readCorrectionStatus &status) {
         bool found = false;
         int readLength = erroneousRead.length() < qualityProfile.length() ? erroneousRead.length() : qualityProfile.length();
-        if (leftNode.getNumRightArcs() > 0) {
+        if (forward ? leftNode.getNumRightArcs() : leftNode.getNumLeftArcs() > 0) {
                 string remainingInRead = erroneousRead.substr(bounds.first, bounds.second);
                 string remainingInQuality = qualityProfile.substr(bounds.first, bounds.second);
-                vector<string> rightResults = getAllSolutions(leftNode, remainingInRead, remainingInQuality, forward);
-                if (rightResults.size() > 0) {
+                vector<string> results = getAllSolutions(leftNode, remainingInRead, remainingInQuality, forward);
+                if (results.size() > 0) {
                         string bestMatch;
-                        if (findBestMatch(rightResults, remainingInRead, true, bestMatch, readLength)) {
+                        if (findBestMatch(results, remainingInRead, forward, bestMatch, readLength)) {
                                 guessedRead.replace(bounds.first, bestMatch.length(), bestMatch);
                                 found = true;
                         }
@@ -743,6 +746,9 @@ vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
         }
         return results;
 }
+
+
+
 
 
 
