@@ -516,24 +516,23 @@ bool ReadCorrection::recursiveCompare(SSNode const &leftNode,
         int readLength = erroneousRead.length() < qualityProfile.length() ? erroneousRead.length() : qualityProfile.length();
         int nodeLength = nodeContent.length();
 
-        bool expandFromRight = nodeLength - startOfNode >= readLength - startOfRead ? false : true;
-        bool expandFromLeft = startOfNode - startOfRead >= 0 ? false : true;
+        bool expandFromRight = nodeLength - startOfNode < readLength - startOfRead;
+        bool expandFromLeft = startOfNode - startOfRead < 0;
         bool rightFound = false;
         bool leftFound = false;
         bool middleFound = false;
 
-        int readRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength : nodeLength - startOfNode + startOfRead;
-        int readLeftExtreme = startOfNode - startOfRead >= 0 ? 0 : startOfRead - startOfNode;
-        string commonInRead = erroneousRead.substr(readLeftExtreme, readRightExtreme - readLeftExtreme);
-
         int nodeRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength - startOfRead + startOfNode : nodeLength;
-        int nodeLeftExtreme = startOfNode - startOfRead >= 0 ? startOfNode - startOfRead : 0;
+        int nodeLeftExtreme = startOfNode > startOfRead ? startOfNode - startOfRead : 0;
         string commonInNode = nodeContent.substr(nodeLeftExtreme, nodeRightExtreme - nodeLeftExtreme );
 
-        int errorCommonThreshold = sqrt(commonInRead.length()) * 33;
         int maxError = dbg.getReadLength() * 33 * .2;
 
         if (expandFromLeft || expandFromRight) {
+                int readRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength : nodeLength - startOfNode + startOfRead;
+                int readLeftExtreme = startOfRead > startOfNode ? startOfRead - startOfNode : 0;
+                string commonInRead = erroneousRead.substr(readLeftExtreme, readRightExtreme - readLeftExtreme);
+                int errorCommonThreshold = sqrt(commonInRead.length()) * 33;
                 if (findDifference(commonInNode, erroneousRead, qualityProfile, readLeftExtreme) < errorCommonThreshold) {
                         //TODO GILES > why left
                         guessedRead.replace(readLeftExtreme, commonInRead.length(), commonInNode);
