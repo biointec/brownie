@@ -96,8 +96,9 @@ void ReadCorrection::writeOutputReads(vector<readStructStr> const &reads) {
  * Try to find a kmer from the read in the graph and correct the read
  * @return true if correction is found
  */
-bool ReadCorrection::findKmer(readCorrectionStatus &status, string const &erroneousRead,
-                string &guessedRead, string &qualityProfile) {
+bool ReadCorrection::findKmer(readCorrectionStatus &status,
+                string const &erroneousRead, string &guessedRead,
+                string &qualityProfile) {
         bool found = false;
         TString read = erroneousRead;
         int startOfRead = 0;
@@ -122,7 +123,8 @@ bool ReadCorrection::findKmer(readCorrectionStatus &status, string const &errone
  * @return true if correction is found
  */
 bool ReadCorrection::findSimilarKmer(readCorrectionStatus &status,
-                string const &erroneousRead, string &guessedRead, string &qualityProfile) {
+                string const &erroneousRead, string &guessedRead,
+                string &qualityProfile) {
         bool found = false;
         int readLength = erroneousRead.length();
         for (int kmerStart = 0; kmerStart + kmerSize < readLength
@@ -145,7 +147,9 @@ bool ReadCorrection::findSimilarKmer(readCorrectionStatus &status,
  * Try to correct read using Kmers
  * @return true if correction is found
  */
-bool ReadCorrection::correctionByKmer(readCorrectionStatus &status, string const &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile) {
+bool ReadCorrection::correctionByKmer(readCorrectionStatus &status,
+                string const &erroneousRead, string &guessedRead,
+                string &correctRead, string &qualityProfile) {
         bool found = false;
         if (erroneousRead.length() >= kmerSize) {
                 found = findKmer(status, erroneousRead, guessedRead, qualityProfile);
@@ -160,57 +164,49 @@ bool ReadCorrection::correctionByKmer(readCorrectionStatus &status, string const
  * Try to correct read using MEMs
  * @return true if correction is found
  */
-bool ReadCorrection::correctionByMEM(vector<match_t> &matches, string &reference, readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile) {
-        if (matches.size() > 0) {
-                match_t bestMatch;
-                string bestRefstr = "";
-                int bestShiftLeft = 0;
-                unsigned int cutLength = 0;
-                for (unsigned int i = 0; i < matches.size(); i++) {
-                        match_t m = matches[i];
-                        unsigned int shiftLeft = kmerSize - m.len < m.query ? kmerSize - m.len : m.query;
-                        int j = m.ref;
-                        unsigned int k = 0;
-                        int lastValue = 0;
-                        if (m.len == kmerSize) {
-                                continue; //we already in previous step checked this kmer
-                        }
-                        while(j > 0 && reference[j-1] != '>' && k < shiftLeft) {
-                                lastValue = k;
-                                k++;
-                                j--;
-                        }
-                        shiftLeft = k;
-                        lastValue = 0;
-                        j = m.ref-shiftLeft;
-                        k = 0;
-                        while(reference[j] != '<'
-                                        && k <= kmerSize
-                                        && (reference[j] == 'A'
-                                                || reference[j] == 'T'
-                                                || reference[j] == 'C'
-                                                || reference[j] == 'G'
-                                                || reference[j] == 'a'
-                                                || reference[j] == 't'
-                                                || reference[j] == 'c'
-                                                || reference[j] == 'g')) {
-                                lastValue = k;
-                                j++;
-                                k++;
-                        }
-                        cutLength = lastValue;
-                        string refstr = reference.substr(m.ref - shiftLeft, cutLength);
-                        string foundKmerStr = erroneousRead.substr(m.query - shiftLeft,cutLength);
-                        float d=findDifference(refstr, foundKmerStr);
-                        if (refstr.length()/(d+1) > 6 &&  cutLength==kmerSize && foundKmerStr.length()==kmerSize && refstr.length()==kmerSize) {
-                                bestMatch=m;
-                                bestRefstr=refstr;
-                                bestShiftLeft=shiftLeft;
-                                Kmer kmer = bestRefstr;
-                                int startOfRead = bestMatch.query - bestShiftLeft;
-                                if (checkForAnswer(kmer, startOfRead, erroneousRead, guessedRead, qualityProfile, status)) {
-                                        return true;
-                                }
+bool ReadCorrection::correctionByMEM(vector<match_t> &matches, string &reference,
+                readCorrectionStatus &status, string &erroneousRead,
+                string &guessedRead, string &correctRead, string &qualityProfile) {
+        for (unsigned int i = 0; i < matches.size(); i++) {
+                match_t m = matches[i];
+                if (m.len >= kmerSize) {
+                        continue; //we already in previous step checked this kmer
+                }
+                unsigned int shiftLeft = kmerSize - m.len < m.query
+                        ? kmerSize - m.len
+                        : m.query;
+                int lastValue = 0;
+                for (int j = m.ref, k = 0;
+                                j > 0
+                                && reference[j - 1] != '>'
+                                && k < shiftLeft;
+                                --j, ++k) {
+                        lastValue = k + 1;
+                }
+                shiftLeft = lastValue;
+                lastValue = 0;
+                for (int j = m.ref - shiftLeft, k = 0;
+                                reference[j] != '<'
+                                && k <= kmerSize
+                                && (reference[j] == 'A'
+                                        || reference[j] == 'T'
+                                        || reference[j] == 'C'
+                                        || reference[j] == 'G'
+                                        || reference[j] == 'a'
+                                        || reference[j] == 't'
+                                        || reference[j] == 'c'
+                                        || reference[j] == 'g');
+                                ++j, ++k) {
+                        lastValue = k;
+                }
+                if (lastValue == kmerSize) {
+                        string refstr = reference.substr(m.ref - shiftLeft, kmerSize);
+                        string foundKmerStr = erroneousRead.substr(m.query - shiftLeft, kmerSize);
+                        float diff = findDifference(refstr, foundKmerStr);
+                        int startOfRead = m.query - shiftLeft;
+                        Kmer kmer = refstr;
+                        if (kmerSize / (diff + 1) > 6 && checkForAnswer(kmer, startOfRead, erroneousRead, guessedRead, qualityProfile, status)) {
+                                return true;
                         }
                 }
         }
@@ -219,7 +215,7 @@ bool ReadCorrection::correctionByMEM(vector<match_t> &matches, string &reference
 
 /**
  * for every reference sequence, find MEMs and process them
- * @return true if correcction is found
+ * @return true if correction is found
  */
 bool ReadCorrection::correctionByMEM(readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile) {
         for(unsigned int r = 0; r < saVec.size(); ++r) {
@@ -746,6 +742,8 @@ vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
         }
         return results;
 }
+
+
 
 
 
