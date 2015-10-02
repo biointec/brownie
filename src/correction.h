@@ -76,7 +76,9 @@ private:
         bool findSimilarKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         
         bool correctionByMEM(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
-        bool correctionByMEM(vector<match_t> &matches, string &reference, readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
+        bool correctionByMEM(vector<match_t> &matches, string const &reference, readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
+        int shiftSize(match_t const &m, string const &reference);
+        bool seedIsContainedInKmer(match_t const &m, string const &reference, int shift);
 public:
         ReadCorrection(DBGraph &g, Settings &s);
         void errorCorrection(LibraryContainer &libraries);
