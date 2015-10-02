@@ -243,11 +243,6 @@ bool ReadCorrection::correctionByMEM(readCorrectionStatus &status, string const 
  */
 bool ReadCorrection::correctRead(readStructStr &readInfo) {
         unsigned int readLength=readInfo.originalContent.length();
-        if (readLength < 50) {
-                //TODO GILES > should short reads be skipped?
-                int stop = 0;
-                stop++;
-        }
         readCorrectionStatus status = kmerNotfound;
         string original =  readInfo.originalContent;
         string guess = original;
@@ -505,87 +500,80 @@ bool ReadCorrection::expand(SSNode const &node, string const &original,
  * @return 
  */
 bool ReadCorrection::recursiveCompare(SSNode const &leftNode,
-                string const &nodeContent, 
+                string const &nodeContent,
                 int startOfNode, int startOfRead,
                 string const &original,
                 string &guess,
                 string const &qProfile,
                 readCorrectionStatus &status) {
-
         string initialguess = guess;
         int readLength = original.length() < qProfile.length() ? original.length() : qProfile.length();
         int nodeLength = nodeContent.length();
-
-        bool expandRight = nodeLength - startOfNode < readLength - startOfRead;
-        bool expandLeft = startOfNode - startOfRead < 0;
-        bool rightFound = false;
-        bool leftFound = false;
-        bool middleFound = false;
-
+        bool leftFound = startOfNode >= startOfRead;
+        bool rightFound = nodeLength - startOfNode >= readLength - startOfRead;
         int nodeRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength - startOfRead + startOfNode : nodeLength;
         int nodeLeftExtreme = startOfNode > startOfRead ? startOfNode - startOfRead : 0;
         string commonInNode = nodeContent.substr(nodeLeftExtreme, nodeRightExtreme - nodeLeftExtreme );
-
         int maxError = dbg.getReadLength() * 33 * .2;
-
-        if (expandLeft || expandRight) {
-                int readRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength : nodeLength - startOfNode + startOfRead;
+        if (!leftFound || !rightFound) {
+                //compute the common part in the read
                 int readLeftExtreme = startOfRead > startOfNode ? startOfRead - startOfNode : 0;
+                int readRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength : nodeLength - startOfNode + startOfRead;
                 string commonInRead = original.substr(readLeftExtreme, readRightExtreme - readLeftExtreme);
+                //correct the left if needed
+                if (!leftFound) {
+                        pair<int, int> bounds(0, readLeftExtreme);
+                        leftFound = expand(leftNode, original, qProfile, guess, bounds, false, status);
+                }
+                bool middleFound = false;
                 int errorCommonThreshold = sqrt(commonInRead.length()) * 33;
                 if (findDifference(commonInNode, original, qProfile, readLeftExtreme) < errorCommonThreshold) {
                         guess.replace(readLeftExtreme, commonInRead.length(), commonInNode);
                         middleFound = true;
                 }
-                if (expandRight) {
+                if (!rightFound) {
                         pair<int, int> bounds(readRightExtreme, readLength - readRightExtreme);
                         rightFound = expand(leftNode, original, qProfile, guess, bounds, true, status);
                 }
-                if (expandLeft) {
-                        pair<int, int> bounds(0, readLeftExtreme);
-                        leftFound = expand(leftNode, original, qProfile, guess, bounds, false, status);
-                }
-        } else {
-                int dif=findDifference(commonInNode, original, qProfile, 0);
+                int dif = findDifference(guess, original, qProfile, 0);
                 if (dif < maxError) {
-                        guess = commonInNode;
-                        status = fullHealing;
-                        return true;
-                } else {
-                        string newRead;
-                        if (checkForIndels(commonInNode, original, maxError, qProfile, newRead)) {
-                                guess = newRead;
-                                status = fullHealing;
-                                return true;
+                        if (!leftFound || !rightFound || !middleFound) {
+                                status = parHealing;
                         } else {
-                                status = kmerfound;
-                                return false;
+                                status = fullHealing;
                         }
+                        return true;
                 }
-        }
-
-        int dif = findDifference(guess, original, qProfile, 0);
-        if (dif < maxError) {
-                if ((expandLeft && !leftFound)
-                                || (expandRight && !rightFound)
-                                || !middleFound)
-                        status = parHealing;
-                return true;
-        } else {
                 string newRead;
                 if (checkForIndels(guess, original, maxError, qProfile, newRead)) {
-                        //TODO GILES > updated value of newRead is not used
-                        if ((expandLeft && !leftFound)
-                                        || (expandRight && !rightFound)
-                                        || !middleFound)
+                        if (!leftFound || !rightFound || !middleFound) {
                                 status = parHealing;
+                        } else {
+                                status = fullHealing;
+                        }
+                        guess = newRead;
                         return true;
                 }
                 //revert the guess to the state at the start of this method
                 guess = initialguess;
+                return false;
         }
+        int dif = findDifference(commonInNode, original, qProfile, 0);
+        if (dif < maxError) {
+                guess = commonInNode;
+                status = fullHealing;
+                return true;
+        }
+        string newRead;
+        if (checkForIndels(commonInNode, original, maxError, qProfile, newRead)) {
+                guess = newRead;
+                status = fullHealing;
+                return true;
+        }
+        status = kmerfound;
         return false;
 }
+
 
 /**
  * picks closest result to original
@@ -661,8 +649,8 @@ int ReadCorrection::findDifference(string const &a, string const &b) {
 
 }
 
-typedef std::pair<SSNode, string> nodePath;
-typedef std::pair<nodePath, int> minHeapElement;
+typedef pair<SSNode, string> nodePath;
+typedef pair<nodePath, int> minHeapElement;
 
 /**
  * create a list of all possible solutions in the graph
@@ -682,11 +670,9 @@ vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
                 mystack.pop();
                 SSNode leftNode = r.first;
                 string currentPath = r.second;
-
                 for (ArcIt it = (forward ? leftNode.rightBegin() : leftNode.leftBegin());
                                 it !=  (forward ? leftNode.rightEnd() : leftNode.leftEnd());
                                 ++it) {
-
                         SSNode rrNode = dbg.getSSNode(it->getNodeID());
                         if (rrNode.getNodeID() == -leftNode.getNodeID() || !rrNode.isValid())
                                 continue;
@@ -700,7 +686,6 @@ vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
                                 content = nodeContent.substr(0, nodeContent.length() - (kmerSize - 1));
                                 newPath = content + currentPath;
                         }
-
                         if (newPath.length() < readPart.length()) {
                                 if (newPath.length() > kmerSize ) {
                                         double errorDif;
@@ -726,8 +711,10 @@ vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
                                 string newStr = newPath.substr(0, readPart.length());
                                 results.push_back(newStr);
                         }
-                        if (results.size() > 200) //stop because it is taking too much effort
+                        if (results.size() > 200) {
+                                //stop because it is taking too much effort
                                 break;
+                        }
                 }
                 clock_t endt = clock();
                 double passedTime = (double) (endt - begin) / (double) (CLOCKS_PER_SEC * 60);
@@ -738,6 +725,18 @@ vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
         }
         return results;
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
