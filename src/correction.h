@@ -11,8 +11,8 @@ struct readStructStr
         int intID;
         string strID;
         string corrctReadContent;
-        string erroneousReadContent;
-        string qualityProfile ;
+        string originalContent;
+        string qProfile ;
         string orientation;
 };
 
@@ -44,39 +44,39 @@ private:
         void correctReads(vector<readStructStr> &reads);
         void writeOutputReads(vector<readStructStr> const &reads);
         void printProgress(clock_t const &begin);
-        void correctRead(readStructStr &readInfo, int &supportedReads);
+        bool correctRead(readStructStr &readInfo);
         bool checkForAnswer(Kmer const &kmer, int startOfRead,
-                            const string &erroneousRead, string &guessedRead,
-                            string const &qualityProfile,
+                            string const &original, string &guess,
+                            string const &qProfile,
                             readCorrectionStatus &status);
-        bool recKmerCorrection(string &kmerStr, string const &qualityProfile,
+        bool recKmerCorrection(string &kmerStr, string const &qProfile,
                                int kmerStart, int round);
         int lowQualityPos(string quality, int startOfRead,
                           string const &kmer, int round);
         string applyINDchanges(string const &reference, string const &read);
         bool checkForIndels(string const &ref, string query,
-                            int maxError, string const &qualityProfile,
+                            int maxError, string const &qProfile,
                             string &newRead);
         bool recursiveCompare(SSNode const &leftNode, string const &nodeContent,
-                              int startOfNode, int startOfRead, string const &erroneousRead,
-                              string &guessedRead, string const &qualityProfile,
+                              int startOfNode, int startOfRead, string const &original,
+                              string &guess, string const &qProfile,
                               readCorrectionStatus &status);
-        bool expand(SSNode const &leftNode, string const &erroneousRead, string const &qualityProfile, string &guessedRead, pair<int, int> bounds, bool forward, readCorrectionStatus &status);
-        bool findBestMatch(vector<string> const &results, string &erroneousRead,
+        bool expand(SSNode const &node, string const &original, string const &qProfile, string &guess, pair<int, int> bounds, bool forward, readCorrectionStatus &status);
+        bool findBestMatch(vector<string> const &results, string &original,
                            bool rightDir, string &bestMatch, int readLength);
         
-        int findDifference(string const &guessedRead, string const &originalRead,
-                           string const &qualityProfile, int startOfRead);
+        int findDifference(string const &guess, string const &original,
+                           string const &qProfile, int start);
         int findDifference(string const &a, string const &b);
         vector<string> getAllSolutions(SSNode const &rootNode, string const &readPart,
-                             string const &qualityProfile, bool forward);
+                             string const &qProfile, bool forward);
         
-        bool correctionByKmer(readCorrectionStatus &status, string const &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile);
-        bool findKmer(readCorrectionStatus &status, string const &erroneousRead, string &guessedRead, string &qualityProfile);
-        bool findSimilarKmer(readCorrectionStatus &status, string const &erroneousRead, string &guessedRead, string &qualityProfile);
+        bool correctionByKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
+        bool findKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
+        bool findSimilarKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         
-        bool correctionByMEM(readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile);
-        bool correctionByMEM(vector<match_t> &matches, string &reference, readCorrectionStatus &status, string &erroneousRead, string &guessedRead, string &correctRead, string &qualityProfile);
+        bool correctionByMEM(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
+        bool correctionByMEM(vector<match_t> &matches, string &reference, readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
 public:
         ReadCorrection(DBGraph &g, Settings &s);
         void errorCorrection(LibraryContainer &libraries);
