@@ -1055,14 +1055,8 @@ double DBGraph::getReadLength() const {
         return readLength;
 }
 
-void DBGraph::writeGraphExplicit(int stage) const
+void DBGraph::writeGraphExplicit() const
 {
-        if (stage == 3 && !settings.getSkipStage4()) {
-        	return;
-        }
-        if (stage == 4 && !settings.getSkipStage5()) {
-        	return;
-        }
         vector<size_t> nodeLengths;
         ofstream nodeFile("DBGraph.txt");
 

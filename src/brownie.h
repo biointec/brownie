@@ -169,7 +169,7 @@ public:
                 return true;
         }
         void printInFile();
-
+        void writeGraphExplicit(int stage);
 };
 
 #endif

@@ -176,11 +176,11 @@ void Brownie::stageThree()
         #ifdef DEBUG
         graph.sanityCheck();
         #endif
-
-        graph.writeGraphExplicit(3);
-
         graph.clear();
         cout << "Stage 3 finished.\n" << endl;
+        if (settings.getSkipStage4()) {
+                writeGraphExplicit(3);
+        }
 }
 
 void Brownie::stageFour()
@@ -292,11 +292,11 @@ void Brownie::stageFour()
         command="pdftk "+settings.getTempDirectory()+ "cov/*.pdf cat output allpdfFiles.pdf";
         system(command.c_str());
         #endif
-
-        graph.writeGraphExplicit(4);
-
         graph.clear();
         cout << "Stage 4 finished.\n" << endl;
+        if (settings.getSkipStage5()) {
+                writeGraphExplicit(4);
+        }
 }
 
 void Brownie::stageFive()
@@ -336,6 +336,18 @@ void Brownie::stageFive()
         cout << "Stage 5 finished.\n" << endl;
         graph.clear();
 }
+
+void Brownie::writeGraphExplicit(int stage)
+{
+        // build pre-graph and simplify it
+        DBGraph graph(settings);
+        graph.createFromFile(getNodeFilename(stage),
+                             getArcFilename(stage),
+                             getMetaDataFilename(stage));
+        graph.writeGraphExplicit();
+        graph.clear();
+}
+
 
 int main(int argc, char** args)
 {

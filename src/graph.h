@@ -593,7 +593,7 @@ public:
     /*
      *
      */
-    void writeGraphExplicit(int stage) const;
+    void writeGraphExplicit() const;
 };
 
 #endif
