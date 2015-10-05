@@ -248,7 +248,8 @@ bool DBGraph::updateCutOffValue(int round)
         double ratio=1;
         if (round<3)
                 ratio=ratio+(double)round/10;
-        this->redLineValueCov= this->cutOffvalue*ratio;
+ 
+        this->redLineValueCov= this->cutOffvalue*ratio>this->redLineValueCov?this->cutOffvalue*ratio:this->cutOffvalue;
         ratio=.7;
         if (round<3)
                 ratio=ratio+(double)round/10;

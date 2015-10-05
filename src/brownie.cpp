@@ -26,7 +26,7 @@
 #include "graph.h"
 #include "correction.h"
 #include "kmertable.h"
-
+#include "alignment.h"
 #include <string>
 
 using namespace std;
@@ -192,11 +192,11 @@ void Brownie::stageFour()
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
 
-        if (!stageFourNecessary()) {
+       /*if (!stageFourNecessary()) {
                          cout << "Files produced by this stage appear to be present, "
                          "skipping stage 4..." << endl << endl;
                          return;
-        }
+        }*/
         DBGraph testgraph(settings);
         testgraph.createFromFile(getNodeFilename(3),
                                  getArcFilename(3),
@@ -252,8 +252,10 @@ void Brownie::stageFour()
                         graph.mergeSingleNodes(false);
                         graph.compareToSolution();
                 }
-                if (graph.sizeOfGraph<settings.getGenomeSize())
+                if (graph.sizeOfGraph<settings.getGenomeSize()){
+                         while(graph.mergeSingleNodes(true));
                          break;
+                }
                 //*******************************************************
                 graph.updateCutOffValue(round);
                 bool bubble=false;
@@ -267,8 +269,6 @@ void Brownie::stageFour()
                 graph.extractStatistic(round);
                 bool deleted=graph.deleteUnreliableNodes( round);
                 while(graph.mergeSingleNodes(true));
-
-
                 graph.compareToSolution();
                 graph.updateCutOffValue(round);
                 cout<<"estimated Kmer Coverage Mean: "<<graph.estimatedKmerCoverage<<endl;
@@ -277,7 +277,12 @@ void Brownie::stageFour()
                 round++;
 
         }
-        while(graph.mergeSingleNodes(true));
+        graph.writeCytoscapeGraph(0);
+        graph.clipTips(0);
+        graph.deleteUnreliableNodes(0);
+        graph.mergeSingleNodes(true);
+        graph.bubbleDetection(0);
+        graph.mergeSingleNodes(true);
         graph.writeGraph( nodeFileName,arcFileName,metaDataFileName);
         cout << " Ghraph correction completed in "
         << Util::stopChrono() << "s." << endl;
@@ -305,6 +310,7 @@ void Brownie::stageFive()
         cout << "================" << endl;
         DBGraph graph(settings);
 
+
         Util::startChrono();
         cout << "Creating graph... ";
         cout.flush();
@@ -315,10 +321,12 @@ void Brownie::stageFive()
         << graph.getNumArcs() << " arcs)" << endl;
         cout << "Created graph in "
         << Util::stopChrono() << "s." << endl;
+
         #ifdef DEBUG
         graph.compareToSolution();
         graph.writeCytoscapeGraph(0);
         #endif
+
         cout<<"N50 size is: " <<graph.getN50()<<endl;
         Util::startChrono();
         ReadCorrection rc(graph, settings);
@@ -337,8 +345,8 @@ int main(int argc, char** args)
                 #ifdef DEBUG
                 debug=true;
                 #endif
-                if(!debug)
-                       brownie.printInFile();
+                //if(!debug)
+                     //  brownie.printInFile();
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
                 << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL << endl;
                 cout << "Today is " << Util::getTime() << endl;

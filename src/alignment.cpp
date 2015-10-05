@@ -21,6 +21,7 @@
 
 #include "alignment.h"
 #include <string>
+#include <stdlib.h>
 using namespace std;
 
 void alignment::init()
@@ -76,10 +77,10 @@ int alignment::nw(
                 cout << endl;
         }
 
-        for( int i = 0; i <= L2; i++ )  delete F[ i ];
-        delete[] F;
-        for( int i = 0; i <= L2; i++ )  delete traceback[ i ];
-        delete[] traceback;
+        //for( int i = 0; i <= L2; i++ )  delete F[ i ];
+        //delete[] F;
+        //for( int i = 0; i <= L2; i++ )  delete traceback[ i ];
+        //delete[] traceback;
 
         return  0 ;
 }
@@ -281,7 +282,7 @@ void NW_Alignment::init()
 {
     matchScore=1;
     mismatchPenalty=1;
-    gapPenalty=5;
+    gapPenalty=1;
 }
 
 double NW_Alignment::max(double x, double y)
@@ -298,92 +299,118 @@ double NW_Alignment::get_similarity_per(string s1,string s2){
   double simScore=alignment(s1,s2);
   return (simScore/fullScore)*100;
 }
+void NW_Alignment::traceback(string& s1,string& s2, char **traceback ){
+        string news1="";
+        string news2="";
+        int i=s1.length();
+        int j=s2.length();
+        while( i > 0 || j > 0 )
+        {
+                if (i>0 && j>0 && traceback[i][j]=='\\') {
+                        news1 += s1[ i-1 ] ;
+                        news2 += s2[ j-1 ] ;
+                        i-- ;
+                        j-- ;
+
+                } else {
+                        if (i>0 && traceback[i][j]=='|') {
+                                news2 += '-' ;
+                                news1 += s1[ i-1 ] ;
+                                i-- ;
+
+                        } else {
+                                if (j>0 ) {
+                                        news2 += s2[ j-1 ] ;
+                                        news1 += '-' ;
+                                        j-- ;
+
+                                } else {
+                                        if (i>0) {
+                                                news2 += '-' ;
+                                                news1 += s1[ i-1 ] ;
+                                                i-- ;
+                                        }
+                                }
+                        }
+                }
+
+        }
+
+        reverse( news1.begin(), news1.end() );
+        reverse( news2.begin(), news2.end() );
+        s1=news1;
+        s2=news2;
+
+}
 double NW_Alignment::alignment(string &s1, string &s2)
 {
-    int n = s1.length() + 1, m = s2.length() + 1, i, j;
+        int n = s1.length() + 1, m = s2.length() + 1, i, j;
 
-    int s[n][m];
-    char t[n][m];
-    for (int i=0; i<n; i++) {
-            s[i][0]=i*-1;
-    }
-    for (int j = 0; j < m; j++)
-    {
-            s[0][ j] = j*-1;
-    }
-    for (int i = 1; i <= n-1; i++)
-    {
+        //int s[n][m];
 
-        for (int j = 1; j <= m-1; j++) // for (int j = jIndexMin; j <= i+(d); j++)//
+        //char traceback[n][m];
+        char **tracebackArr=new char*[n];
+        for(int i = 0; i < n; i++)
         {
-
-            int scroeDiag = 0;
-
-            if(s1[i-1]==s2[j-1]|| s1[i-1]=='N'||s2[i-1]=='N')
-                //if (s1.substr(i - 1, 1) == s2.substr(j - 1, 1))
-                scroeDiag = s[i - 1][ j - 1] + matchScore;   //match
-            else
-                scroeDiag = s[i - 1][ j - 1]  -mismatchPenalty; //substitution
-
-            int scroeLeft = s[i][ j - 1] - gapPenalty; //insert
-            int scroeUp = s[i - 1][ j] - gapPenalty;  //delete
-
-            int maxScore =  max(scroeDiag,scroeLeft,scroeUp);//  Math.Max(Math.Max(scroeDiag, scroeLeft), scroeUp);
-            s[i][ j] = maxScore;
-            if (scroeDiag==maxScore) {
-                t[i][j]='\\';
-            } else {
-                if (maxScore==scroeLeft) {
-                    t[i][j]='-';
-                } else {
-                    if(maxScore==scroeUp) {
-                        t[i][j]='|';
-                    }
-                }
-            }
-
-        }
-    }
-    string news1="";
-    string news2="";
-    i=n-1;
-    j=m-1;
-    while( i > 0 || j > 0 )
-    {
-
-        if (i>0 && j>0 && t[i][j]=='\\') {
-            news1 += s1[ i-1 ] ;
-            news2 += s2[ j-1 ] ;
-            i-- ;
-            j-- ;
-
-        } else {
-            if (i>0 && t[i][j]=='|') {
-                news2 += '-' ;
-                news1 += s1[ i-1 ] ;
-                i-- ;
-
-            } else {
-                if (j>0 ) {
-                    news2 += s2[ j-1 ] ;
-                    news1 += '-' ;
-                    j-- ;
-
-                } else {
-                    if (i>0) {
-                        news2 += '-' ;
-                        news1 += s1[ i-1 ] ;
-                        i-- ;
-                    }
-                }
-            }
+                tracebackArr[i] = new char[m];
         }
 
-    }
+        int **s = new int*[n];
+        for(int i = 0; i < n; i++)
+        {
+                s[i] = new int[m];
+        }
+        for (int i=0; i<n; i++) {
+                s[i][0]=i*-1;
+        }
+        for (int j = 0; j < m; j++)
+        {
+                s[0][ j] = j*-1;
+        }
+        for (int i = 1; i <= n-1; i++)
+        {
+                for (int j = 1; j <= m-1; j++) // for (int j = jIndexMin; j <= i+(d); j++)//
+                {
 
-    reverse( news1.begin(), news1.end() );
-    reverse( news2.begin(), news2.end() );
-    s1=news1;
-    s2=news2;
-    return s[n-1][m-1];
+                        int scroeDiag = 0;
+
+                        if(s1[i-1]==s2[j-1]|| s1[i-1]=='N'||s2[i-1]=='N')
+                                //if (s1.substr(i - 1, 1) == s2.substr(j - 1, 1))
+                                scroeDiag = s[i - 1][ j - 1] + matchScore;   //match
+                                else
+                                        scroeDiag = s[i - 1][ j - 1]  -mismatchPenalty; //substitution
+                                        int scroeLeft = s[i][ j - 1] - gapPenalty; //insert
+                                        int scroeUp = s[i - 1][ j] - gapPenalty;  //delete
+                                        int maxScore =  max(scroeDiag,scroeLeft,scroeUp);//  Math.Max(Math.Max(scroeDiag, scroeLeft), scroeUp);
+                                s[i][ j] = maxScore;
+                        if (scroeDiag==maxScore) {
+                                tracebackArr[i][j]='\\';
+                        } else {
+                                if (maxScore==scroeLeft) {
+                                        tracebackArr[i][j]='-';
+                                } else {
+                                        if(maxScore==scroeUp) {
+                                                tracebackArr[i][j]='|';
+                                        }
+                                }
+                        }
+
+                }
+        }
+        traceback(s1, s2,tracebackArr);
+        int result=s[n-1][m-1];
+        for(int i = 0; i < n; i++)
+        {
+                delete[] s[i];
+        }
+        delete[] s;
+
+        for(int i = 0; i < n; i++)
+        {
+                delete[] tracebackArr[i];
+        }
+        delete[] tracebackArr;
+        //return 0;
+        return result;
+
 }
