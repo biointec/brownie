@@ -337,8 +337,8 @@ int main(int argc, char** args)
                 #ifdef DEBUG
                 debug=true;
                 #endif
-                //if(!debug)
-                //       brownie.printInFile();
+                if(!debug)
+                       brownie.printInFile();
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
                 << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL << endl;
                 cout << "Today is " << Util::getTime() << endl;
