@@ -268,7 +268,7 @@ bool DBGraph::bubbleDetection(int round) {
                 return true;
         return false;
 }
-/*bool DBGraph::bubbleDetection(int round) {
+bool DBGraph::bubbleDetection() {
         cout<<"*********************<<Bubble Detection starts>>......................................... "<<endl;
         size_t numOfDel=0;
         size_t TP=0,TN=0,FP=0,FN=0;
@@ -278,21 +278,21 @@ bool DBGraph::bubbleDetection(int round) {
                 SSNode node = getSSNode ( lID );
                 if ( !node.isValid() )
                         continue;
-
-
                 if(node.getNumRightArcs()<2)
                         continue;
                 SSNode firstNodeInUpPath;
                 SSNode firstNodeInDoPath;
-                if (lID==150|lID==-145||lID==146){
-                        int stop=0;
-                }
-
                 if (lID++ % OUTPUT_FREQUENCY == 0)
                         (cout << "Extracting node -" <<numNodes<< "/ "<<lID<<" /"<<numNodes
-                             << " from graph.\r").flush();
-                if (hasBubble(node,firstNodeInUpPath,firstNodeInDoPath ))
-                        removeBubble(firstNodeInUpPath,firstNodeInDoPath,TP,TN,FP,FN, numOfDel);
+                        << " from graph.\r").flush();
+                vector<pair<SSNode, SSNode> > parallelPath =ExtractBubbles(node);
+                int i=0;
+                while (i<parallelPath.size()){
+                        pair<SSNode, SSNode>  p=parallelPath[i];
+                        if (p.first.isValid() && p.second.isValid())
+                                removeBubble(p.first,p.second,TP,TN,FP,FN, numOfDel);
+                        i++;
+                }
 
         }
         #ifdef DEBUG
@@ -304,29 +304,31 @@ bool DBGraph::bubbleDetection(int round) {
         if (numOfDel !=0)
                 return true;
         return false;
-}*/
-bool   DBGraph:: hasBubble( SSNode leftNode,  SSNode &prevFirstNode, SSNode &extendFirstNode){
+}
+
+vector<pair<SSNode, SSNode> >  DBGraph:: ExtractBubbles( SSNode rootNode){
         pathStruct extendedPath,prevPath;
         priority_queue<pathStruct,vector<pathStruct>,comparator > MinHeap;
         int maxLength=maxNodeSizeToDel;//settings.getK()*2;
         bool remove=false;
-        pathStruct rootPath(leftNode);
+        pathStruct rootPath(rootNode);
         MinHeap.push(rootPath);
         std::set<NodeID> visitedNodes;
         std::set<Arc *>visitedArc;
-        visitedNodes.insert(leftNode.getNodeID());
+        visitedNodes.insert(rootNode.getNodeID());
         map<NodeID,pathStruct> pathDic;
         pathDic[rootPath.getLastNode().getNodeID()]=rootPath;
+        vector<pair<SSNode, SSNode> > parallelNodes;
         while(!MinHeap.empty()) {
                 pathStruct leftPath =MinHeap.top();
                 MinHeap.pop();
-                leftNode=leftPath.getLastNode();
-                for ( ArcIt it = leftNode.rightBegin(); it != leftNode.rightEnd(); it++ ) {
+                rootNode=leftPath.getLastNode();
+                for ( ArcIt it = rootNode.rightBegin(); it != rootNode.rightEnd(); it++ ) {
                         //if(it->isValid()) {
                         SSNode rightNode=getSSNode(it->getNodeID());
-                        Arc* p= leftNode.getRightArc(rightNode.getNodeID());
+                        Arc* p= rootNode.getRightArc(rightNode.getNodeID());
                         if(!(visitedArc.find(p)!=visitedArc.end())) {
-                                visitedArc.insert(leftNode.getRightArc(rightNode.getNodeID()));
+                                visitedArc.insert(rootNode.getRightArc(rightNode.getNodeID()));
                                 extendedPath=leftPath;
                                 //+rightNode.getMarginalLength()
                                 if(extendedPath.pathLenght>=maxLength || rightNode.getNumRightArcs()==0)
@@ -341,10 +343,7 @@ bool   DBGraph:: hasBubble( SSNode leftNode,  SSNode &prevFirstNode, SSNode &ext
                                                         lengthpro=extendedPath.pathLenght/prevPath.pathLenght;
                                                 if (lengthpro<.8 || lengthpro>1.2)
                                                         continue;
-
-                                                prevFirstNode=prevPath.firstNode;
-                                                extendFirstNode=extendedPath.firstNode;
-                                                return true;
+                                                parallelNodes.push_back(make_pair(prevPath.firstNode,extendedPath.firstNode));
                                         }
                                 } else {
                                         visitedNodes.insert(rightNode.getNodeID());
@@ -353,8 +352,7 @@ bool   DBGraph:: hasBubble( SSNode leftNode,  SSNode &prevFirstNode, SSNode &ext
                         }
                 }
         }
-
-        return false;
+        return parallelNodes;
 
 }
 

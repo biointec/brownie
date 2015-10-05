@@ -217,12 +217,11 @@ bool DBGraph::clipTips(int round)
 
         for ( NodeID id = 1; id <= numNodes; id++ ) {
 
-                DSNode &node = getDSNode ( id );
+
+                SSNode node = getSSNode ( id );
                 if ( !node.isValid() ) {
                         continue;
                 }
-
-
                 // check for dead ends
                 bool leftDE = ( node.getNumLeftArcs() == 0 );
                 bool rightDE = ( node.getNumRightArcs() == 0 );
@@ -233,16 +232,6 @@ bool DBGraph::clipTips(int round)
                 SSNode startNode = ( rightDE ) ? getSSNode ( -id ) : getSSNode ( id );
                 bool singleNode=rightDE&&leftDE;
                 double threshold=singleNode?this->certainVlueCov:this->redLineValueCov;
-                if (id==2331375||id==2407308||id==2407308||id==10||id==36){
-                        cout<<"exmul            :"<<node.getExpMult()<<endl;
-                        cout<<"numOfrightArc    :"<<node.getNumRightArcs()<<endl;
-                        cout<<"numOfLeftarc     :"<<node.getNumLeftArcs()<<endl;
-                        cout<<"marginal         :"<<node.getMarginalLength()<<endl;
-                        cout<<"cov              :"<<startNode.getNodeKmerCov()<<endl;
-                        cout<<leftDE<<endl;
-                        cout<<rightDE<<endl;
-
-                }
                 if (startNode.getNodeKmerCov()<threshold )
                 {
                         if (removeNode(startNode)){
@@ -273,20 +262,16 @@ bool DBGraph::clipTips(int round)
                         #endif
                 }
         }
-        // count the number of clipped nodes
-        int numRemaining = 0;
-        for (NodeID i = 1; i <= numNodes; i++)
-                if (nodes[i].isValid())
-                        numRemaining++;
 
-        size_t numClipped = numInitial - numRemaining;
-        cout << "Clipped " << numClipped << "/" << numInitial << " nodes." << endl;
+
+
+        cout << "Clipped " << tp+fp << "/" << numInitial << " nodes." << endl;
         #ifdef DEBUG
         cout<< "TP:	"<<tp<<"	TN:	"<<tn<<"	FP:	"<<fp<<"	FN:	"<<fn<<endl;
         cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
         cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
         #endif
-        return numClipped > 0;
+        return  tp+fp>0;
 
 }
 

@@ -192,11 +192,11 @@ void Brownie::stageFour()
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
 
-       /*if (!stageFourNecessary()) {
+       if (!stageFourNecessary()) {
                          cout << "Files produced by this stage appear to be present, "
                          "skipping stage 4..." << endl << endl;
                          return;
-        }*/
+       }
         DBGraph testgraph(settings);
         testgraph.createFromFile(getNodeFilename(3),
                                  getArcFilename(3),
@@ -243,8 +243,8 @@ void Brownie::stageFour()
         size_t bigestN50=0;
         int round=1;
         size_t minN50=100;
-
-        while (simplified ) {
+        graph.getN50();
+        while (simplified && graph.sizeOfGraph>settings.getGenomeSize() ) {
                 //*******************************************************
                 graph.updateCutOffValue(round);
                 bool tips=graph.clipTips(round);
@@ -252,14 +252,10 @@ void Brownie::stageFour()
                         graph.mergeSingleNodes(false);
                         graph.compareToSolution();
                 }
-                if (graph.sizeOfGraph<settings.getGenomeSize()){
-                         while(graph.mergeSingleNodes(true));
-                         break;
-                }
                 //*******************************************************
                 graph.updateCutOffValue(round);
                 bool bubble=false;
-                bubble= graph.bubbleDetection(round);
+                bubble= graph.bubbleDetection();
                 if (bubble) {
                         graph.mergeSingleNodes(false);
                         graph.compareToSolution();
@@ -277,12 +273,8 @@ void Brownie::stageFour()
                 round++;
 
         }
+        cout<<"graph size:"<<graph.sizeOfGraph<<endl;
         graph.writeCytoscapeGraph(0);
-        graph.clipTips(0);
-        graph.deleteUnreliableNodes(0);
-        graph.mergeSingleNodes(true);
-        graph.bubbleDetection(0);
-        graph.mergeSingleNodes(true);
         graph.writeGraph( nodeFileName,arcFileName,metaDataFileName);
         cout << " Ghraph correction completed in "
         << Util::stopChrono() << "s." << endl;
@@ -346,7 +338,7 @@ int main(int argc, char** args)
                 debug=true;
                 #endif
                 //if(!debug)
-                     //  brownie.printInFile();
+                //       brownie.printInFile();
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
                 << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL << endl;
                 cout << "Today is " << Util::getTime() << endl;

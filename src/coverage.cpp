@@ -197,7 +197,6 @@ void DBGraph::extractStatistic(int round) {
                 double numerator=0;
                 double newValue=avg*nodeMultiplicity*node.getMarginalLength();
                 double newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
-
                 while(newProbability>numerator) {
                         nodeMultiplicity++;
                         numerator=newProbability;
@@ -273,24 +272,13 @@ bool DBGraph::deleteUnreliableNodes(int round){
         size_t numOfDel=0;
         bool change=false;
         for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
-
                 if (lID==0)
                         continue;
-
                 SSNode node = getSSNode ( lID );
                 if(!node.isValid())
                         continue;
-                       if (lID==-1862946||lID==1862946||lID==2395315||lID==-2395315||lID==-10||lID==-36){
-                        cout<<"exmul            :"<<node.getExpMult()<<endl;
-                        cout<<"numOfrightArc    :"<<node.getNumRightArcs()<<endl;
-                        cout<<"numOfLeftarc     :"<<node.getNumLeftArcs()<<endl;
-                        cout<<"marginal         :"<<node.getMarginalLength()<<endl;
-                }
-                if (node.getMarginalLength()<maxNodeSizeToDel)
+                if (node.getMarginalLength()<maxNodeSizeToDel) // smaller nodes might not be correct, these ndoes can never be deleted
                         continue;
-                //if (node.getExpMult()==0)
-                //        continue;
-
                 if(node.getNumRightArcs()- node.getExpMult()>0) {
                         ArcIt it = node.rightBegin();
                         while(it != node.rightEnd()) {
@@ -299,15 +287,7 @@ bool DBGraph::deleteUnreliableNodes(int round){
                                 SSNode firstNodeInUpPath;
                                 SSNode firstNodeInDoPath;
                                 bool bubble=false;
-                                if (hasBubble(node,firstNodeInUpPath,firstNodeInDoPath )){
-                                        if ((firstNodeInDoPath.getNodeID()==currNode.getNodeID()&&
-                                                firstNodeInDoPath.getKmerCov()<=firstNodeInUpPath.getKmerCov()
-                                        )||(firstNodeInUpPath.getNodeID()==currNode.getNodeID()&&
-                                                firstNodeInDoPath.getKmerCov()>=firstNodeInUpPath.getKmerCov()))
-                                                bubble=true;
-                                }
-
-                                if ((currNode.getNodeKmerCov()<cutOffvalue|| (tip||bubble))){
+                                if ((currNode.getNodeKmerCov()<redLineValueCov|| (tip))){
                                         #ifdef DEBUG
                                         if (trueMult[abs(currNode.getNodeID())]>0){
                                                 fp++;

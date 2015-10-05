@@ -16,7 +16,7 @@ struct readStructStr
         string orientation;
 };
 
-class ReadCorrection 
+class ReadCorrection
 {
 private:
         enum readCorrectionStatus {
@@ -27,6 +27,8 @@ private:
                 graphIsMissing,
                 anotherKmer
         };
+        const float maxErrorRate=.3;
+        const size_t avgQualityError=40;
         DBGraph &dbg;
         ReadLibrary *library;
         Settings &settings;
@@ -36,10 +38,10 @@ private:
         int numOfReads;
         int numOfAllReads;
         int numOfSupportedReads;
-        
+
         ifstream readsFile;
         ofstream outFastq;
-        
+
         void readInputReads(vector<readStructStr> &reads);
         void correctReads(vector<readStructStr> &reads);
         void writeOutputReads(vector<readStructStr> const &reads);
@@ -64,17 +66,17 @@ private:
         bool expand(SSNode const &node, string const &original, string const &qProfile, string &guess, pair<int, int> bounds, bool forward, readCorrectionStatus &status);
         bool findBestMatch(vector<string> const &results, string &original,
                            bool rightDir, string &bestMatch, int readLength);
-        
+
         int findDifference(string const &guess, string const &original,
                            string const &qProfile, int start);
         int findDifference(string const &a, string const &b);
         vector<string> getAllSolutions(SSNode const &rootNode, string const &readPart,
                              string const &qProfile, bool forward);
-        
+
         bool correctionByKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         bool findKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         bool findSimilarKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
-        
+
         bool correctionByMEM(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         bool correctionByMEM(vector<match_t> &matches, string const &reference, readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         int shiftSize(match_t const &m, string const &reference);
