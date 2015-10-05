@@ -229,7 +229,7 @@ void DBGraph::extractStatistic(int round) {
                 newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
                 denominator=denominator+newProbability;
                 i++;
-                while(i>0&& abs(newProbability-currentProb)> .00000001) {
+                while(i>0&& abs(newProbability-currentProb)> .000000001) {
                         currentProb=newProbability;
                         newValue=avg*i*node.getMarginalLength();
                         newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
@@ -243,28 +243,7 @@ void DBGraph::extractStatistic(int round) {
                 else
                         newProbability=gsl_ran_poisson_pdf(newValue,newValue);
                 inCorrctnessRatio=gsl_ran_poisson_pdf(newValue,newValue)/newProbability;
-                /*if (nodeMultiplicity==1) {
-                        int shiftedStReadCov=leftNode.getReadStartCov()+avg*leftNode.getMarginalLength();
-                        //i=2
-                        newValue=2*avg*leftNode.getMarginalLength();
-                        numerator=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
 
-                        //for i=1
-                        newValue=avg*leftNode.getMarginalLength();
-                        denominator=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
-                        i=3;
-                        newValue=avg*i*leftNode.getMarginalLength();
-                        newProbability=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
-                        currentProb=numerator;
-
-                        while(abs(newProbability-currentProb)> .00000001) {
-                                i++;
-                                denominator=denominator+newProbability;
-                                currentProb=newProbability;
-                                newValue=avg*i*leftNode.getMarginalLength();
-                                newProbability=gsl_ran_poisson_pdf(shiftedStReadCov,newValue);
-                        }
-                }*/
                 if (newProbability/gsl_ran_poisson_pdf(newValue,newValue)<.02)
                         node.setExpMult(0);
                 else
@@ -272,6 +251,17 @@ void DBGraph::extractStatistic(int round) {
 
                 double confidenceRatio=numerator/denominator;
                 nodesExpMult[node.getNodeID()]=make_pair(nodeMultiplicity,make_pair( confidenceRatio,inCorrctnessRatio));
+   /*             if (node.getMarginalLength()>maxNodeSizeToDel&& node.getExpMult()!=trueMult[abs(node.getNodeID())]){
+                        cout<<"true mult            :"<<trueMult[abs(node.getNodeID())]<<endl;
+                        cout<<"guessNodeMultiplicity:"<<nodeMultiplicity<<endl;
+                        cout<<"marginal lenth       :"<<node.getMarginalLength()<<endl;
+                        cout<<"confidenceRatio      :"<<confidenceRatio<<endl;
+                        cout<<"inCorrctnessRatio    :"<<inCorrctnessRatio<<endl;
+                        cout<<"ratio                :"<<newProbability/gsl_ran_poisson_pdf(newValue,newValue)<<endl;
+                        cout<<"kmer coverage        :"<<node.getKmerCov()<<endl;
+                        cout<<"*************************************************"<<endl;
+
+                }*/
 
         }
 
@@ -283,55 +273,64 @@ bool DBGraph::deleteUnreliableNodes(int round){
         size_t numOfDel=0;
         bool change=false;
         for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
+
                 if (lID==0)
                         continue;
-                SSNode leftNode = getSSNode ( lID );
-                if(!leftNode.isValid())
-                        continue;
 
-                if(leftNode.getNumRightArcs()- leftNode.getExpMult()>0) {
-                        ArcIt it = leftNode.rightBegin();
-                        while(it != leftNode.rightEnd()) {
+                SSNode node = getSSNode ( lID );
+                if(!node.isValid())
+                        continue;
+                       if (lID==-1862946||lID==1862946||lID==2395315||lID==-2395315||lID==-10||lID==-36){
+                        cout<<"exmul            :"<<node.getExpMult()<<endl;
+                        cout<<"numOfrightArc    :"<<node.getNumRightArcs()<<endl;
+                        cout<<"numOfLeftarc     :"<<node.getNumLeftArcs()<<endl;
+                        cout<<"marginal         :"<<node.getMarginalLength()<<endl;
+                }
+                if (node.getMarginalLength()<maxNodeSizeToDel)
+                        continue;
+                //if (node.getExpMult()==0)
+                //        continue;
+
+                if(node.getNumRightArcs()- node.getExpMult()>0) {
+                        ArcIt it = node.rightBegin();
+                        while(it != node.rightEnd()) {
                                 SSNode currNode = getSSNode(it->getNodeID());
-                                if ((currNode.getNodeKmerCov()<cutOffvalue|| (currNode.getNumRightArcs()==0&&currNode.getNumLeftArcs()==1))&&(currNode.getExpMult()==0)){
+                                bool tip=currNode.getNumRightArcs()==0&&currNode.getNumLeftArcs()==1;
+                                SSNode firstNodeInUpPath;
+                                SSNode firstNodeInDoPath;
+                                bool bubble=false;
+                                if (hasBubble(node,firstNodeInUpPath,firstNodeInDoPath )){
+                                        if ((firstNodeInDoPath.getNodeID()==currNode.getNodeID()&&
+                                                firstNodeInDoPath.getKmerCov()<=firstNodeInUpPath.getKmerCov()
+                                        )||(firstNodeInUpPath.getNodeID()==currNode.getNodeID()&&
+                                                firstNodeInDoPath.getKmerCov()>=firstNodeInUpPath.getKmerCov()))
+                                                bubble=true;
+                                }
+
+                                if ((currNode.getNodeKmerCov()<cutOffvalue|| (tip||bubble))){
+                                        #ifdef DEBUG
                                         if (trueMult[abs(currNode.getNodeID())]>0){
                                                 fp++;
                                         }
                                         else{
                                                 tp++;
                                         }
+                                        #endif
                                         change= removeNode(currNode);
                                         numOfDel++;
                                         break;
                                 }
                                 else{
+                                        #ifdef DEBUG
                                         if (trueMult[abs(currNode.getNodeID())]>0){
                                                 tn++;
                                         }
                                         else{
                                                 fn++;
                                         }
+                                        #endif
                                 }
                                 it++;
-                        }
-
-                        if(leftNode.getExpMult()==0&& leftNode.getNodeKmerCov()<cutOffvalue&& !change){
-                                if (trueMult[abs(leftNode.getNodeID())]>0){
-                                        fp++;
-                                }
-                                else{
-                                        tp++;;
-                                }
-                                numOfDel++;
-                                removeNode(leftNode);
-                        }else{
-                                if (trueMult[abs(leftNode.getNodeID())]>0){
-                                        tn++;
-                                }
-                                else{
-                                        fn++;
-                                }
-
                         }
 
                 }
@@ -625,9 +624,6 @@ bool DBGraph::mergeSingleNodes(bool force)
         for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
                 if ( lID == 0 ) {
                         continue;
-                }
-                if (lID==-404||lID==473){
-                        int stop=0;
                 }
                 SSNode left = getSSNode ( lID );
                 if ( !left.isValid() ) {

@@ -85,9 +85,9 @@ void ReadCorrection::correctRead(readStructStr &readInfo,
                                  int &numOfSupportedReads) {
         unsigned int readLength=readInfo.erroneousReadContent.length();
         bool found=false;
-        if (readLength < 50) {
-                int stop = 0;
-                stop++;
+        if (readInfo.strID[12]=='4'&&readInfo.strID[13]=='8'&&readInfo.strID[14]=='2'&&readInfo.strID[15]=='.')
+        {
+                int stop=0;
         }
         readCorrectionStatus status=kmerNotfound;
         SSNode leftNode;
@@ -407,7 +407,7 @@ bool ReadCorrection::checkForIndels(string const &ref, string query,
 }
 
 bool ReadCorrection::recursiveCompare(SSNode const &leftNode,
-                                      string const &nodeContent, 
+                                      string const &nodeContent,
                                       int startOfNode, int startOfRead,
                                       string &correctRead,
                                       string &erroneousRead,
@@ -442,7 +442,7 @@ bool ReadCorrection::recursiveCompare(SSNode const &leftNode,
                 guessedRead.replace(readLeftExtream,commonInRead.length(),commonInNode);
                 midleFound=true;
         }
-        int maxError=dbg.getReadLength()*33*.2;
+        int maxError=dbg.getReadLength()*33*.3;
         if (!expandFromLeft && !expandFromRight) {
                 int dif=findDifference( commonInNode,erroneousRead, qualityProfile,0);
                 if (dif<maxError) {
@@ -611,6 +611,7 @@ void ReadCorrection::getAllSolutions(SSNode const &rootNode,
                                      unsigned int depth,
                                      std::vector<std::string> &results,
                                      bool forward) {
+        NW_Alignment a;
         string root="";
         std::stack<nodePath> mystack;
         clock_t begin = clock();
@@ -620,11 +621,11 @@ void ReadCorrection::getAllSolutions(SSNode const &rootNode,
                 mystack.pop();
                 SSNode leftNode = r.first;
                 string currentPath = r.second;
-                
+
                 for (ArcIt it = (forward ? leftNode.rightBegin() : leftNode.leftBegin());
                      it !=  (forward ? leftNode.rightEnd() : leftNode.leftEnd());
                      ++it) {
-                     
+
                         SSNode rrNode = dbg.getSSNode(it->getNodeID());
                         if (rrNode.getNodeID() == -leftNode.getNodeID() || !rrNode.isValid())
                                 continue;
@@ -638,13 +639,14 @@ void ReadCorrection::getAllSolutions(SSNode const &rootNode,
                                 content = nodeContent.substr(0, nodeContent.length() - (kmerSize - 1));
                                 newPath = content + currentPath;
                         }
-                        
+
                         if (newPath.length() < depth) {
                                 if (newPath.length() > kmerSize ) {
                                         double errorDif;
                                         double errorCommonThreshold = newPath.length() * .3 * 25;
                                         if (forward) {
                                                 errorDif = findDifference(newPath, readPart, qualityProfile, 0);
+
                                         } else {
                                                 string tempNewPath = newPath;
                                                 string tempQualityProfile = qualityProfile;
@@ -658,6 +660,7 @@ void ReadCorrection::getAllSolutions(SSNode const &rootNode,
                                                 nodePath newPair = std::make_pair(rrNode, newPath  );
                                                 mystack.push(newPair);
                                         }
+
                                 } else {
                                         mystack.push(make_pair(rrNode, newPath));
                                 }

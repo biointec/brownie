@@ -193,7 +193,6 @@ struct comparator {
                 return first.pathLenght>=second.pathLenght;
         }
 };
-
 bool DBGraph::bubbleDetection(int round) {
         cout<<"*********************<<Bubble Detection starts>>......................................... "<<endl;
         priority_queue<pathStruct,vector<pathStruct>,comparator > MinHeap;
@@ -210,6 +209,11 @@ bool DBGraph::bubbleDetection(int round) {
 
                 if(leftNode.getNumRightArcs()<2)
                         continue;
+                if (lID==463326||lID==-463326||lID==1998663||lID==-1998663)
+                {
+                        int stop=0;
+                        stop++;
+                }
                 pathStruct rootPath(leftNode);
                 MinHeap.push(rootPath);
                 std::set<NodeID> visitedNodes;
@@ -264,6 +268,96 @@ bool DBGraph::bubbleDetection(int round) {
                 return true;
         return false;
 }
+/*bool DBGraph::bubbleDetection(int round) {
+        cout<<"*********************<<Bubble Detection starts>>......................................... "<<endl;
+        size_t numOfDel=0;
+        size_t TP=0,TN=0,FP=0,FN=0;
+        for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
+                if ( lID == 0 )
+                        continue;
+                SSNode node = getSSNode ( lID );
+                if ( !node.isValid() )
+                        continue;
+
+
+                if(node.getNumRightArcs()<2)
+                        continue;
+                SSNode firstNodeInUpPath;
+                SSNode firstNodeInDoPath;
+                if (lID==150|lID==-145||lID==146){
+                        int stop=0;
+                }
+
+                if (lID++ % OUTPUT_FREQUENCY == 0)
+                        (cout << "Extracting node -" <<numNodes<< "/ "<<lID<<" /"<<numNodes
+                             << " from graph.\r").flush();
+                if (hasBubble(node,firstNodeInUpPath,firstNodeInDoPath ))
+                        removeBubble(firstNodeInUpPath,firstNodeInDoPath,TP,TN,FP,FN, numOfDel);
+
+        }
+        #ifdef DEBUG
+        cout<< "TP:     "<<TP<<"        TN:     "<<TN<<"        FP:     "<<FP<<"        FN:     "<<FN<<endl;
+        cout << "Sensitivity: ("<<100*((double)TP/(double)(TP+FN))<<"%)"<<endl;
+        cout<<"Specificity: ("<<100*((double)TN/(double)(TN+FP))<<"%)"<<endl;
+        #endif
+        cout<<"number of  deleted nodes based on bubble detection:            "<<numOfDel<<endl;
+        if (numOfDel !=0)
+                return true;
+        return false;
+}*/
+bool   DBGraph:: hasBubble( SSNode leftNode,  SSNode &prevFirstNode, SSNode &extendFirstNode){
+        pathStruct extendedPath,prevPath;
+        priority_queue<pathStruct,vector<pathStruct>,comparator > MinHeap;
+        int maxLength=maxNodeSizeToDel;//settings.getK()*2;
+        bool remove=false;
+        pathStruct rootPath(leftNode);
+        MinHeap.push(rootPath);
+        std::set<NodeID> visitedNodes;
+        std::set<Arc *>visitedArc;
+        visitedNodes.insert(leftNode.getNodeID());
+        map<NodeID,pathStruct> pathDic;
+        pathDic[rootPath.getLastNode().getNodeID()]=rootPath;
+        while(!MinHeap.empty()) {
+                pathStruct leftPath =MinHeap.top();
+                MinHeap.pop();
+                leftNode=leftPath.getLastNode();
+                for ( ArcIt it = leftNode.rightBegin(); it != leftNode.rightEnd(); it++ ) {
+                        //if(it->isValid()) {
+                        SSNode rightNode=getSSNode(it->getNodeID());
+                        Arc* p= leftNode.getRightArc(rightNode.getNodeID());
+                        if(!(visitedArc.find(p)!=visitedArc.end())) {
+                                visitedArc.insert(leftNode.getRightArc(rightNode.getNodeID()));
+                                extendedPath=leftPath;
+                                //+rightNode.getMarginalLength()
+                                if(extendedPath.pathLenght>=maxLength || rightNode.getNumRightArcs()==0)
+                                        continue;
+                                extendedPath.addNodeToPaht(rightNode);
+                                MinHeap.push(extendedPath);
+                                if (visitedNodes.find(rightNode.getNodeID()) != visitedNodes.end()) {
+                                        prevPath=pathDic.at(rightNode.getNodeID());
+                                        if (prevPath.firstNode.getNodeID()!=extendedPath.firstNode.getNodeID()) {
+                                                double lengthpro=0;
+                                                if(prevPath.pathLenght!=0)
+                                                        lengthpro=extendedPath.pathLenght/prevPath.pathLenght;
+                                                if (lengthpro<.8 || lengthpro>1.2)
+                                                        continue;
+
+                                                prevFirstNode=prevPath.firstNode;
+                                                extendFirstNode=extendedPath.firstNode;
+                                                return true;
+                                        }
+                                } else {
+                                        visitedNodes.insert(rightNode.getNodeID());
+                                        pathDic[rightNode.getNodeID()]=extendedPath;
+                                }
+                        }
+                }
+        }
+
+        return false;
+
+}
+
 bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel ){
         bool preIsSingle=true;
         bool exteIsSingle=true;
@@ -314,7 +408,7 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
 
                         }
                 }
-                
+
 
         }
         if(preIsSingle && !exteIsSingle) {
@@ -363,8 +457,8 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                 }
         }
         //when the starting nodes of both parallel paths has more than one ingoing or arcgoing arcs
-      //  if (!exteIsSingle&&!preIsSingle)
-      //          return removeNotSingleBublles(prevFirstNode,extendFirstNode, TP,TN,FP,FN, numOfDel);
+        if (!exteIsSingle&&!preIsSingle)
+                return removeNotSingleBublles(prevFirstNode,extendFirstNode, TP,TN,FP,FN, numOfDel);
         return false;
 }
 bool DBGraph:: removeNotSingleBublles( SSNode &prevFirstNode ,SSNode& extendFirstNode, size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel){

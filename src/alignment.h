@@ -44,12 +44,13 @@ public:
 
 class NW_Alignment {
 private:
- 
+
     double matchScore;
     double mismatchPenalty;
     double gapPenalty;
     double max(double x, double y);
     double max(double x, double y, double z);
+    void    traceback(string& s1,string& s2,char **traceback );
     void init();
 public:
     NW_Alignment();

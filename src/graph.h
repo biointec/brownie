@@ -322,6 +322,7 @@ public:
     bool mergeSingleNodes(bool force);
 
     bool bubbleDetection(int round);
+    bool hasBubble( SSNode leftNode,  SSNode &prevFirstNode, SSNode &extendFirstNode);
     bool removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel);
     bool removeNotSingleBublles(  SSNode &prevFirstNode ,SSNode& extendFirstNode, size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel);
     bool removeNode(SSNode &rootNode);
@@ -485,7 +486,7 @@ public:
     NodeID getNumArcs() const {
         return numArcs;
     }
-    
+
     /**
      * Create a graph from file
      * @param nodeFilename Filename for the nodes
@@ -590,7 +591,7 @@ public:
      */
     double getReadLength() const;
     /*
-     *	
+     *
      */
     void writeGraphExplicit(int stage) const;
 };

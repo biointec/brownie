@@ -143,6 +143,7 @@ private:
         bool anchorFlag;        // FIXME
 
         double expMult;
+
         std::atomic<Coverage> readStartCov;
         std::atomic<Coverage> kmerCov;
 
