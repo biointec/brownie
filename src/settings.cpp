@@ -70,10 +70,9 @@ void Settings::printUsage() const
         cout << "  -p\t--pathtotmp\t\tpath to directory to store temporary files [default = current directory]\n\n";
 
         cout << " [file_options]\n";
-        cout << "  -o\t--output\t\toutput file name [default = inputfile.corr]\n\n";
-
-        cout << "  \t--graph\t\tskip read correction";
-        cout << "  \t--perfectgraph\t\tskip read and graph correction";
+        cout << "  -o\t--output\t\toutput file name [default = inputfile.corr]\n";
+        cout << "  \t--graph\t\tskip read correction\n";
+        cout << "  \t--perfectgraph\t\tskip read and graph correction\n\n";
 
         cout << " examples:\n";
         cout << "  ./brownie inputA.fastq\n";
