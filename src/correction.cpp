@@ -330,8 +330,8 @@ void ReadCorrection::errorCorrection(LibraryContainer &libraries) {
 }
 
 /**
- * 
- * @return 
+ *
+ * @return
  */
 bool ReadCorrection::checkForAnswer(Kmer const &kmer, int startOfRead,
                 string const &original,
@@ -353,8 +353,8 @@ bool ReadCorrection::checkForAnswer(Kmer const &kmer, int startOfRead,
 }
 
 /**
- * 
- * @return 
+ *
+ * @return
  */
 bool ReadCorrection::recKmerCorrection(string &kmerStr,
                 string const &qProfile,
@@ -388,8 +388,8 @@ bool ReadCorrection::recKmerCorrection(string &kmerStr,
 }
 
 /**
- * 
- * @return 
+ *
+ * @return
  */
 int ReadCorrection::lowQualityPos(string quality, int startOfRead,
                 string const &kmer, int round) {
@@ -419,8 +419,8 @@ int ReadCorrection::lowQualityPos(string quality, int startOfRead,
 }
 
 /**
- * 
- * @return 
+ *
+ * @return
  */
 string ReadCorrection::applyINDchanges(string const &reference,
                 string const &read) {
@@ -447,8 +447,8 @@ string ReadCorrection::applyINDchanges(string const &reference,
 }
 
 /**
- * 
- * @return 
+ *
+ * @return
  */
 bool ReadCorrection::checkForIndels(string const &ref, string query,
                 int const maxError, string const &qProfile,
@@ -496,8 +496,8 @@ bool ReadCorrection::expand(SSNode const &node, string const &original,
 }
 
 /**
- * 
- * @return 
+ *
+ * @return
  */
 bool ReadCorrection::recursiveCompare(SSNode const &leftNode,
                 string const &nodeContent,
@@ -514,7 +514,7 @@ bool ReadCorrection::recursiveCompare(SSNode const &leftNode,
         int nodeRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength - startOfRead + startOfNode : nodeLength;
         int nodeLeftExtreme = startOfNode > startOfRead ? startOfNode - startOfRead : 0;
         string commonInNode = nodeContent.substr(nodeLeftExtreme, nodeRightExtreme - nodeLeftExtreme );
-        int maxError = dbg.getReadLength() * 33 * .2;
+        int maxError = readLength * avgQualityError * maxErrorRate;
         if (!leftFound || !rightFound) {
                 //compute the common part in the read
                 int readLeftExtreme = startOfRead > startOfNode ? startOfRead - startOfNode : 0;
@@ -526,7 +526,7 @@ bool ReadCorrection::recursiveCompare(SSNode const &leftNode,
                         leftFound = expand(leftNode, original, qProfile, guess, bounds, false, status);
                 }
                 bool middleFound = false;
-                int errorCommonThreshold = sqrt(commonInRead.length()) * 33;
+                int errorCommonThreshold = commonInRead.length()*avgQualityError * maxErrorRate;
                 if (findDifference(commonInNode, original, qProfile, readLeftExtreme) < errorCommonThreshold) {
                         guess.replace(readLeftExtreme, commonInRead.length(), commonInNode);
                         middleFound = true;
@@ -654,7 +654,7 @@ typedef pair<nodePath, int> minHeapElement;
 
 /**
  * create a list of all possible solutions in the graph
- * @return list of 
+ * @return list of
  */
 vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
                 string const &readPart,
@@ -689,7 +689,7 @@ vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
                         if (newPath.length() < readPart.length()) {
                                 if (newPath.length() > kmerSize ) {
                                         double errorDif;
-                                        double errorCommonThreshold = newPath.length() * .3 * 25;
+                                        double errorCommonThreshold = newPath.length() * maxErrorRate * avgQualityError;
                                         if (forward) {
                                                 errorDif = findDifference(newPath, readPart, qProfile, 0);
                                         } else {
@@ -704,6 +704,7 @@ vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
                                         if (errorDif < errorCommonThreshold) {
                                                 mystack.push(make_pair(rrNode, newPath));
                                         }
+
                                 } else {
                                         mystack.push(make_pair(rrNode, newPath));
                                 }
@@ -711,15 +712,15 @@ vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
                                 string newStr = newPath.substr(0, readPart.length());
                                 results.push_back(newStr);
                         }
-                        if (results.size() > 200) {
+                       /* if (results.size() > 200) {
                                 //stop because it is taking too much effort
                                 break;
-                        }
+                        }*/
                 }
                 clock_t endt = clock();
                 double passedTime = (double) (endt - begin) / (double) (CLOCKS_PER_SEC * 60);
-                if (passedTime > .5) { //stop because it is taking too much time
-                        cout << "this read took more than half minute to process";
+                if (passedTime > .1) { //stop because it is taking too much time
+                        cout << "this read took more than .1 minute to process";
                         break;
                 }
         }
