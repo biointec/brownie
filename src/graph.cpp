@@ -1057,7 +1057,8 @@ double DBGraph::getReadLength() const {
 void DBGraph::writeGraphExplicit() const
 {
         vector<size_t> nodeLengths;
-        ofstream nodeFile("DBGraph.txt");
+        string nodeFileName = settings.getTempDirectory() + "/DBGraph.txt";
+        ofstream nodeFile(nodeFileName);
 
         size_t numExtractedNodes = 0, numExtractedArcs = 0;
         for (NodeID id = 1; id <= numNodes; id++) {
