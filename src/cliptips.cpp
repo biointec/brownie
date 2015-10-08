@@ -235,42 +235,42 @@ bool DBGraph::clipTips(int round)
                 if (startNode.getNodeKmerCov()<threshold )
                 {
                         if (removeNode(startNode)){
-                                #ifdef DEBUG
+                                //#ifdef DEBUG
                                 if (trueMult[abs( startNode.getNodeID())]>0) {
                                         fp++;
                                 } else {
                                         tp++;
                                 }
-                                #endif
+                                //#endif
                         }
                         else{
-                                #ifdef DEBUG
+                                //#ifdef DEBUG
                                 if (trueMult[abs( startNode.getNodeID())]>0) {
                                         tn++;
                                 } else {
                                         fn++;
                                 }
-                                #endif
+                                //#endif
                         }
                 }else{
-                        #ifdef DEBUG
+                        //#ifdef DEBUG
                         if (trueMult[abs( startNode.getNodeID())]>0) {
                                 tn++;
                         } else {
                                 fn++;
                         }
-                        #endif
+                        //#endif
                 }
         }
 
 
 
         cout << "Clipped " << tp+fp << "/" << numInitial << " nodes." << endl;
-        #ifdef DEBUG
+        //#ifdef DEBUG
         cout<< "TP:	"<<tp<<"	TN:	"<<tn<<"	FP:	"<<fp<<"	FN:	"<<fn<<endl;
         cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
         cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
-        #endif
+        //#endif
         return  tp+fp>0;
 
 }
