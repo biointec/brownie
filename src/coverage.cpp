@@ -242,31 +242,55 @@ void DBGraph::extractStatistic(int round) {
                 else
                         newProbability=gsl_ran_poisson_pdf(newValue,newValue);
                 inCorrctnessRatio=gsl_ran_poisson_pdf(newValue,newValue)/newProbability;
-
-                if (newProbability/gsl_ran_poisson_pdf(newValue,newValue)<.02)
-                        node.setExpMult(0);
-                else
-                        node.setExpMult(nodeMultiplicity);
-
                 double confidenceRatio=numerator/denominator;
+                node.setExpMult(nodeMultiplicity);
                 nodesExpMult[node.getNodeID()]=make_pair(nodeMultiplicity,make_pair( confidenceRatio,inCorrctnessRatio));
-   /*             if (node.getMarginalLength()>maxNodeSizeToDel&& node.getExpMult()!=trueMult[abs(node.getNodeID())]){
-                        cout<<"true mult            :"<<trueMult[abs(node.getNodeID())]<<endl;
-                        cout<<"guessNodeMultiplicity:"<<nodeMultiplicity<<endl;
-                        cout<<"marginal lenth       :"<<node.getMarginalLength()<<endl;
-                        cout<<"confidenceRatio      :"<<confidenceRatio<<endl;
-                        cout<<"inCorrctnessRatio    :"<<inCorrctnessRatio<<endl;
-                        cout<<"ratio                :"<<newProbability/gsl_ran_poisson_pdf(newValue,newValue)<<endl;
-                        cout<<"kmer coverage        :"<<node.getKmerCov()<<endl;
-                        cout<<"*************************************************"<<endl;
 
-                }*/
 
         }
 
 }
 
+bool DBGraph::nodeIsBubble(SSNode node, SSNode currNode){
+        if(node.getNumRightArcs()>1){
+                vector <pair<NodeID, NodeID>> possibleBubbles= searchForParallelNodes(node);
+                for (auto it : possibleBubbles){
+                        SSNode up=getSSNode(it.first);
+                        SSNode down=getSSNode(it.second);
+                        if (up.getNodeID()!=currNode.getNodeID()&& down.getNodeID()!=currNode.getNodeID())
+                                continue;
+                        if(up.isValid()&&down.isValid())
+                        {
+                                bool upIsBubble=true;
+                                if (whichOneIsbubble(upIsBubble,up, down,false,this->estimatedKmerCoverage)){
+                                        if (upIsBubble&& up.getNodeID()==currNode.getNodeID())
+                                                return true;
+                                        if(!upIsBubble&&down.getNodeID()==currNode.getNodeID())
+                                                return true;
+                                }
 
+                        }
+
+                }
+
+        }
+        return false;
+}
+bool DBGraph::checkNodeIsReliable(SSNode node){
+        if (node.getMarginalLength()<maxNodeSizeToDel) // smaller nodes might not be correct, these ndoes can never be deleted
+                return false;
+        pair<int, pair<double,double> > result=nodesExpMult[abs( node.getNodeID())];
+        double confidenceRatio=result.second.first;
+        double inCorrctnessRatio=result.second.second;
+        double nodeMultiplicity=result.first;
+        if (1/confidenceRatio>.001|| 1/inCorrctnessRatio<.001)
+                return false;
+        if(node.getNumRightArcs()- node.getExpMult()>0)
+                return true;
+        return false;
+
+
+}
 bool DBGraph::deleteUnreliableNodes(int round){
         double tp=0, tn=0, fp=0,fn=0;
         size_t numOfDel=0;
@@ -277,51 +301,52 @@ bool DBGraph::deleteUnreliableNodes(int round){
                 SSNode node = getSSNode ( lID );
                 if(!node.isValid())
                         continue;
-                if (node.getMarginalLength()<maxNodeSizeToDel) // smaller nodes might not be correct, these ndoes can never be deleted
+                if (!checkNodeIsReliable(node))
                         continue;
-                if(node.getNumRightArcs()- node.getExpMult()>0) {
-                        ArcIt it = node.rightBegin();
-                        while(it != node.rightEnd()) {
-                                SSNode currNode = getSSNode(it->getNodeID());
-                                bool tip=currNode.getNumRightArcs()==0&&currNode.getNumLeftArcs()==1;
-                                SSNode firstNodeInUpPath;
-                                SSNode firstNodeInDoPath;
-                                bool bubble=false;
-                                if ((currNode.getNodeKmerCov()<redLineValueCov|| (tip))){
-                                        #ifdef DEBUG
-                                        if (trueMult[abs(currNode.getNodeID())]>0){
-                                                fp++;
-                                        }
-                                        else{
-                                                tp++;
-                                        }
-                                        #endif
-                                        change= removeNode(currNode);
-                                        numOfDel++;
-                                        break;
+                ArcIt it = node.rightBegin();
+                while(it != node.rightEnd()) {
+                        SSNode currNode = getSSNode(it->getNodeID());
+                        bool tip=currNode.getNumRightArcs()==0&&currNode.getNumLeftArcs()==1;
+                        SSNode firstNodeInUpPath;
+                        SSNode firstNodeInDoPath;
+                        bool bubble=nodeIsBubble(node,currNode);
+                        double threshold= (!tip&& !bubble)? this->redLineValueCov:this->estimatedKmerCoverage;
+                        if (currNode.getNodeKmerCov()<threshold){
+                                //#ifdef DEBUG
+                                if (trueMult[abs(currNode.getNodeID())]>0){
+                                        fp++;
+
                                 }
                                 else{
-                                        #ifdef DEBUG
-                                        if (trueMult[abs(currNode.getNodeID())]>0){
-                                                tn++;
-                                        }
-                                        else{
-                                                fn++;
-                                        }
-                                        #endif
+                                        tp++;
                                 }
-                                it++;
+                                //#endif
+                                change= removeNode(currNode);
+                                numOfDel++;
+                                break;
                         }
-
+                        else{
+                                //#ifdef DEBUG
+                                if (trueMult[abs(currNode.getNodeID())]>0){
+                                        tn++;
+                                }
+                                else{
+                                        fn++;
+                                }
+                                //#endif
+                        }
+                        it++;
                 }
+
+
         }
 
-        cout<<"number of deleted nodes in deleteUnreliableNodes rutin:: "<<numOfDel<<endl;
-        #ifdef DEBUG
+        cout<<"number of deleted nodes in deleteUnreliableNodes :: "<<numOfDel<<endl;
+        //#ifdef DEBUG
         cout<< "TP:     "<<tp<<"        TN:     "<<tn<<"        FP:     "<<fp<<"        FN:     "<<fn<<endl;
         cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
         cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
-        #endif
+        //#endif
         return change;
 }
 /*

@@ -192,11 +192,11 @@ void Brownie::stageFour()
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
 
-       if (!stageFourNecessary()) {
+       /*if (!stageFourNecessary()) {
                          cout << "Files produced by this stage appear to be present, "
                          "skipping stage 4..." << endl << endl;
                          return;
-       }
+       }*/
         DBGraph testgraph(settings);
         testgraph.createFromFile(getNodeFilename(3),
                                  getArcFilename(3),
@@ -248,27 +248,33 @@ void Brownie::stageFour()
                 //*******************************************************
                 graph.updateCutOffValue(round);
                 bool tips=graph.clipTips(round);
-                if (tips) {
+                graph.mergeSingleNodes(false);
+                while(tips) {
                         graph.mergeSingleNodes(false);
+                        //#ifdef DEBUG
                         graph.compareToSolution();
+                        //#endif
+                        tips=graph.clipTips(round);
                 }
                 //*******************************************************
                 graph.updateCutOffValue(round);
                 bool bubble=false;
-                bubble= graph.bubbleDetection();
+                bubble= graph.bubbleDetection(round);
                 if (bubble) {
                         graph.mergeSingleNodes(false);
+                        //#ifdef DEBUG
                         graph.compareToSolution();
-
+                        //#endif
                 }
-
                 graph.extractStatistic(round);
                 bool deleted=graph.deleteUnreliableNodes( round);
                 while(graph.mergeSingleNodes(true));
-                graph.compareToSolution();
+                //#ifdef DEBUG
                 graph.updateCutOffValue(round);
+                graph.compareToSolution();
                 cout<<"estimated Kmer Coverage Mean: "<<graph.estimatedKmerCoverage<<endl;
                 cout<<"estimated Kmer Coverage STD: "<<graph.estimatedMKmerCoverageSTD<<endl;
+                //#endif
                 simplified = tips    || deleted || bubble; //link |||| coverage
                 round++;
 
@@ -317,6 +323,7 @@ void Brownie::stageFive()
         #ifdef DEBUG
         graph.compareToSolution();
         graph.writeCytoscapeGraph(0);
+
         #endif
 
         cout<<"N50 size is: " <<graph.getN50()<<endl;
@@ -338,7 +345,7 @@ int main(int argc, char** args)
                 debug=true;
                 #endif
                 if(!debug)
-                       brownie.printInFile();
+                     brownie.printInFile();
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
                 << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL << endl;
                 cout << "Today is " << Util::getTime() << endl;

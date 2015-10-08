@@ -46,7 +46,13 @@
 #include "graph.h"
 
 using namespace std;
+class PathInfo {
+public:
+        NodeID nodeID;
+        size_t length;
 
+        PathInfo(NodeID nodeID, size_t length) : nodeID(nodeID), length(length) {};
+};
 struct pathStruct {
         SSNode rootNode;
         SSNode lastNode;
@@ -192,8 +198,13 @@ struct comparator {
 
                 return first.pathLenght>=second.pathLenght;
         }
+         bool operator()(const PathInfo& f, const PathInfo& s)
+        {
+                return f.length >= s.length;
+        }
 };
-bool DBGraph::bubbleDetection(int round) {
+
+/*bool DBGraph::bubbleDetection(int round) {
         cout<<"*********************<<Bubble Detection starts>>......................................... "<<endl;
         priority_queue<pathStruct,vector<pathStruct>,comparator > MinHeap;
         int maxLength=maxNodeSizeToDel;//settings.getK()*2;
@@ -209,11 +220,6 @@ bool DBGraph::bubbleDetection(int round) {
 
                 if(leftNode.getNumRightArcs()<2)
                         continue;
-                if (lID==463326||lID==-463326||lID==1998663||lID==-1998663)
-                {
-                        int stop=0;
-                        stop++;
-                }
                 pathStruct rootPath(leftNode);
                 MinHeap.push(rootPath);
                 std::set<NodeID> visitedNodes;
@@ -267,11 +273,14 @@ bool DBGraph::bubbleDetection(int round) {
         if (numOfDel !=0)
                 return true;
         return false;
-}
+}*/
 bool DBGraph::bubbleDetection() {
         cout<<"*********************<<Bubble Detection starts>>......................................... "<<endl;
         size_t numOfDel=0;
         size_t TP=0,TN=0,FP=0,FN=0;
+
+        std::set<NodeID> visitedNodes;
+        std::set<Arc *>visitedArc;
         for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
                 if ( lID == 0 )
                         continue;
@@ -285,7 +294,7 @@ bool DBGraph::bubbleDetection() {
                 if (lID++ % OUTPUT_FREQUENCY == 0)
                         (cout << "Extracting node -" <<numNodes<< "/ "<<lID<<" /"<<numNodes
                         << " from graph.\r").flush();
-                vector<pair<SSNode, SSNode> > parallelPath =ExtractBubbles(node);
+                vector<pair<SSNode, SSNode> > parallelPath =ExtractBubbles(node,visitedNodes ,visitedArc );
                 int i=0;
                 while (i<parallelPath.size()){
                         pair<SSNode, SSNode>  p=parallelPath[i];
@@ -306,15 +315,13 @@ bool DBGraph::bubbleDetection() {
         return false;
 }
 
-vector<pair<SSNode, SSNode> >  DBGraph:: ExtractBubbles( SSNode rootNode){
-        pathStruct extendedPath,prevPath;
+vector<pair<SSNode, SSNode> >  DBGraph:: ExtractBubbles( SSNode rootNode,std::set<NodeID>& visitedNodes , std::set<Arc *>&visitedArc){
         priority_queue<pathStruct,vector<pathStruct>,comparator > MinHeap;
         int maxLength=maxNodeSizeToDel;//settings.getK()*2;
         bool remove=false;
         pathStruct rootPath(rootNode);
+        pathStruct extendedPath,prevPath;
         MinHeap.push(rootPath);
-        std::set<NodeID> visitedNodes;
-        std::set<Arc *>visitedArc;
         visitedNodes.insert(rootNode.getNodeID());
         map<NodeID,pathStruct> pathDic;
         pathDic[rootPath.getLastNode().getNodeID()]=rootPath;
@@ -352,6 +359,8 @@ vector<pair<SSNode, SSNode> >  DBGraph:: ExtractBubbles( SSNode rootNode){
                         }
                 }
         }
+        visitedArc.clear();
+        visitedNodes.clear();
         return parallelNodes;
 
 }
@@ -410,7 +419,7 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
 
         }
         if(preIsSingle && !exteIsSingle) {
-                if (preCov<this->cutOffvalue ) {
+                if (preCov<this->cutOffvalue && preCov<=extCov) {
                         #ifdef DEBUG
                         if (trueMult[abs( prevFirstNode.getNodeID())]>0)
                                 FP++;
@@ -433,7 +442,7 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
                 }
         }
         if(exteIsSingle&&!preIsSingle ) {
-                if ((extCov<this->cutOffvalue)) {
+                if ((extCov<this->cutOffvalue && extCov<=preCov)) {
                         #ifdef DEBUG
                         if(trueMult[abs( extendFirstNode.getNodeID())]>0)
                                 FP++;
@@ -456,10 +465,10 @@ bool DBGraph::removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t
         }
         //when the starting nodes of both parallel paths has more than one ingoing or arcgoing arcs
         if (!exteIsSingle&&!preIsSingle)
-                return removeNotSingleBublles(prevFirstNode,extendFirstNode, TP,TN,FP,FN, numOfDel);
+                return removeNotSingleBubbles(prevFirstNode,extendFirstNode, TP,TN,FP,FN, numOfDel);
         return false;
 }
-bool DBGraph:: removeNotSingleBublles( SSNode &prevFirstNode ,SSNode& extendFirstNode, size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel){
+bool DBGraph:: removeNotSingleBubbles( SSNode &prevFirstNode ,SSNode& extendFirstNode, size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel){
         double preCov=prevFirstNode.getNodeKmerCov();// prevFirstNode.getExpMult()/prevFirstNode.getMarginalLength();
         double extCov=extendFirstNode.getNodeKmerCov();//extendFirstNode.getExpMult()/extendFirstNode.getMarginalLength();
         if (preCov<extCov && preCov<this->cutOffvalue){
@@ -501,3 +510,226 @@ bool DBGraph:: removeNotSingleBublles( SSNode &prevFirstNode ,SSNode& extendFirs
         }
         return false;
 }
+bool DBGraph::whichOneIsbubble(bool &upIsBubble, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle, double threshold){
+        if (whichOneIsbubble(upIsBubble,prevFirstNode,extendFirstNode,onlySingle))
+                if (upIsBubble){
+                        if (prevFirstNode.getNodeKmerCov()<threshold)
+                                return true;
+                        else
+                                return false;
+                }else{
+                        if (extendFirstNode.getNodeKmerCov()<threshold)
+                                return true;
+                        else
+                                return false;
+                }
+        return false;
+}
+bool DBGraph::whichOneIsbubble(bool &first, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle){
+        double preCov=prevFirstNode.getNodeKmerCov();
+        double extCov=extendFirstNode.getNodeKmerCov();
+        bool preIsSingle=true;
+        bool exteIsSingle=true;
+        if (prevFirstNode.getNumLeftArcs()>1 ||prevFirstNode.getNumRightArcs()>1)
+                preIsSingle=false;
+        if(extendFirstNode.getNumLeftArcs()>1||extendFirstNode.getNumRightArcs()>1)
+                exteIsSingle=false;
+        if(onlySingle){
+                if(preIsSingle && exteIsSingle) {
+                        bool removePre=preCov<=extCov?true:false;
+                        bool removeExt=extCov<preCov ?true:false;
+                        if (!removeExt&&!removePre)
+                                return false;
+                        if (removePre){
+                                first=true;
+                                return true;
+                        }
+                        if (removeExt){
+                                first=false;
+                                return true;
+                        }
+                }
+                if(preIsSingle && !exteIsSingle ) {
+                        if ( preCov<=extCov) {
+                                first=true;
+                                return true;
+                        }
+                }
+                if(exteIsSingle&&!preIsSingle ) {
+                        if ( extCov<=preCov) {
+                                first=false;
+                                return true;
+                        }
+                }
+        }else{
+
+                if (preCov<=extCov ){
+                        first=true;
+                        return true;
+                }
+                if (extCov<preCov ){
+                        first=false;
+                        return true;
+                }
+        }
+
+        return false;
+}
+
+void DBGraph::extractPath(NodeID currID, const vector<NodeID>& prevNode) const
+{
+        vector<NodeID> path;
+        path.push_back(currID);
+
+        while (true) {
+                currID = prevNode[currID + numNodes];
+                if (currID == 0)
+                        break;
+                path.push_back(currID);
+        }
+
+        reverse(path.begin(), path.end());
+        for (auto it : path)
+                cout << it << " ";
+}
+
+vector<pair<NodeID, NodeID> >  DBGraph::searchForParallelNodes(SSNode node,vector<NodeID> &visited, vector<NodeID> &prevNode,vector<NodeID> &nodeColor){
+        size_t maxLength = 1000;
+        NodeID lID=node.getNodeID();
+        priority_queue<PathInfo, vector<PathInfo>, comparator> heap;
+        heap.push(PathInfo(lID, 0));
+        vector<pair<NodeID, NodeID> > parallelNodes;
+        while(!heap.empty()) {
+                PathInfo currTop = heap.top();
+                heap.pop();
+                NodeID currID = currTop.nodeID;
+                size_t currLength = currTop.length;
+                SSNode curr = getSSNode(currID);
+                if (!curr.isValid())
+                        continue;
+                for (ArcIt it = curr.rightBegin(); it != curr.rightEnd(); it++ ) {
+                        NodeID nextID = it->getNodeID();
+                        SSNode next = getSSNode(nextID);
+
+                        // do we encounter a node previously encountered?
+                        if ((prevNode[nextID + numNodes] != 0) || (nextID == lID)) {
+                                if (nodeColor[nextID + numNodes] == nodeColor[currID + numNodes])
+                                        continue;
+                                NodeID upNodeID=nodeColor[currID + numNodes];
+                                NodeID downNodeID=nodeColor[nextID + numNodes];
+                                if (upNodeID!=0&&downNodeID!=0)
+                                           parallelNodes.push_back(make_pair(upNodeID,downNodeID));
+
+                        } else {
+                                prevNode[nextID + numNodes] = currID;
+                                nodeColor[nextID + numNodes] = (currID == lID) ? nextID : nodeColor[currID + numNodes];
+                                visited.push_back(nextID);
+
+                                size_t nextLength = currLength + next.getMarginalLength();
+                                if (nextLength > maxLength)
+                                        continue;
+                                PathInfo nextTop(nextID, nextLength);
+                                heap.push(nextTop);
+                        }
+                }
+        }
+
+       for (auto it : visited) {
+                prevNode[it + numNodes] = 0;
+                nodeColor[it + numNodes] = 0;
+        }
+        visited.clear();
+
+        return parallelNodes;
+}
+vector<pair<NodeID, NodeID> >  DBGraph::searchForParallelNodes(SSNode node){
+        vector<NodeID> prevNode(2*numNodes+1, 0);
+        vector<NodeID> nodeColor(2*numNodes+1, 0);
+        vector<pair<NodeID, NodeID> > parallelNodes;
+        vector<NodeID> visited;
+        return (searchForParallelNodes(node, visited,nodeColor,prevNode));
+}
+bool DBGraph::bubbleDetection(int round) {
+        cout << " ======== Bubble Detection ======== " << endl;
+        size_t numOfDel=0;
+        size_t TP=0,TN=0,FP=0,FN=0;
+        vector<NodeID> prevNode(2*numNodes+1, 0);
+        vector<NodeID> nodeColor(2*numNodes+1, 0);
+        vector<pair<NodeID, NodeID> > parallelNodes;
+        vector<NodeID> visited;
+        for (NodeID lID = -numNodes; lID <numNodes; lID++) {
+                if (lID % OUTPUT_FREQUENCY == 0)
+                        (cout << "Extracting node -" <<numNodes<< "/ "<<lID<<" /"<<numNodes
+                        << " from graph.\r").flush();
+                if ( lID == 0 )
+                        continue;
+                SSNode node = getSSNode(lID);
+                if (!node.isValid())
+                        continue;
+                // only consider nodes that branch
+                if (node.getNumRightArcs() < 2)
+                        continue;
+                vector<pair<NodeID, NodeID> > parallelPath=searchForParallelNodes(node, visited,nodeColor,prevNode);
+                for (auto it : parallelPath){
+                        SSNode up=getSSNode(it.first);
+                        SSNode down=getSSNode(it.second);
+
+                        if(up.isValid()&&down.isValid())
+                        {
+                                bool upIsBubble=true;
+                                bool bubbleDeleted=false;
+                                if (whichOneIsbubble(upIsBubble,up, down,false,this->cutOffvalue)){
+                                        if (upIsBubble){
+                                                if (removeNode(up)){
+                                                        //#ifdef DEBUG
+                                                        if (trueMult[abs( up.getNodeID())]>0)
+                                                                FP++;
+                                                        else
+                                                                TP++;
+                                                        //#endif
+                                                        bubbleDeleted=true;
+                                                        numOfDel++;
+                                                }
+                                        }
+                                        else{
+                                                if( removeNode(down)){
+                                                        //#ifdef DEBUG
+                                                        if (trueMult[abs( down.getNodeID())]>0)
+                                                                FP++;
+                                                        else
+                                                                TP++;
+                                                        //#endif
+                                                        bubbleDeleted=true;
+                                                        numOfDel++;
+                                                }
+                                        }
+                                }
+                                if(!bubbleDeleted){
+                                        //#ifdef DEBUG
+                                        if (trueMult[abs( up.getNodeID())]>0)
+                                                TN++;
+                                        else
+                                                FN++;
+                                        if (trueMult[abs( down.getNodeID())]>0)
+                                                TN++;
+                                        else
+                                                FN++;
+                                        //#endif
+                                }
+
+                        }
+                }
+        }
+        //#ifdef DEBUG
+        cout<< "TP:     "<<TP<<"        TN:     "<<TN<<"        FP:     "<<FP<<"        FN:     "<<FN<<endl;
+        cout << "Sensitivity: ("<<100*((double)TP/(double)(TP+FN))<<"%)"<<endl;
+        cout<<"Specificity: ("<<100*((double)TN/(double)(TN+FP))<<"%)"<<endl;
+        //#endif
+        cout<<"number of  deleted nodes based on bubble detection:            "<<numOfDel<<endl;
+        if (numOfDel !=0)
+                return true;
+        return false;
+}
+
+
+
