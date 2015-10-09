@@ -253,10 +253,13 @@ void DBGraph::extractStatistic(int round) {
 
 bool DBGraph::nodeIsBubble(SSNode node, SSNode currNode){
         if(node.getNumRightArcs()>1){
-                vector <pair<NodeID, NodeID>> possibleBubbles= searchForParallelNodes(node);
-                for (auto it : possibleBubbles){
-                        SSNode up=getSSNode(it.first);
-                        SSNode down=getSSNode(it.second);
+                vector<pair<vector<NodeID>, vector<NodeID>> > possibleBubbles=searchForParallelNodes(node);
+                for (auto b : possibleBubbles){
+                        vector<NodeID> upPath=b.first;
+                        vector<NodeID> downPath=b.second;
+                        SSNode up=getSSNode(b.first[1]);
+                        SSNode down=getSSNode(b.second[1]);
+
                         if (up.getNodeID()!=currNode.getNodeID()&& down.getNodeID()!=currNode.getNodeID())
                                 continue;
                         if(up.isValid()&&down.isValid())
@@ -271,8 +274,8 @@ bool DBGraph::nodeIsBubble(SSNode node, SSNode currNode){
 
                         }
 
-                }
 
+                }
         }
         return false;
 }
@@ -298,7 +301,9 @@ bool DBGraph::deleteUnreliableNodes(int round){
         for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
                 if (lID==0)
                         continue;
+
                 SSNode node = getSSNode ( lID );
+
                 if(!node.isValid())
                         continue;
                 if (!checkNodeIsReliable(node))

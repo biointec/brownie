@@ -192,11 +192,11 @@ void Brownie::stageFour()
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
 
-       /*if (!stageFourNecessary()) {
+       if (!stageFourNecessary()) {
                          cout << "Files produced by this stage appear to be present, "
                          "skipping stage 4..." << endl << endl;
                          return;
-       }*/
+       }
         DBGraph testgraph(settings);
         testgraph.createFromFile(getNodeFilename(3),
                                  getArcFilename(3),
@@ -244,7 +244,8 @@ void Brownie::stageFour()
         int round=1;
         size_t minN50=100;
         graph.getN50();
-        while (simplified && graph.sizeOfGraph>settings.getGenomeSize() ) {
+        //&& graph.sizeOfGraph>settings.getGenomeSize()
+        while (simplified  ) {
                 //*******************************************************
                 graph.updateCutOffValue(round);
                 bool tips=graph.clipTips(round);
@@ -280,12 +281,13 @@ void Brownie::stageFour()
 
         }
         cout<<"graph size:"<<graph.sizeOfGraph<<endl;
-        graph.writeCytoscapeGraph(0);
+
         graph.writeGraph( nodeFileName,arcFileName,metaDataFileName);
         cout << " Ghraph correction completed in "
         << Util::stopChrono() << "s." << endl;
         Util::startChrono();
         #ifdef DEBUG
+        graph.writeCytoscapeGraph(0);
         graph.sanityCheck();
         command="pdftk "+settings.getTempDirectory()+ "cov/*.pdf cat output allpdfFiles.pdf";
         system(command.c_str());
@@ -307,6 +309,7 @@ void Brownie::stageFive()
         cout << "Entering stage 5" << endl;
         cout << "================" << endl;
         DBGraph graph(settings);
+        ;
 
 
         Util::startChrono();
@@ -323,7 +326,6 @@ void Brownie::stageFive()
         #ifdef DEBUG
         graph.compareToSolution();
         graph.writeCytoscapeGraph(0);
-
         #endif
 
         cout<<"N50 size is: " <<graph.getN50()<<endl;
@@ -356,8 +358,8 @@ int main(int argc, char** args)
                 #ifdef DEBUG
                 debug=true;
                 #endif
-                if(!debug)
-                     brownie.printInFile();
+                //if(!debug)
+                //     brownie.printInFile();
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
                 << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL << endl;
                 cout << "Today is " << Util::getTime() << endl;

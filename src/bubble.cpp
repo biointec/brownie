@@ -592,13 +592,28 @@ void DBGraph::extractPath(NodeID currID, const vector<NodeID>& prevNode) const
         for (auto it : path)
                 cout << it << " ";
 }
+vector<NodeID> DBGraph::getPath(NodeID currID, const vector<NodeID>& prevNode) const
+{
+        vector<NodeID> path;
+        path.push_back(currID);
 
-vector<pair<NodeID, NodeID> >  DBGraph::searchForParallelNodes(SSNode node,vector<NodeID> &visited, vector<NodeID> &prevNode,vector<NodeID> &nodeColor){
+        while (true) {
+                currID = prevNode[currID + numNodes];
+                if (currID == 0)
+                        break;
+                path.push_back(currID);
+        }
+
+        reverse(path.begin(), path.end());
+        return path;
+}
+
+vector<pair<vector<NodeID>, vector<NodeID> > >  DBGraph::searchForParallelNodes(SSNode node,vector<NodeID> &visited, vector<NodeID> &prevNode,vector<NodeID> &nodeColor){
         size_t maxLength = 1000;
         NodeID lID=node.getNodeID();
         priority_queue<PathInfo, vector<PathInfo>, comparator> heap;
         heap.push(PathInfo(lID, 0));
-        vector<pair<NodeID, NodeID> > parallelNodes;
+        vector<pair<vector<NodeID>, vector<NodeID> > > parallelNodes;
         while(!heap.empty()) {
                 PathInfo currTop = heap.top();
                 heap.pop();
@@ -615,10 +630,14 @@ vector<pair<NodeID, NodeID> >  DBGraph::searchForParallelNodes(SSNode node,vecto
                         if ((prevNode[nextID + numNodes] != 0) || (nextID == lID)) {
                                 if (nodeColor[nextID + numNodes] == nodeColor[currID + numNodes])
                                         continue;
+
                                 NodeID upNodeID=nodeColor[currID + numNodes];
                                 NodeID downNodeID=nodeColor[nextID + numNodes];
-                                if (upNodeID!=0&&downNodeID!=0)
-                                           parallelNodes.push_back(make_pair(upNodeID,downNodeID));
+                                if (upNodeID!=0&&downNodeID!=0){
+                                        vector<NodeID> upPathElements=getPath(currID, prevNode);
+                                        vector<NodeID> downPathElements=getPath(nextID, prevNode);
+                                        parallelNodes.push_back(make_pair(upPathElements,downPathElements));
+                                }
 
                         } else {
                                 prevNode[nextID + numNodes] = currID;
@@ -642,10 +661,9 @@ vector<pair<NodeID, NodeID> >  DBGraph::searchForParallelNodes(SSNode node,vecto
 
         return parallelNodes;
 }
-vector<pair<NodeID, NodeID> >  DBGraph::searchForParallelNodes(SSNode node){
+vector<pair<vector<NodeID>, vector<NodeID>> >  DBGraph::searchForParallelNodes(SSNode node){
         vector<NodeID> prevNode(2*numNodes+1, 0);
         vector<NodeID> nodeColor(2*numNodes+1, 0);
-        vector<pair<NodeID, NodeID> > parallelNodes;
         vector<NodeID> visited;
         return (searchForParallelNodes(node, visited,nodeColor,prevNode));
 }
@@ -669,10 +687,18 @@ bool DBGraph::bubbleDetection(int round) {
                 // only consider nodes that branch
                 if (node.getNumRightArcs() < 2)
                         continue;
-                vector<pair<NodeID, NodeID> > parallelPath=searchForParallelNodes(node, visited,nodeColor,prevNode);
+                vector<pair<vector<NodeID>, vector<NodeID>> > parallelPath=searchForParallelNodes(node, visited,nodeColor,prevNode);
                 for (auto it : parallelPath){
-                        SSNode up=getSSNode(it.first);
-                        SSNode down=getSSNode(it.second);
+
+                        vector<NodeID> upPath=it.first;
+                        vector<NodeID> downPath=it.second;
+
+                        SSNode upLast=getSSNode(it.first[upPath.size()-1]);
+                        SSNode downLast=getSSNode(it.second[downPath.size()-1]);
+                        SSNode up=getSSNode(it.first[1]);
+                        SSNode down=getSSNode(it.second[1]);
+
+
 
                         if(up.isValid()&&down.isValid())
                         {
@@ -680,21 +706,36 @@ bool DBGraph::bubbleDetection(int round) {
                                 bool bubbleDeleted=false;
                                 if (whichOneIsbubble(upIsBubble,up, down,false,this->cutOffvalue)){
                                         if (upIsBubble){
+                                                size_t mul=trueMult[abs( up.getNodeID())];
                                                 if (removeNode(up)){
                                                         //#ifdef DEBUG
-                                                        if (trueMult[abs( up.getNodeID())]>0)
+                                                        if (mul>0)
                                                                 FP++;
                                                         else
                                                                 TP++;
                                                         //#endif
                                                         bubbleDeleted=true;
                                                         numOfDel++;
+                                                }
+                                                if (upLast.isValid()&&upLast.getNodeKmerCov()<cutOffvalue){
+                                                        mul=trueMult[abs( upLast.getNodeID())];
+                                                        if (removeNode(upLast)){
+                                                                //#ifdef DEBUG
+                                                                if (mul>0)
+                                                                        FP++;
+                                                                else
+                                                                        TP++;
+                                                                //#endif
+                                                                bubbleDeleted=true;
+                                                                numOfDel++;
+                                                        }
                                                 }
                                         }
                                         else{
+                                                size_t mul=trueMult[abs( down.getNodeID())];
                                                 if( removeNode(down)){
                                                         //#ifdef DEBUG
-                                                        if (trueMult[abs( down.getNodeID())]>0)
+                                                        if (mul>0)
                                                                 FP++;
                                                         else
                                                                 TP++;
@@ -702,6 +743,21 @@ bool DBGraph::bubbleDetection(int round) {
                                                         bubbleDeleted=true;
                                                         numOfDel++;
                                                 }
+                                                if (downLast.isValid()&&downLast.getNodeKmerCov()<cutOffvalue){
+                                                        mul=trueMult[abs( downLast.getNodeID())];
+                                                        if( removeNode(downLast)){
+                                                                //#ifdef DEBUG
+                                                                if (mul>0)
+                                                                        FP++;
+                                                                else
+                                                                        TP++;
+                                                                //#endif
+                                                                bubbleDeleted=true;
+                                                                numOfDel++;
+                                                        }
+                                                }
+
+
                                         }
                                 }
                                 if(!bubbleDeleted){

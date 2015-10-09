@@ -214,6 +214,7 @@ bool DBGraph::clipTips(int round)
         int numInitial = 0;
         double tp=0, tn=0, fp=0,fn=0;
         cout<<"cut off value for removing tips is: "<<this->redLineValueCov<<endl;
+        double threshold=this->redLineValueCov;
 
         for ( NodeID id = 1; id <= numNodes; id++ ) {
 
@@ -223,15 +224,29 @@ bool DBGraph::clipTips(int round)
                         continue;
                 }
                 // check for dead ends
+
                 bool leftDE = ( node.getNumLeftArcs() == 0 );
                 bool rightDE = ( node.getNumRightArcs() == 0 );
-
                 if ( !leftDE && !rightDE ) {
                         continue;
                 }
                 SSNode startNode = ( rightDE ) ? getSSNode ( -id ) : getSSNode ( id );
                 bool singleNode=rightDE&&leftDE;
-                double threshold=singleNode?this->certainVlueCov:this->redLineValueCov;
+                threshold=!singleNode? this->redLineValueCov:this->certainVlueCov;
+
+                //joined tip
+                if (startNode.getNumRightArcs()>1)
+                        threshold=this->certainVlueCov;
+                if (singleNode)
+                        threshold=this->certainVlueCov;
+                SSNode rightNode;
+                if (!singleNode){
+                        ArcIt it = startNode.rightBegin();
+                        rightNode= getSSNode(it->getNodeID());
+                }
+                if (!singleNode &&rightNode.getNumLeftArcs()<2)
+                        threshold =this->certainVlueCov;
+
                 if (startNode.getNodeKmerCov()<threshold )
                 {
                         if (removeNode(startNode)){
