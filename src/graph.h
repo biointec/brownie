@@ -328,8 +328,8 @@ public:
     void extractPath(NodeID currID, const vector<NodeID>& prevNode) const;
     vector<NodeID> getPath(NodeID currID, const vector<NodeID>& prevNode) const;
     bool removeNotSingleBubbles(  SSNode &prevFirstNode ,SSNode& extendFirstNode, size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel);
-    bool whichOneIsbubble(bool &first, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle, double threshold);
-    bool whichOneIsbubble(bool &first, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle);
+    bool whichOneIsbubble(SSNode rootNode,bool &first, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle, double threshold);
+    bool whichOneIsbubble(SSNode rootNode,bool &first, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle);
     bool removeNode(SSNode &rootNode);
     void extractStatistic(int round);
     bool nodeIsBubble(SSNode node, SSNode currNode);
@@ -348,8 +348,8 @@ public:
     void updateReadFile(const map<long , string> &cacheTable  );
     string getReadByLine(long num, string fileName);
     void WriteReadsToTextFile();
-   vector<pair<vector<NodeID>, vector<NodeID>> >  searchForParallelNodes(SSNode node,vector<NodeID> &visited, vector<NodeID> &prevNode,vector<NodeID> &nodeColor);
-    vector<pair<vector<NodeID>, vector<NodeID>> > searchForParallelNodes(SSNode node);
+   vector<pair<vector<NodeID>, vector<NodeID>> >  searchForParallelNodes(SSNode node,vector<NodeID> &visited, vector<NodeID> &prevNode,vector<NodeID> &nodeColor, int depth);
+    vector<pair<vector<NodeID>, vector<NodeID>> > searchForParallelNodes(SSNode node, int depth);
     double findDifference2(string a, string b);
     bool alignToKmer(string& read,const string& kmer, int readLine, int& startPoint, bool& kmerReverse);
     bool votingCorrection(vector<pair< pair<double,double>, bool> >  &tempArray,map<long , string > &cacheTable, string kmer);

@@ -919,7 +919,7 @@ void DBGraph::writeGraph(const std::string& nodeFilename,
         numExtractedNodes++;
 
         //nodeFile << "NODE" << "\t" << numExtractedNodes << "\t"
-        nodeFile << "NODE" << "\t" << id << "\t"
+        nodeFile << ">NODE" << "\t" << id << "\t"
                  << node.getLength() << "\t" << node.getKmerCov()
                  << "\t" << node.getReadStartCov() << "\n"
                  << node.getSequence() << "\n";

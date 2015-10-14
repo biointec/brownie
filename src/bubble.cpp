@@ -510,8 +510,8 @@ bool DBGraph:: removeNotSingleBubbles( SSNode &prevFirstNode ,SSNode& extendFirs
         }
         return false;
 }
-bool DBGraph::whichOneIsbubble(bool &upIsBubble, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle, double threshold){
-        if (whichOneIsbubble(upIsBubble,prevFirstNode,extendFirstNode,onlySingle))
+bool DBGraph::whichOneIsbubble(SSNode rootNode, bool &upIsBubble, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle, double threshold){
+        if (whichOneIsbubble(rootNode, upIsBubble,prevFirstNode,extendFirstNode,onlySingle))
                 if (upIsBubble){
                         if (prevFirstNode.getNodeKmerCov()<threshold)
                                 return true;
@@ -525,7 +525,7 @@ bool DBGraph::whichOneIsbubble(bool &upIsBubble, SSNode &prevFirstNode ,SSNode& 
                 }
         return false;
 }
-bool DBGraph::whichOneIsbubble(bool &first, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle){
+bool DBGraph::whichOneIsbubble(SSNode rootNode,bool &first, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle){
         double preCov=prevFirstNode.getNodeKmerCov();
         double extCov=extendFirstNode.getNodeKmerCov();
         bool preIsSingle=true;
@@ -536,8 +536,8 @@ bool DBGraph::whichOneIsbubble(bool &first, SSNode &prevFirstNode ,SSNode& exten
                 exteIsSingle=false;
         if(onlySingle){
                 if(preIsSingle && exteIsSingle) {
-                        bool removePre=preCov<=extCov?true:false;
-                        bool removeExt=extCov<preCov ?true:false;
+                        bool removePre=preCov<=extCov ?true:false;//&&rootNode.getNodeKmerCov()/prevFirstNode.getNodeKmerCov()>3
+                        bool removeExt=extCov<preCov  ?true:false;//&&rootNode.getNodeKmerCov()/extendFirstNode.getNodeKmerCov()>3
                         if (!removeExt&&!removePre)
                                 return false;
                         if (removePre){
@@ -563,11 +563,11 @@ bool DBGraph::whichOneIsbubble(bool &first, SSNode &prevFirstNode ,SSNode& exten
                 }
         }else{
 
-                if (preCov<=extCov ){
+                if (preCov<=extCov){//&&rootNode.getNodeKmerCov()/prevFirstNode.getNodeKmerCov()>4
                         first=true;
                         return true;
                 }
-                if (extCov<preCov ){
+                if (extCov<preCov ){//&&rootNode.getNodeKmerCov()/extendFirstNode.getNodeKmerCov()>4
                         first=false;
                         return true;
                 }
@@ -608,8 +608,8 @@ vector<NodeID> DBGraph::getPath(NodeID currID, const vector<NodeID>& prevNode) c
         return path;
 }
 
-vector<pair<vector<NodeID>, vector<NodeID> > >  DBGraph::searchForParallelNodes(SSNode node,vector<NodeID> &visited, vector<NodeID> &prevNode,vector<NodeID> &nodeColor){
-        size_t maxLength = 1000;
+vector<pair<vector<NodeID>, vector<NodeID> > >  DBGraph::searchForParallelNodes(SSNode node,vector<NodeID> &visited, vector<NodeID> &prevNode,vector<NodeID> &nodeColor, int depth){
+        size_t maxLength = depth;
         NodeID lID=node.getNodeID();
         priority_queue<PathInfo, vector<PathInfo>, comparator> heap;
         heap.push(PathInfo(lID, 0));
@@ -661,13 +661,13 @@ vector<pair<vector<NodeID>, vector<NodeID> > >  DBGraph::searchForParallelNodes(
 
         return parallelNodes;
 }
-vector<pair<vector<NodeID>, vector<NodeID>> >  DBGraph::searchForParallelNodes(SSNode node){
+vector<pair<vector<NodeID>, vector<NodeID>> >  DBGraph::searchForParallelNodes(SSNode node, int depth){
         vector<NodeID> prevNode(2*numNodes+1, 0);
         vector<NodeID> nodeColor(2*numNodes+1, 0);
         vector<NodeID> visited;
-        return (searchForParallelNodes(node, visited,nodeColor,prevNode));
+        return (searchForParallelNodes(node, visited,nodeColor,prevNode, depth));
 }
-bool DBGraph::bubbleDetection(int round) {
+bool DBGraph::bubbleDetection(int depth) {
         cout << " ======== Bubble Detection ======== " << endl;
         size_t numOfDel=0;
         size_t TP=0,TN=0,FP=0,FN=0;
@@ -687,7 +687,7 @@ bool DBGraph::bubbleDetection(int round) {
                 // only consider nodes that branch
                 if (node.getNumRightArcs() < 2)
                         continue;
-                vector<pair<vector<NodeID>, vector<NodeID>> > parallelPath=searchForParallelNodes(node, visited,nodeColor,prevNode);
+                vector<pair<vector<NodeID>, vector<NodeID>> > parallelPath=searchForParallelNodes(node, visited,nodeColor,prevNode, depth);
                 for (auto it : parallelPath){
 
                         vector<NodeID> upPath=it.first;
@@ -697,14 +697,11 @@ bool DBGraph::bubbleDetection(int round) {
                         SSNode downLast=getSSNode(it.second[downPath.size()-1]);
                         SSNode up=getSSNode(it.first[1]);
                         SSNode down=getSSNode(it.second[1]);
-
-
-
                         if(up.isValid()&&down.isValid())
                         {
                                 bool upIsBubble=true;
                                 bool bubbleDeleted=false;
-                                if (whichOneIsbubble(upIsBubble,up, down,false,this->cutOffvalue)){
+                                if (whichOneIsbubble(node,upIsBubble,up, down,false,this->cutOffvalue)){
                                         if (upIsBubble){
                                                 size_t mul=trueMult[abs( up.getNodeID())];
                                                 if (removeNode(up)){
@@ -717,7 +714,7 @@ bool DBGraph::bubbleDetection(int round) {
                                                         bubbleDeleted=true;
                                                         numOfDel++;
                                                 }
-                                                if (upLast.isValid()&&upLast.getNodeKmerCov()<cutOffvalue){
+                                                if (upLast.isValid()&&upLast.getNodeKmerCov()<cutOffvalue){//&& node.getNodeKmerCov()/upLast.getNodeKmerCov()>3){
                                                         mul=trueMult[abs( upLast.getNodeID())];
                                                         if (removeNode(upLast)){
                                                                 //#ifdef DEBUG
@@ -743,7 +740,7 @@ bool DBGraph::bubbleDetection(int round) {
                                                         bubbleDeleted=true;
                                                         numOfDel++;
                                                 }
-                                                if (downLast.isValid()&&downLast.getNodeKmerCov()<cutOffvalue){
+                                                if (downLast.isValid()&&downLast.getNodeKmerCov()<cutOffvalue){// && node.getNodeKmerCov()/downLast.getNodeKmerCov()>3){
                                                         mul=trueMult[abs( downLast.getNodeID())];
                                                         if( removeNode(downLast)){
                                                                 //#ifdef DEBUG

@@ -712,10 +712,10 @@ vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
                                 string newStr = newPath.substr(0, readPart.length());
                                 results.push_back(newStr);
                         }
-                       /* if (results.size() > 200) {
+                        if (results.size() > 200) {
                                 //stop because it is taking too much effort
                                 break;
-                        }*/
+                        }
                 }
                 clock_t endt = clock();
                 double passedTime = (double) (endt - begin) / (double) (CLOCKS_PER_SEC * 60);

@@ -192,11 +192,11 @@ void Brownie::stageFour()
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
 
-       if (!stageFourNecessary()) {
+       /*if (!stageFourNecessary()) {
                          cout << "Files produced by this stage appear to be present, "
                          "skipping stage 4..." << endl << endl;
                          return;
-       }
+       }*/
         DBGraph testgraph(settings);
         testgraph.createFromFile(getNodeFilename(3),
                                  getArcFilename(3),
@@ -245,30 +245,40 @@ void Brownie::stageFour()
         size_t minN50=100;
         graph.getN50();
         //&& graph.sizeOfGraph>settings.getGenomeSize()
-        while (simplified  ) {
+        while (simplified && graph.sizeOfGraph>settings.getGenomeSize() ) {
                 //*******************************************************
                 graph.updateCutOffValue(round);
                 bool tips=graph.clipTips(round);
-                graph.mergeSingleNodes(false);
-                while(tips) {
+                bool continuEdit=tips;
+                while(continuEdit) {
                         graph.mergeSingleNodes(false);
-                        //#ifdef DEBUG
+                        #ifdef DEBUG
                         graph.compareToSolution();
-                        //#endif
-                        tips=graph.clipTips(round);
+                        #endif
+                        continuEdit=graph.clipTips(round);
                 }
                 //*******************************************************
                 graph.updateCutOffValue(round);
                 bool bubble=false;
-                bubble= graph.bubbleDetection(round);
-                if (bubble) {
-                        graph.mergeSingleNodes(false);
-                        //#ifdef DEBUG
-                        graph.compareToSolution();
-                        //#endif
+                size_t depth=settings.getK()+1;
+                bubble= graph.bubbleDetection(depth);
+                simplified=bubble==true?true:simplified;
+
+                while(depth<500){
+                        continuEdit= graph.bubbleDetection(depth);
+                        if (continuEdit)
+                                graph.mergeSingleNodes(false);
+                        else
+                                break;
+                        depth=depth+100;
+                        cout<<"bubble depth:"<<depth <<endl;
                 }
+                #ifdef DEBUG
+                graph.compareToSolution();
+                #endif
                 graph.extractStatistic(round);
                 bool deleted=graph.deleteUnreliableNodes( round);
+                simplified=deleted==true?true:simplified;
                 while(graph.mergeSingleNodes(true));
                 //#ifdef DEBUG
                 graph.updateCutOffValue(round);
@@ -277,6 +287,7 @@ void Brownie::stageFour()
                 cout<<"estimated Kmer Coverage STD: "<<graph.estimatedMKmerCoverageSTD<<endl;
                 //#endif
                 simplified = tips    || deleted || bubble; //link |||| coverage
+
                 round++;
 
         }
@@ -309,8 +320,6 @@ void Brownie::stageFive()
         cout << "Entering stage 5" << endl;
         cout << "================" << endl;
         DBGraph graph(settings);
-        ;
-
 
         Util::startChrono();
         cout << "Creating graph... ";
@@ -358,8 +367,8 @@ int main(int argc, char** args)
                 #ifdef DEBUG
                 debug=true;
                 #endif
-                //if(!debug)
-                //     brownie.printInFile();
+              //  if(!debug)
+               //      brownie.printInFile();
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
                 << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL << endl;
                 cout << "Today is " << Util::getTime() << endl;

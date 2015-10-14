@@ -253,19 +253,18 @@ void DBGraph::extractStatistic(int round) {
 
 bool DBGraph::nodeIsBubble(SSNode node, SSNode currNode){
         if(node.getNumRightArcs()>1){
-                vector<pair<vector<NodeID>, vector<NodeID>> > possibleBubbles=searchForParallelNodes(node);
+                vector<pair<vector<NodeID>, vector<NodeID>> > possibleBubbles=searchForParallelNodes(node, 1000);
                 for (auto b : possibleBubbles){
                         vector<NodeID> upPath=b.first;
                         vector<NodeID> downPath=b.second;
                         SSNode up=getSSNode(b.first[1]);
                         SSNode down=getSSNode(b.second[1]);
-
                         if (up.getNodeID()!=currNode.getNodeID()&& down.getNodeID()!=currNode.getNodeID())
                                 continue;
                         if(up.isValid()&&down.isValid())
                         {
                                 bool upIsBubble=true;
-                                if (whichOneIsbubble(upIsBubble,up, down,false,this->estimatedKmerCoverage)){
+                                if (whichOneIsbubble(node,upIsBubble,up, down,false,this->estimatedKmerCoverage)){
                                         if (upIsBubble&& up.getNodeID()==currNode.getNodeID())
                                                 return true;
                                         if(!upIsBubble&&down.getNodeID()==currNode.getNodeID())
@@ -320,7 +319,6 @@ bool DBGraph::deleteUnreliableNodes(int round){
                                 //#ifdef DEBUG
                                 if (trueMult[abs(currNode.getNodeID())]>0){
                                         fp++;
-
                                 }
                                 else{
                                         tp++;
@@ -653,13 +651,15 @@ bool DBGraph::mergeSingleNodes(bool force)
                 if ( right.getNumLeftArcs() != 1 ) {
                         continue;
                 }
+
+                if (!force&& (left.getNodeKmerCov()<cutOffvalue || right.getNodeKmerCov()<cutOffvalue))
+                        continue;
+
                 #ifdef DEBUG
-                if ( ( ( trueMult[abs ( lID )] >= 1 ) && ( trueMult[abs ( lID )] == 0 ) ) ||
+                if ( ( ( trueMult[abs ( lID )] >= 1 ) && ( trueMult[abs ( rID )] == 0 ) ) ||
                         ( ( trueMult[abs ( rID )] >= 1 ) && ( trueMult[abs ( lID )] == 0 ) ) )
                         numOfIncorrectConnection++;
                 #endif
-                if (!force&& (left.getNodeKmerCov()<cutOffvalue || right.getNodeKmerCov()<cutOffvalue))
-                        continue;
 
                 left.deleteRightArc ( rID );
                 right.deleteLeftArc ( lID );
