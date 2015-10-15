@@ -350,12 +350,6 @@ public:
         }
 
         /**
-         * Check whether or not a file exists
-         * @return True or false
-         */
-        static bool fileExists(const std::string& filename);
-
-        /**
          * Get the mapped isolated read filename
          * @return The mapped paired readfilename
          */

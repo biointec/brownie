@@ -38,9 +38,11 @@ Brownie::Brownie(int argc, char** args)
         Kmer::setWordSize(settings.getK());
         RKmer::setWordSize(settings.getK() - KMERBYTEREDUCTION * 4);
 }
-void Brownie::printInFile() {
-        string konsole=settings.getTempDirectory()+ "/konsole.txt";
-        freopen(konsole.c_str(),"a",stdout);
+
+void Brownie::printInFile()
+{
+        string konsole = settings.getTempDirectory()+ "/konsole.txt";
+        freopen(konsole.c_str(), "a", stdout);
         cout<<"-------------------------------------------------------------------------------"<<endl;
         time_t t;
         time(&t);
@@ -48,6 +50,7 @@ void Brownie::printInFile() {
         cout<<"-------------------------------------------------------------------------------"<<endl;
         cout << "Welcome to Brownie\n" << endl;
 }
+
 void Brownie::stageOne()
 {
         // ============================================================
@@ -76,9 +79,9 @@ void Brownie::stageOne()
         << readParser->getNumKmers() << " ("
         << readParser->getNumKmersCovGTOne() << " with coverage > 1)" << endl;
 
-        #ifdef DEBUG
+#ifdef DEBUG
         readParser->validateStage1();
-        #endif
+#endif
 
         // write kmers file containing all kmers with cov > 1
         cout << "Writing kmer file...";
@@ -120,13 +123,13 @@ void Brownie::stageTwo()
         cout << "Finding overlaps between kmers..." << endl;
         overlapTable.parseInputFiles(libraries);
         cout << "Done building overlap table ("
-        << Util::stopChronoStr() << ")" << endl;
+             << Util::stopChronoStr() << ")" << endl;
         cout << "Overlap table contains " << overlapTable.size()
-        << " nodes" << endl;
+             << " nodes" << endl;
 
-        #ifdef DEBUG
+#ifdef DEBUG
         overlapTable.validateStage2();
-        #endif
+#endif
 
         // extract nodes and arcs from the kmer table
         overlapTable.extractNodes(getNodeFilename(2),
@@ -162,7 +165,7 @@ void Brownie::stageThree()
                              getArcFilename(2),
                              getMetaDataFilename(2));
         cout << "done (" << graph.getNumNodes() << " nodes, "
-        << graph.getNumArcs() << " arcs)" << endl;
+             << graph.getNumArcs() << " arcs)" << endl;
 
         Util::startChrono();
         graph.countNodeandArcFrequency(libraries);
@@ -173,9 +176,10 @@ void Brownie::stageThree()
                          getArcFilename(3),
                          getMetaDataFilename(3));
 
-        #ifdef DEBUG
+#ifdef DEBUG
         graph.sanityCheck();
-        #endif
+        graph.compareToSolution(getTrueMultFilename(3));
+#endif
         graph.clear();
         cout << "Stage 3 finished.\n" << endl;
         if (settings.getSkipStage4()) {
@@ -192,21 +196,35 @@ void Brownie::stageFour()
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
 
-       /*if (!stageFourNecessary()) {
-                         cout << "Files produced by this stage appear to be present, "
-                         "skipping stage 4..." << endl << endl;
-                         return;
-       }*/
+        /*if (!stageFourNecessary()) {
+                cout << "Files produced by this stage appear to be present, "
+                        "skipping stage 4..." << endl << endl;
+                return;
+        }*/
+
+        Util::startChrono();
+        cout << "Creating graph... ";
+        cout.flush();
         DBGraph testgraph(settings);
         testgraph.createFromFile(getNodeFilename(3),
                                  getArcFilename(3),
                                  getMetaDataFilename(3));
-        cout<<"initial kmerCoverage : "<<testgraph.estimatedKmerCoverage<<endl;
-        string command="mkdir "+settings.getTempDirectory()+"cov";
+        cout << "done (" << testgraph.getNumNodes() << " nodes, "
+             << testgraph.getNumArcs() << " arcs), ("
+             << Util::stopChronoStr() << ")" << endl;
+
+        cout << "Initial kmerCoverage : "<<testgraph.estimatedKmerCoverage<<endl;
+
+#ifdef DEBUG
+        string command = "mkdir " + settings.getTempDirectory() + "cov";
         system(command.c_str());
         command="rm "+settings.getTempDirectory() + "cov/* && rm "+settings.getTempDirectory() + "cov/*.dat";
         cout<<command<<endl;
         system(command.c_str());
+
+        testgraph.compareToSolution(getTrueMultFilename(3));
+#endif
+
         testgraph.clipTips(0);
         testgraph.mergeSingleNodes(true);
         testgraph.filterCoverage(0);
@@ -234,7 +252,7 @@ void Brownie::stageFour()
         << Util::stopChrono() << "s." << endl;
         Util::startChrono();
         //#ifdef DEBUG
-        graph.compareToSolution();
+        graph.compareToSolution(getTrueMultFilename(3));
         //#endif
         //variables
 
@@ -253,7 +271,7 @@ void Brownie::stageFour()
                 while(continuEdit) {
                         graph.mergeSingleNodes(false);
                         #ifdef DEBUG
-                        graph.compareToSolution();
+                        graph.compareToSolution(getTrueMultFilename(3));
                         #endif
                         continuEdit=graph.clipTips(round);
                 }
@@ -274,7 +292,7 @@ void Brownie::stageFour()
                         cout<<"bubble depth:"<<depth <<endl;
                 }
                 #ifdef DEBUG
-                graph.compareToSolution();
+                graph.compareToSolution(getTrueMultFilename(3));
                 #endif
                 graph.extractStatistic(round);
                 bool deleted=graph.deleteUnreliableNodes( round);
@@ -282,7 +300,7 @@ void Brownie::stageFour()
                 while(graph.mergeSingleNodes(true));
                 //#ifdef DEBUG
                 graph.updateCutOffValue(round);
-                graph.compareToSolution();
+                graph.compareToSolution(getTrueMultFilename(3));
                 cout<<"estimated Kmer Coverage Mean: "<<graph.estimatedKmerCoverage<<endl;
                 cout<<"estimated Kmer Coverage STD: "<<graph.estimatedMKmerCoverageSTD<<endl;
                 //#endif
@@ -297,12 +315,14 @@ void Brownie::stageFour()
         cout << " Ghraph correction completed in "
         << Util::stopChrono() << "s." << endl;
         Util::startChrono();
-        #ifdef DEBUG
+
+#ifdef DEBUG
         graph.writeCytoscapeGraph(0);
         graph.sanityCheck();
         command="pdftk "+settings.getTempDirectory()+ "cov/*.pdf cat output allpdfFiles.pdf";
         system(command.c_str());
-        #endif
+#endif
+
         graph.clear();
         cout << "Stage 4 finished.\n" << endl;
         if (settings.getSkipStage5()) {
@@ -333,7 +353,7 @@ void Brownie::stageFive()
         << Util::stopChrono() << "s." << endl;
 
         #ifdef DEBUG
-        graph.compareToSolution();
+        graph.compareToSolution(getTrueMultFilename(3));
         graph.writeCytoscapeGraph(0);
         #endif
 

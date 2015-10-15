@@ -40,11 +40,11 @@ if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_GNUCC)
 endif (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_GNUCC)
 
 # uncomment the portion below to disable assertions
-if (CMAKE_BUILD_TYPE STREQUAL Release)
-        add_definitions(-DNDEBUG)
-else (CMAKE_BUILD_TYPE STREQUAL Release)
+#if (CMAKE_BUILD_TYPE STREQUAL Release)
+#        add_definitions(-DNDEBUG)
+#else (CMAKE_BUILD_TYPE STREQUAL Release)
         add_definitions(-DDEBUG)
-endif (CMAKE_BUILD_TYPE STREQUAL Release)
+#endif (CMAKE_BUILD_TYPE STREQUAL Release)
 
 # check if zlib is present
 find_package(ZLIB)

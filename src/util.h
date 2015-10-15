@@ -25,6 +25,7 @@
 #include <string>
 #include <chrono>
 #include <ctime>
+#include <fstream>
 #define MAX_TIMERS 16
 
 /**
@@ -81,8 +82,15 @@ public:
          * @param FN False negatives
          * The specificity
          */
-        double getSensitivity(double TP, double FN) {
+        static double getSensitivity(double TP, double FN) {
                 return ((TP+FN) == 0) ? 1.0 : TP / (TP + FN);
+        }
+
+        static bool fileExists(const std::string& filename) {
+                std::ifstream file(filename.c_str(), std::ios::in);
+                bool OK = file.good();
+                file.close();
+                return OK;
         }
 };
 

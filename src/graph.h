@@ -251,10 +251,12 @@ private:
     int kmerSize;//=31;
 
     double totalRAM;
-    // SOLUTION COMP
-    std::vector<string> reference;
-    std::vector<void* > refST;
-    std::map<NodeID, size_t> trueMult;
+
+#ifdef DEBUG
+        std::vector<string> reference;
+        std::vector<void* > refST;
+        std::vector<int> trueMult;
+#endif
 
 
 
@@ -367,8 +369,9 @@ public:
 
     /**
      * Compare the current graph to the solution
+     * @param filename Filename of file containing true multiplicities
      */
-    void compareToSolution();
+    void compareToSolution(const string& filename);
 
     size_t findAllTrueOccurences(const string& str,
                                  std::vector<std::vector<size_t> >& pos,

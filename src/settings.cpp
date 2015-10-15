@@ -172,7 +172,7 @@ void Settings::parseCommandLineArguments(int argc, char** args,
 
         if (libCont.getSize() == 0) {
                 cerr << "brownie: missing input read file\n";
-                cerr << "Try 'brownie --help' for more information." << endl;
+                cerr << "Try 'brownie --help' for more information" << endl;
                 exit(EXIT_FAILURE);
         }
 
@@ -180,6 +180,7 @@ void Settings::parseCommandLineArguments(int argc, char** args,
         ofstream ofs(pathtotemp + "log.txt");
         if (!ofs.good()) {
                 cerr << "brownie: cannot write to directory: " << pathtotemp << "\n";
+                cerr << "Please make sure the path exists" << endl;
                 exit(EXIT_FAILURE);
         }
 

@@ -119,4 +119,3 @@ bool DBGraph::clipTips(int round)
 
         return  numDeleted > 0;
 }
-

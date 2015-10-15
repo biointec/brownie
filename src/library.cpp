@@ -185,7 +185,7 @@ ReadLibrary::ReadLibrary(const std::string& inputFilename_,
                 exit(EXIT_FAILURE);
         }
 
-        if (!fileExists(inputFilename)) {
+        if (!Util::fileExists(inputFilename)) {
                 cerr << "Brownie: cannot open input read file: '" << inputFilename << "'\n";
                 cerr << "Exiting... " << endl;
                 exit(EXIT_FAILURE);
@@ -225,14 +225,6 @@ ReadFile* ReadLibrary::allocateReadFile() const
 
         assert ( false );
         return NULL;
-}
-
-bool ReadLibrary::fileExists(const std::string& filename)
-{
-        std::ifstream file(filename.c_str(), std::ios::in);
-        bool OK = file.good();
-        file.close();
-        return OK;
 }
 
 // ============================================================================
@@ -326,7 +318,7 @@ void LibraryContainer::countReadFrequency( ReadLibrary& input)
         cout << "Average read length: " << totReadLength/totNumReads << endl;
 	input.setReadLength(totReadLength/totNumReads);
 	input.setNumOfReads(totNumReads);
-	
+
         readFile->close();
 
         // free temporary memory
@@ -363,7 +355,7 @@ void LibraryContainer::threadReads()
                      << endl;
 
                 countReadFrequency(input);
-		
+
         }
 
         // wait until active buffer is empty

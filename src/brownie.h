@@ -86,13 +86,23 @@ public:
         }
 
         /**
-         * Get the stage 2 metadata filename
+         * Get the metadata filename
          * @return String containing the metadata filename
          */
         std::string getMetaDataFilename(int filestage) const {
                 char stageStr[4];
                 sprintf(stageStr, "%d", filestage);
                 return settings.addTempDirectory("metadata.stage") + stageStr;
+        }
+
+        /**
+         * Get the true multiplicity filename
+         * @return String containing the true multiplicity filename
+         */
+        std::string getTrueMultFilename(int filestage) const {
+                char stageStr[4];
+                sprintf(stageStr, "%d", filestage);
+                return settings.addTempDirectory("truemult.stage") + stageStr;
         }
 
         /**
@@ -118,7 +128,7 @@ public:
                                 return true;
                 }*/
 
-                return !ReadLibrary::fileExists(getKmerFilename());
+                return !Util::fileExists(getKmerFilename());
         }
 
         /**
@@ -126,11 +136,11 @@ public:
          * @return True of false
          */
         bool stageTwoNecessary() const {
-                if (!ReadLibrary::fileExists(getNodeFilename(2)))
+                if (!Util::fileExists(getNodeFilename(2)))
                         return true;
-                if (!ReadLibrary::fileExists(getArcFilename(2)))
+                if (!Util::fileExists(getArcFilename(2)))
                         return true;
-                return !ReadLibrary::fileExists(getMetaDataFilename(2));
+                return !Util::fileExists(getMetaDataFilename(2));
         }
 
         /**
@@ -138,11 +148,11 @@ public:
          * @return True or false
          */
         bool stageThreeNecessary() const {
-                if (!ReadLibrary::fileExists(getNodeFilename(3)))
+                if (!Util::fileExists(getNodeFilename(3)))
                         return true;
-                if (!ReadLibrary::fileExists(getArcFilename(3)))
+                if (!Util::fileExists(getArcFilename(3)))
                         return true;
-                return !ReadLibrary::fileExists(getMetaDataFilename(3));
+                return !Util::fileExists(getMetaDataFilename(3));
         }
 
         /**
@@ -152,11 +162,11 @@ public:
         bool stageFourNecessary() const {
                 if (settings.getSkipStage4())
                         return false;
-                if (!ReadLibrary::fileExists(getNodeFilename(4)))
+                if (!Util::fileExists(getNodeFilename(4)))
                         return true;
-                if (!ReadLibrary::fileExists(getArcFilename(4)))
+                if (!Util::fileExists(getArcFilename(4)))
                         return true;
-                return !ReadLibrary::fileExists(getMetaDataFilename(4));
+                return !Util::fileExists(getMetaDataFilename(4));
         }
 
         /**

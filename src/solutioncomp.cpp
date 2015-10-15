@@ -270,24 +270,24 @@ void DBGraph::writeLocalCytoscapeGraph(int ID, NodeID srcID, size_t maxDepth)
 
 void DBGraph::readReferenceGenome()
 {
-    if (!reference.empty())
-        return;
+        if (!reference.empty())
+                return;
 
-    cout << "Reading reference genome..." << endl;
+        cout << "Reading reference genome..." << endl;
 
-    FastAFile ass(false);
-//
-    ass.open( "genome.fasta");
-    string read, desc;
-    while (ass.getNextRead(read, desc)) {
-        read.append(read);
-        reference.push_back(read);
-        refST.push_back(ST_CreateTree(read.c_str(), read.size()));
-        cout << "Adding a reference of length: " << read.size() / 2 << endl;
-    }
+        FastAFile ass(false);
+        ass.open("genome.fasta");
+        string read, desc;
+        while (ass.getNextRead(read, desc)) {
+                read.append(read);
+                reference.push_back(read);
+                refST.push_back(ST_CreateTree(read.c_str(), read.size()));
+                cout << "Adding a reference of length: " << read.size() / 2 << endl;
+        }
 
-    cout << "Done reading " << reference.size() << " reference contigs." << endl;
+        cout << "Done reading " << reference.size() << " reference contigs" << endl;
 }
+
 struct readStructStr
 {
     int intID;
@@ -299,180 +299,74 @@ struct readStructStr
 
 };
 
-void DBGraph::compareToSolution()
+void DBGraph::compareToSolution(const string& filename)
 {
-    readReferenceGenome();
+        // read the reference genome (genome.fasta) from disk
+        readReferenceGenome();
 
-    ofstream ofs("Staphmult.txt");
-    ofs << "Node ID\tMarginal length\tMultiplicity" << endl;
-    size_t totalSizeOfIncNodes=0;
-    size_t totalSizeOfCNodes=0;
-    size_t totalSizeOfNodes=0;
-    size_t numOK = 0, numNotOK = 0, numTotal = 0, totalCov = 0;
-    for (NodeID id = 1; id <= numNodes; id++) {
-        string P = getSSNode(id).getSequence();
-
-        if (!getDSNode(id).isValid())
-            continue;
-
-        numTotal++;
-
-        vector<vector<size_t> > pos, posRC;
-        int ntOcc = findAllTrueOccurences(P, pos, posRC);
-
-        trueMult[id] = ntOcc;
-
-        if (ntOcc == 0) {
-            getDSNode(id).setFlag(0);
-            numNotOK++;
-            totalSizeOfIncNodes=totalSizeOfIncNodes+getSSNode(id).getMarginalLength();
-
-        } else {
-            getDSNode(id).setFlag(1);
-            numOK++;
-            totalSizeOfCNodes=totalSizeOfCNodes+getSSNode(id).getMarginalLength();
-        }
-        totalSizeOfNodes=totalSizeOfNodes+getSSNode(id).getMarginalLength();
-
-        ofs << id << "\t" << getSSNode(id).getMarginalLength() << "\t" << trueMult[id] << "\t" << endl;
-
-        if (getDSNode(id).getNumRightArcs() == 0)
-            totalCov += trueMult[id] * getDSNode(id).getLength();
-        else
-            totalCov += trueMult[id] * getDSNode(id).getMarginalLength();
-    }
-
-    ofs.close();
-
-    size_t totalGenomeSize = 0;
-    for (size_t i = 0; i < reference.size(); i++)
-        totalGenomeSize += reference[i].size()/2;
-
-    cout << "\tNumber of nodes that exist: " << numOK << " (" << 100.00 * numOK / numTotal << "%)" <<     "        ===>> "<<" ("<<100.00 * totalSizeOfCNodes / totalSizeOfNodes<<"%)"<<" size of graph" <<endl;
-    cout << "\tNumber of nodes that do not exist: " << numNotOK << " (" << 100.00 * numNotOK / numTotal << "%)" << "===>> "<<" ("<<100.00 * totalSizeOfIncNodes / totalSizeOfNodes<<"%)"<<" size of graph" <<endl;
-    cout << "\tThe fraction of the genome that is covered CHECK : " << 100.00 * totalCov / totalGenomeSize << "%" << endl;
-
-    size_t TP = 0, FP = 0, TN = 0, FN = 0;
-    for (NodeID id = 1; id <= numNodes; id++) {
-        DSNode &node = getDSNode(id);
-
-        if (!node.isValid())
-            continue;
-
-        /*cout << node.getMarginalLength() << "\t"
-             << (int)node.getMultiplicity() << "\t"
-             << (int)node.getFlag() << endl;*/
-
-        if (node.getFlag() == 1) {
-            if (node.getRoundMult() >= 1)
-                TP++;
-            else
-                FN++;
-        } else {
-            if (node.getRoundMult() >= 1)
-                FP++;
-            else
-                TN++;
-        }
-    }
-
-    //mahdi comment
-   /* table = new KmerNodeTable ( settings, numNodes );
-    table->populateTable ( nodes );
-    FastAFile ass(false);
-    ass.open(settings.inputDirectory+"genome.fasta");
-    size_t numKmers = 0, numFound = 0, numOL = 0;
-    string read, desc;
-    while (ass.getNextRead(read, desc)) {
-        TString Tread=read;
-        for ( TStringIt it = Tread.begin(); it != Tread.end(); it++ ) {
-            Kmer kmer = *it;
-            NodePosPair result = table->find ( kmer );
-            if ( result.isValid() ) {
-                numFound++;
-            }
-            numKmers++;
-        }
-    }*/
-
-
-
-    /////////////////////////////////////////////////////////////////
-
-
-   /* string readFileName="sampleRead.fastq";
-    ifstream readsFile;
-    string reads100=settings.inputDirectory+ readFileName;
-    readsFile.open(reads100.c_str(),ios::in);
-
-    readStructStr readInfo;
-    int numOfReads=0;
-    int numOfFoundRead=0;
-    double avgOfMaxConse=0;
-    while(getline(readsFile,readInfo.strID )&&getline(readsFile,readInfo.erroneousReadContent )) {
-        getline(readsFile,readInfo.orientation );
-        getline(readsFile,readInfo.qualityProfile );
-        numOfReads++;
-
-        bool again=true;
-        int kmerStart=0;
-        bool supported=false;
-
-        int startOfRead=1;
-        int startOfNode=0;
-        TString read =readInfo.erroneousReadContent;
-
-        if (readInfo.erroneousReadContent.length()<kmerSize)
-            continue;
-        bool found=false;
-        int numOfSuppKmerInRead=0;
-        int prevKmerID=0;
-        int numOfConsecutive=0;
-        int maxConsecutive=0;
-
-        for ( TStringIt it = read.begin(); it != read.end(); it++ ) {
-            Kmer kmer = *it;
-            NodePosPair result = table->find ( kmer );
-            if ( !result.isValid() ) {
-                startOfRead++;
-                continue;
-            }
-            else {
-                if (startOfRead-prevKmerID==1) {
-                    numOfConsecutive++;
-                    if (numOfConsecutive>maxConsecutive) {
-                        maxConsecutive=numOfConsecutive;
-                    }
-                } else {
-                    numOfConsecutive=0;
+        // try reading the multiplicity file from disk
+        trueMult.resize(numNodes + 1);
+        bool readingSuccesful = false;
+        if (Util::fileExists(filename)) {
+                ifstream ifs(filename.c_str());
+                for (NodeID id = 1; id <= numNodes; id++) {
+                        ifs >> trueMult[id];
+                        if (!ifs.good())
+                                break;
                 }
-                prevKmerID=startOfRead;
-                startOfRead++;
-                found=true;
-            }
 
-        }
-        if ( found) {
-	    avgOfMaxConse=avgOfMaxConse+maxConsecutive;
-            numOfFoundRead++;
+                if (ifs.good())
+                        readingSuccesful = true;
+                ifs.close();
         }
 
+        // if this fails, build a new one
+        if (!readingSuccesful) {
+                cout << "Building a new multiplicity file" << endl;
+                ofstream ofs(filename.c_str());
+                for (NodeID id = 1; id <= numNodes; id++) {
+                        string P = getSSNode(id).getSequence();
+                        vector<vector<size_t> > pos, posRC;
+                        int ntOcc = findAllTrueOccurences(P, pos, posRC);
 
-    }
-    avgOfMaxConse=avgOfMaxConse/(float)numOfFoundRead;*/
-    ////////////////////////////////////////////////////////////
-    //delete table;
-    cout << "Validation report: " << endl;
-    //cout<<"avarage of Consecutive kmerHit in sample read: "<< avgOfMaxConse<<endl;
-   // cout << "\tfraction of reads which are supported by at least one kmer in Graph: " << numOfFoundRead << "/" << numOfReads << "(" << 100.00*(double)numOfFoundRead/numOfReads << "\%)" << endl;
-   // cout << "\tfraction of kmers in genome which is still exist in Graph: " << numFound << "/" << numKmers << "(" << 100.00*(double)numFound/numKmers << "\%)" << endl;
+                        trueMult[id] = ntOcc;
 
-    cout << "\tTrue positives: " <<  TP << " (" << 100.00 * TP / numTotal << "%)" << endl
-         << "\tFalse positives: " << FP << " (" << 100.00 * FP / numTotal << "%)" << endl
-         << "\tTrue negatives: " << TN << " (" << 100.00 * TN / numTotal << "%)" << endl
-         << "\tFalse negatives: " << FN << " (" << 100.00 * FN / numTotal << "%)" << endl;
+                        ofs << trueMult[id] << "\n";
+                }
 
-    cout << "========================================================" << endl;
+                ofs.close();
+        }
+
+        size_t sizeCorrect = 0;
+        size_t sizeIncorrect = 0;
+        size_t sizeTotal = 0;
+        size_t numCorrect = 0, numIncorrect = 0, numTotal = 0;
+
+        for (NodeID id = 1; id <= numNodes; id++) {
+                SSNode node = getSSNode(id);
+                if (!node.isValid())
+                        continue;
+
+                numTotal++;
+                if (trueMult[id] == 0) {
+                        numIncorrect++;
+                        sizeCorrect = sizeCorrect + node.getMarginalLength();
+                } else {
+                        numCorrect++;
+                        sizeIncorrect = sizeIncorrect + node.getMarginalLength();
+                }
+
+                sizeTotal = sizeTotal + node.getMarginalLength();
+        }
+
+        size_t sizeGenome = 0;
+        for (size_t i = 0; i < reference.size(); i++)
+                sizeGenome += reference[i].size()/2 + 1 - Kmer::getK();
+
+        cout << " ===== Quality report =====" << endl;
+        cout << "\tNumber of nodes that exist: " << numCorrect << " (" << 100.00 * numCorrect / numTotal << "%) -> (" << 100.00 * sizeIncorrect / sizeTotal << "% of graph sequence content)" << endl;
+        cout << "\tNumber of nodes that do not exist: " << numIncorrect << " (" << 100.00 * numIncorrect / numTotal << "%) -> ("<<100.00 * sizeCorrect / sizeTotal << "% of graph sequence content)" <<endl;
+        cout << "\tThe fraction of the genome that is covered: " << 100.00 * sizeTotal / sizeGenome << "%" << endl;
 }
 
 size_t DBGraph::findAllTrueOccurences(const string& P,
