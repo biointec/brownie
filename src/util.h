@@ -64,6 +64,26 @@ public:
         }
 
         static std::string getTime();
+
+        /**
+         * Compute the sensitivity
+         * @param TN True negatives
+         * @param FP False positives
+         * The sensitivity
+         */
+        static double getSpecificity(double TN, double FP) {
+                return ((TN+FP) == 0) ? 1.0 : TN / (TN + FP);
+        }
+
+        /**
+         * Compute the specificity
+         * @param TP True positives
+         * @param FN False negatives
+         * The specificity
+         */
+        double getSensitivity(double TP, double FN) {
+                return ((TP+FN) == 0) ? 1.0 : TP / (TP + FN);
+        }
 };
 
 #endif

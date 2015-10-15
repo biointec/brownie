@@ -24,190 +24,6 @@
 
 using namespace std;
 
-void DBGraph::removeTip ( SSNode &lNode, SSNode &rNode )
-{
-        // first, disconnect the right node from all its right neighbors
-        for ( ArcIt it = rNode.rightBegin(); it != rNode.rightEnd(); it++ ) {
-                SSNode rrNode = getSSNode ( it->getNodeID() );
-                bool result = rrNode.deleteLeftArc ( rNode.getNodeID() );
-                assert ( result );
-        }
-        rNode.deleteAllRightArcs();
-
-        // the left node should not be left connected (it's a tip)
-        assert ( lNode.getNumLeftArcs() == 0 );
-
-        // delete all nodes
-        SSNode curr = lNode;
-        while ( curr != rNode ) {
-                SSNode next = getSSNode ( curr.rightBegin()->getNodeID() );
-
-                //comment by mahdi
-
-                curr.deleteAllLeftArcs();
-                curr.deleteAllRightArcs();
-                curr.invalidate();
-
-                if ( abs(curr.getNodeID()) ) {
-                        // cout << "\tClipped a tip that should exist, namely node " << curr.getNodeID() << endl;
-                }
-
-                // if the statement below is true, we have an isolated hairpin
-                // we can simply stop here, because the nodes and arcs on the
-                // return path have already been destroyed
-                if ( next.getNodeID() == -curr.getNodeID() ) {
-                        break;
-                }
-
-                curr = next;
-        }
-        if ( trueMult[abs(rNode.getNodeID())] ) {
-                // cout << "\tClipped a tip that should exist, namely node " << rNode.getNodeID() << endl;
-        }
-        rNode.deleteAllLeftArcs();
-        rNode.invalidate();
-}
-
-bool DBGraph::clipTipFromNode ( SSNode &startNode )
-{
-        // size_t cutOffLength = Kmer::getWordSize() * 5;
-        size_t totalLength = 0;
-        //DBGraph graph ( settings );
-        SSNode currNode = startNode, prevNode = startNode;
-        while ( currNode.getNumLeftArcs() < 2 &&
-                currNode.getNumRightArcs() < 2 ) {
-                // update the total length, taking the overlap into account
-                totalLength += currNode.getLength() - Kmer::getK() + 1;
-        //if(currNode.getExpMult()/currNode.getMarginalLength()>10)
-        //  return false;
-
-        //          if (totalLength >= estimatedKmerCoverage)
-        //return false;
-
-        //if (currNode.getRoundMult() > 0)
-        //        return false;
-
-        // isolated snipset
-
-        //comment by mahdi
-        //  if (currNode.getExpMult() / currNode.getMarginalLength() >  this->estimatedKmerCoverage*.2 )
-        //    return false;
-        double  probalility=  gsl_cdf_gaussian_P((currNode.getNodeKmerCov()-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
-        if (probalility>.2)
-                return false;
-
-        //cout << "\tClipped a tip that should exist, namely node " << curr.getNodeID() << endl;
-        if ( currNode.getNumRightArcs() == 0 ) {
-
-                removeTip ( startNode, currNode );
-                return true;
-
-
-        }
-
-        // move to the next node
-        prevNode = currNode;
-        currNode = getSSNode ( currNode.rightBegin()->getNodeID() );
-
-                }
-
-                // joined tips
-                if ( currNode.getNumLeftArcs() < 2 ) {
-                        return false;
-                }
-
-
-
-
-
-                //    if (prevNode.getExpMult() / prevNode.getMarginalLength() >  this->estimatedKmerCoverage*.2 )
-                //         return false;
-                double  probalility=  gsl_cdf_gaussian_P((prevNode.getNodeKmerCov()-estimatedKmerCoverage)/estimatedMKmerCoverageSTD,1);
-                if (probalility>.2)
-                        return false;
-
-                removeTip ( startNode, prevNode );
-                return true;
-
-
-}
-
-bool DBGraph::clipTipFromNodeHard ( SSNode &startNode )
-{
-        // assert it is a tip
-        assert ( startNode.getNumLeftArcs() == 0 );
-
-        size_t totalLength = Kmer::getK() - 1;
-        SSNode currNode = startNode, prevNode = startNode;
-
-        while ( currNode.getNumLeftArcs() < 2 &&
-                currNode.getNumRightArcs() < 2 ) {
-                totalLength += currNode.getMarginalLength();
-
-        // isolated snipset
-        if ( currNode.getNumRightArcs() == 0 ) {
-                break;
-        }
-
-        prevNode = currNode;
-        currNode = getSSNode ( currNode.rightBegin()->getNodeID() );
-                }
-
-                // special case: WARNING is this correct ?!
-                if ( currNode == startNode ) {
-                        totalLength = startNode.getLength();
-                }
-
-                if ( totalLength >= 2*Kmer::getK() ) {
-                        return false;
-                }
-
-                removeTip ( startNode, prevNode );
-                return true;
-}
-
-bool DBGraph::clipTips ( bool hard )
-{
-        bool graphModified = false;
-
-        // choose the correct function pointer
-        bool ( DBGraph::*clipTipFromNodePtr ) ( SSNode & ) = ( hard ) ?
-        &DBGraph::clipTipFromNodeHard :
-        &DBGraph::clipTipFromNode;
-
-        for ( NodeID id = 1; id <= numNodes; id++ ) {
-                if (id==0)
-                        continue;
-
-                DSNode &node = getDSNode ( id );
-                if ( !node.isValid() ) {
-                        continue;
-                }
-
-
-                // check for dead ends
-                bool leftDE = ( node.getNumLeftArcs() == 0 );
-                bool rightDE = ( node.getNumRightArcs() == 0 );
-                if ( !leftDE && !rightDE ) {
-                        continue;
-                }
-                SSNode startNode = ( rightDE ) ? getSSNode ( -id ) : getSSNode ( id );
-
-
-
-                if(startNode.getNodeID()==1) {
-
-                        int stop=1;
-                        stop++;
-                }
-                if ( ( *this.*clipTipFromNodePtr ) ( startNode ) ) {
-                        graphModified = true;
-                }
-        }
-
-        return graphModified;
-}
-
 bool DBGraph::clipTips(int round)
 {
         cout << " ===== Removing tips =====" << endl;
@@ -289,16 +105,16 @@ bool DBGraph::clipTips(int round)
 #ifdef DEBUG
         cout << "****************************************" << endl;
         cout << "Isolated TP: " << tps << "\tTN: "<< tns << "\tFP: " << fps << "\tFN: "<< fns << endl;
-        cout << "Sensitivity: (" << 100.0*((double)tps/(double)(tps+fns)) << "%)" << endl;
-        cout << "Specificity: (" << 100.0*((double)tns/(double)(tns+fps)) << "%)" << endl;
+        cout << "Sensitivity: " << 100.0 * Util::getSensitivity(tps, fns) << "%" << endl;
+        cout << "Specificity: " << 100.0 * Util::getSpecificity(tns, fps) << "%" << endl;
         cout << "****************************************" << endl;
         cout << "Joined TP: " << tpj << "\tTN: " << tnj << "\tFP: " << fpj << "\tFN: " << fnj << endl;
-        cout << "Sensitivity: (" << 100.0*((double)tpj/(double)(tpj+fnj)) << "%)" << endl;
-        cout << "Specificity: (" << 100.0*((double)tnj/(double)(tnj+fpj)) << "%)" << endl;
-        cout << "****************************************"<<endl;
+        cout << "Sensitivity: " << 100.0 * Util::getSensitivity(tpj, fnj) << "%" << endl;
+        cout << "Specificity: " << 100.0 * Util::getSpecificity(tnj, fpj) << "%" << endl;
+        cout << "****************************************" << endl;
         cout << "Tip TP: " << tp << "\tTN: " << tn << "\tFP: " << fp << "\tFN: " << fn << endl;
-        cout << "Sensitivity: (" << 100.0*((double)tp/(double)(tp+fn)) << "%)" << endl;
-        cout << "Specificity: (" << 100.0*((double)tn/(double)(tn+fp)) << "%)" << endl;
+        cout << "Sensitivity: " << 100.0 * Util::getSensitivity(tp, fn) << "%" << endl;
+        cout << "Specificity: " << 100.0 * Util::getSpecificity(tn, fp) << "%" << endl;
 #endif
 
         return  numDeleted > 0;

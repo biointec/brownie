@@ -180,39 +180,11 @@ private:
     bool getRightUniqueSSNode(const SSNode &node, SSNode &rightNode) const;
 
     /**
-     * Remove a stretch of nodes from the graph
-     * @param lNode Leftmost node to remove
-     * @param rNode Rightmost node to remove
-     */
-    void removeTip(SSNode &lNode, SSNode &rNode);
-
-    /**
      * Increment the coverage of the arc that span two given kmers
      * @param left Left kmer reference
      * @param right Right kmer reference
      */
     void increaseCoverage(const NodeEndRef &left, const NodeEndRef &right);
-
-    /**
-     * Clip dead ends from the graph
-     * @param hard Aggressive clipping or not
-     * @return True if the graph was modified
-     */
-    bool clipTips(bool hard = false);
-
-    /**
-     * Check if a tip is eligible for clipping and clip if so
-     * @param startNode SSNode that has no left arcs
-     * @return True of the tip was clipped from the graph, false otherwise
-     */
-    bool clipTipFromNode(SSNode &startNode);
-
-    /**
-     * Check if a tip is eligible for clipping and clip if so (hard!)
-     * @param startNode SSNode that has no left arcs
-     * @return True of the tip was clipped from the graph, false otherwise
-     */
-    bool clipTipFromNodeHard(SSNode &startNode);
 
     /**
      * Convert a vector of overlapping nodes to a string
