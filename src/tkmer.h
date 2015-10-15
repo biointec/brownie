@@ -133,7 +133,7 @@ public:
          * @return A kmer containing the complement of this kmer
          */
         TKmer getComplement() const {
-                TKmer<8> copy = *this;
+                TKmer copy = *this;
                 copy.complement();
                 return copy;
         }
@@ -158,7 +158,7 @@ public:
          * @return Representative kmer
          */
         TKmer getRepresentative() const {
-                Kmer kmerRC = getReverseComplement();
+                TKmer kmerRC = getReverseComplement();
                 return (kmerRC < *this) ? kmerRC : *this;
         }
 
@@ -305,6 +305,16 @@ public:
 
         /**
          * Write a kmer to file
+         * @param ofs Openen output file stream
+         */
+        void writeBytes() const {
+                for (int i = 0; i < numBytes; i++)
+                        std::cout << (int)buf[i] << " ";
+                std::cout << std::endl;
+        }
+
+        /**
+         * Write a kmer to file
          * @param ofs Open output file stream
          */
         void writeNoFlags(std::ofstream& ofs) const {
@@ -375,9 +385,6 @@ TKmer<numBytes>::TKmer(const char* str)
 
         work[kMSLL] = Nucleotide::pack32(str, k % 32);
 
-        for (size_t i = kMSLL + 1; i < llSize; i++)
-                work[i] = 0;
-
         memcpy(buf, work, numBytes);
 }
 
@@ -395,24 +402,22 @@ TKmer<numBytes>::TKmer(const std::string& str, size_t offset)
 
         work[kMSLL] = Nucleotide::pack32(cstr, k % 32);
 
-        for (size_t i = kMSLL + 1; i < llSize; i++)
-                work[i] = 0;
-
         memcpy(buf, work, numBytes);
 }
 
 template<size_t numBytes>
-TKmer<numBytes>::TKmer(const TKmer<numBytes+2>& kmer, KmerLSB &lsb)
+TKmer<numBytes>::TKmer(const TKmer<numBytes+KMERBYTEREDUCTION>& kmer, KmerLSB &lsb)
 {
-        memcpy(buf, kmer.buf + 2, numBytes);
+        memcpy(buf, kmer.buf + KMERBYTEREDUCTION, numBytes);
+        // FIXME: Check for generic KMERBYTEREDUCTION
         lsb = kmer.buf[0];
         lsb += KmerLSB(kmer.buf[1]) << 8;
 }
 
 template<size_t numBytes>
-TKmer<numBytes>::TKmer(const TKmer<numBytes-2>& kmer, KmerLSB lsb)
+TKmer<numBytes>::TKmer(const TKmer<numBytes-KMERBYTEREDUCTION>& kmer, KmerLSB lsb)
 {
-        memcpy(buf + 2, kmer.buf, numBytes - 2);
+        memcpy(buf + KMERBYTEREDUCTION, kmer.buf, numBytes - KMERBYTEREDUCTION);
         buf[0] = lsb;
         buf[1] = lsb >> 8;
 }
@@ -477,7 +482,6 @@ void TKmer<numBytes>::pushNucleotideLeft(char c)
 {
         const size_t llSize = (numBytes + 7) / 8;
         uint64_t work[llSize];
-        work[llSize - 1] = 0;
 
         memcpy(work, buf, numBytes);
 
@@ -628,7 +632,7 @@ bool TKmer<numBytes>::operator==(const TKmer<numBytes> &rhs) const
         const size_t llSize = (numBytes + 7) / 8;
 
         uint64_t w1[llSize], w2[llSize];
-        w1[llSize - 1] = w2[llSize - 1] = 0;
+        w1[kMSLL] = w2[kMSLL] = 0;
 
         memcpy(w1, buf, numBytes);
         w1[kMSLL] &= ~metaMask;
@@ -636,8 +640,8 @@ bool TKmer<numBytes>::operator==(const TKmer<numBytes> &rhs) const
         memcpy(w2, rhs.buf, numBytes);
         w2[kMSLL] &= ~metaMask;
 
-        for (size_t i = 0; i < llSize; i++)
-                if(w1[i] != w2[i])
+        for (size_t i = 0; i <= kMSLL; i++)
+                if (w1[i] != w2[i])
                         return false;
 
         return true;
@@ -649,7 +653,7 @@ bool TKmer<numBytes>::operator<(const TKmer<numBytes> &rhs) const
         const size_t llSize = (numBytes + 7) / 8;
 
         uint64_t w1[llSize], w2[llSize];
-        w1[llSize - 1] = w2[llSize - 1] = 0;
+        w1[kMSLL] = w2[kMSLL] = 0;
 
         memcpy(w1, buf, numBytes);
         w1[kMSLL] &= ~metaMask;
@@ -671,7 +675,7 @@ bool TKmer<numBytes>::operator>(const TKmer<numBytes> &rhs) const
         const size_t llSize = (numBytes + 7) / 8;
 
         uint64_t w1[llSize], w2[llSize];
-        w1[llSize - 1] = w2[llSize - 1] = 0;
+        w1[kMSLL] = w2[kMSLL] = 0;
 
         memcpy(w1, buf, numBytes);
         w1[kMSLL] &= ~metaMask;
@@ -692,14 +696,13 @@ size_t TKmer<numBytes>::getHash() const
         const size_t llSize = (numBytes + 7) / 8;
 
         uint64_t work[llSize];
-        work[llSize - 1] = 0;
-        uint64_t bm = ~(uint64_t(3) << 2*(k % 32));
+        work[kMSLL] = 0;
 
         memcpy(work, buf, numBytes);
-        work[llSize-1] &= bm;
+        work[kMSLL] &= ~metaMask;
 
         size_t hash = 0;
-        for (size_t i = 0; i < llSize; i++) {
+        for (size_t i = 0; i < kMSLL; i++) {
                 uint64_t &w = work[i];
 
                 w = ~w + (w << 21); // key = (key << 21) - key - 1;
