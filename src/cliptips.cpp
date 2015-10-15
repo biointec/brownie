@@ -210,113 +210,97 @@ bool DBGraph::clipTips ( bool hard )
 
 bool DBGraph::clipTips(int round)
 {
-        cout<<"*********************<<clip Tips starts>>......................................... "<<endl;
+        cout << " ===== Removing tips =====" << endl;
 
+#ifdef DEBUG
         size_t tp=0, tn=0, fp=0,fn=0;
         size_t tps=0, tns=0, fps=0,fns=0;
         size_t tpj=0, tnj=0, fpj=0,fnj=0;
-        size_t numOfDel=0;
-        cout<<"cut off value for removing tips is: "<<this->redLineValueCov<<endl;
-        double threshold=this->redLineValueCov;
+#endif
 
-        for ( NodeID id = 1; id <= numNodes; id++ ) {
+        size_t numDeleted = 0, numTotal = 0;
+        cout << "Cut-off value for removing tips is: " << redLineValueCov << endl;
+        double threshold = redLineValueCov;
 
+        for (NodeID id = 1; id <= numNodes; id++) {
 
-                SSNode node = getSSNode ( id );
-                if ( !node.isValid() ) {
+                SSNode node = getSSNode(id);
+                if (!node.isValid())
                         continue;
-                }
+                numTotal++;
+
                 // check for dead ends
-                threshold= this->redLineValueCov;
-                bool leftDE = ( node.getNumLeftArcs() == 0 );
-                bool rightDE = ( node.getNumRightArcs() == 0 );
-                if ( !leftDE && !rightDE ) {
+                bool leftDE = (node.getNumLeftArcs() == 0);
+                bool rightDE = (node.getNumRightArcs() == 0);
+                if (!leftDE && !rightDE)
                         continue;
-                }
-                SSNode startNode = ( rightDE ) ? getSSNode ( -id ) : getSSNode ( id );
-                bool singleNode=rightDE&&leftDE;
-                bool joinedTip=startNode.getNumRightArcs()>1?true:false;
 
+                SSNode startNode = (rightDE) ? getSSNode(-id) : getSSNode(id);
+                bool isolated = rightDE && leftDE;
+                bool joinedTip = startNode.getNumRightArcs() > 1;
 
-                SSNode rightNode;
-                if (!singleNode){
-                        ArcIt it = startNode.rightBegin();
-                        rightNode= getSSNode(it->getNodeID());
-                }
+                bool remove = false;
+                if ((startNode.getNodeKmerCov() <threshold) &&
+                    (startNode.getMarginalLength() < maxNodeSizeToDel))
+                        remove = removeNode(startNode);
 
+                if (remove)
+                        numDeleted++;
 
-                bool Remove=false;
+#ifdef DEBUG
 
-                if (startNode.getNodeKmerCov()<threshold&& startNode.getMarginalLength()<maxNodeSizeToDel )
-                        Remove=true;
-               // if (!singleNode &&(double)rightNode.getNodeKmerCov()/(double)startNode.getNodeKmerCov()<=2&& rightNode.getNodeKmerCov()<threshold)
-                //        Remove=false;
-                if (Remove){
-                        numOfDel++;
-                        //#ifdef DEBUG
-                        if (trueMult[abs( startNode.getNodeID())]>0) {
-                                if(singleNode)
+                if (remove) {
+                        if (trueMult[id] > 0) {
+                                if (isolated)
                                         fps++;
-                                if(joinedTip)
+                                else if(joinedTip)
                                         fpj++;
-                                if(!singleNode&&!joinedTip){
+                                else
                                         fp++;
-                                        //writeLocalCytoscapeGraph(4,startNode.getNodeID(),10);
-                                }
                         } else {
-                                if(singleNode)
+                                if(isolated)
                                         tps++;
-                                if(joinedTip)
+                                else if(joinedTip)
                                         tpj++;
-                                if(!singleNode&&!joinedTip)
+                                else
                                         tp++;
                         }
-                        //#endif
-                }
-                else{
-                        //#ifdef DEBUG
-                        if (trueMult[abs( startNode.getNodeID())]>0) {
-                                if(singleNode)
+                } else {
+                        if (trueMult[id] > 0) {
+                                if(isolated)
                                         tns++;
-                                if(joinedTip)
+                                else if(joinedTip)
                                         tnj++;
-                                if(!singleNode&&!joinedTip)
+                                else
                                         tn++;
-
                         } else {
-                                if(singleNode)
+                                if(isolated)
                                         fns++;
-                                if(joinedTip)
+                                else if(joinedTip)
                                         fnj++;
-                                if(!singleNode&&!joinedTip)
+                                else
                                         fn++;
-
                         }
-                        //#endif
                 }
-                if (Remove)
-                        removeNode(startNode);
+#endif
         }
 
+        cout << "Clipped " << numDeleted << "/" << numTotal << " nodes" << endl;
+#ifdef DEBUG
+        cout << "****************************************" << endl;
+        cout << "Isolated TP: " << tps << "\tTN: "<< tns << "\tFP: " << fps << "\tFN: "<< fns << endl;
+        cout << "Sensitivity: (" << 100.0*((double)tps/(double)(tps+fns)) << "%)" << endl;
+        cout << "Specificity: (" << 100.0*((double)tns/(double)(tns+fps)) << "%)" << endl;
+        cout << "****************************************" << endl;
+        cout << "Joined TP: " << tpj << "\tTN: " << tnj << "\tFP: " << fpj << "\tFN: " << fnj << endl;
+        cout << "Sensitivity: (" << 100.0*((double)tpj/(double)(tpj+fnj)) << "%)" << endl;
+        cout << "Specificity: (" << 100.0*((double)tnj/(double)(tnj+fpj)) << "%)" << endl;
+        cout << "****************************************"<<endl;
+        cout << "Tip TP: " << tp << "\tTN: " << tn << "\tFP: " << fp << "\tFN: " << fn << endl;
+        cout << "Sensitivity: (" << 100.0*((double)tp/(double)(tp+fn)) << "%)" << endl;
+        cout << "Specificity: (" << 100.0*((double)tn/(double)(tn+fp)) << "%)" << endl;
+#endif
 
-
-        cout << "Clipped " << numOfDel << " of "  << " nodes." << endl;
-        //#ifdef DEBUG
-        cout<<"****************************************"<<endl;
-        cout<< "single TP:      "<<tps<<"       single TN:   "<<tns<<"  singe FP: "<<fps<<"     single FN:"<<fns<<endl;
-        cout << "Sensitivity: ("<<100*((double)tps/(double)(tps+fns))<<"%)"<<endl;
-        cout<<"Specificity: ("<<100*((double)tns/(double)(tns+fps))<<"%)"<<endl;
-        cout<<"****************************************"<<endl;
-        cout<< "joined TP:     "<<tpj<<"        joined TN:     "<<tnj<<"        joined  FP:     "<<fpj<<"       joined FN:      "<<fnj<<endl;
-        cout << "Sensitivity: ("<<100*((double)tpj/(double)(tpj+fnj))<<"%)"<<endl;
-        cout<<"Specificity: ("<<100*((double)tnj/(double)(tnj+fpj))<<"%)"<<endl;
-
-        cout<<"****************************************"<<endl;
-        cout<< "TP:	"<<tp<<"	TN:	"<<tn<<"	FP:	"<<fp<<"	FN:	"<<fn<<endl;
-        cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
-        cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
-        //#endif
-        return  numOfDel>0;
-
+        return  numDeleted > 0;
 }
 
