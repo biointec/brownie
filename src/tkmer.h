@@ -305,7 +305,7 @@ public:
 
         /**
          * Write a kmer to file
-         * @param ofs Openen output file stream
+         * @param ofs Open output file stream
          */
         void writeNoFlags(std::ofstream& ofs) const {
                 const size_t llSize = (numBytes + 7) / 8;

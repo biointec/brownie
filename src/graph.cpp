@@ -639,7 +639,7 @@ void DBGraph::threadThroughReads(const string& filename, size_t numReads,
 
     size_t readCount = 0;
     while (ifs.good()) {
-        read.readFromStream(ifs);
+        read.read(ifs);
 
         // read too short ?
         if (read.getLength() < Kmer::getK()) continue;
@@ -905,79 +905,130 @@ void DBGraph::writeGraph(const std::string& nodeFilename,
                          const std::string& arcFilename,
                          const std::string& metaDataFilename)
 {
-    vector<size_t> nodeLengths;
-    ofstream nodeFile(nodeFilename.c_str());
-    ofstream arcFile(arcFilename.c_str());
+        ofstream nodeFile(nodeFilename.c_str());
+        ofstream arcFile(arcFilename.c_str());
 
-    size_t numExtractedNodes = 0, numExtractedArcs = 0;
-    for (NodeID id = 1; id <= numNodes; id++) {
-        SSNode node = getSSNode(id);
+        size_t numExtractedNodes = 0, numExtractedArcs = 0;
+        for (NodeID id = 1; id <= numNodes; id++) {
+                SSNode node = getSSNode(id);
 
-        if (!node.isValid())
-            continue;
+                if (!node.isValid())
+                        continue;
 
-        numExtractedNodes++;
+                numExtractedNodes++;
 
-        //nodeFile << "NODE" << "\t" << numExtractedNodes << "\t"
-        nodeFile << ">NODE" << "\t" << id << "\t"
-                 << node.getLength() << "\t" << node.getKmerCov()
-                 << "\t" << node.getReadStartCov() << "\n"
-                 << node.getSequence() << "\n";
+                nodeFile << ">NODE" << "\t" << id << "\t"
+                         << node.getLength() << "\t" << node.getKmerCov()
+                         << "\t" << node.getReadStartCov() << "\n"
+                         << node.getSequence() << "\n";
 
-        KmerOverlap ol;
-        for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
-            char c = getSSNode(it->getNodeID()).getRightKmer().peekNucleotideLeft();
-            ol.markLeftOverlap(c);
+                KmerOverlap ol;
+                for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
+                        char c = getSSNode(it->getNodeID()).getRightKmer().peekNucleotideLeft();
+                        ol.markLeftOverlap(c);
+                }
+
+                for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++) {
+                        char c = getSSNode(it->getNodeID()).getLeftKmer().peekNucleotideRight();
+                        ol.markRightOverlap(c);
+                }
+
+                arcFile << numExtractedNodes << "\t" << (int)ol.getLeftOverlap()
+                        << "\t" << (int)ol.getRightOverlap();
+
+                for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++)
+                        arcFile << "\t" << it->getCoverage();
+
+                for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++)
+                        arcFile << "\t" << it->getCoverage();
+
+                arcFile << endl;
+
+                numExtractedArcs += ol.getNumLeftOverlap() + ol.getNumRightOverlap();
         }
 
-        for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++) {
-            char c = getSSNode(it->getNodeID()).getLeftKmer().peekNucleotideRight();
-            ol.markRightOverlap(c);
+        nodeFile.close();
+        arcFile.close();
+
+        ofstream metadataFile(metaDataFilename.c_str());
+        metadataFile << numExtractedNodes << "\t" << numExtractedArcs << endl;
+        metadataFile.close();
+
+        cout << "Extracted " << numExtractedNodes << " nodes and "
+             << numExtractedArcs << " arcs." << endl;
+}
+
+void DBGraph::writeGraphBin(const std::string& nodeFilename,
+                            const std::string& arcFilename,
+                            const std::string& metaDataFilename)
+{
+        // A) Write node file
+        ofstream nodeFile(nodeFilename.c_str(), ios::binary);
+        for (NodeID id = 1; id <= numNodes; id++) {
+                DSNode& node = getDSNode(id);
+
+                // write the node contents
+                node.write(nodeFile);
         }
+        nodeFile.close();
 
-        arcFile << numExtractedNodes << "\t" << (int)ol.getLeftOverlap()
-                << "\t" << (int)ol.getRightOverlap();
+        // B) Write arc file
+        ofstream arcFile(arcFilename.c_str(), ios::binary);
+        for (ArcID i = 0; i < numArcs+2; i++)
+                arcs[i].write(arcFile);
+        arcFile.close();
 
-        for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++)
-            arcFile << "\t" << it->getCoverage();
+        // C) Write metadata file
+        ofstream metadataFile(metaDataFilename.c_str());
+        metadataFile << numNodes << "\t" << numArcs << endl;
+        metadataFile.close();
 
-        for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++)
-            arcFile << "\t" << it->getCoverage();
+        cout << "Wrote " << numNodes << " nodes and "
+             << numArcs << " arcs" << endl;
+}
 
-        arcFile << endl;
+void DBGraph::loadGraphBin(const std::string& nodeFilename,
+                           const std::string& arcFilename,
+                           const std::string& metaDataFilename)
+{
+        // auxiliary variables
+        string dS, descriptor;
+        int dI, length;
+        double expMult, readStartCov;
 
-        numExtractedArcs += ol.getNumLeftOverlap() + ol.getNumRightOverlap();
+        // read the metadata
+        ifstream metaDataFile(metaDataFilename.c_str());
+        if (!metaDataFile)
+                throw ios_base::failure("Can't open " + metaDataFilename);
+        metaDataFile >> numNodes >> numArcs;
+        metaDataFile.close();
 
-        nodeLengths.push_back(node.getLength());
-    }
+        // A) create the nodes
+        ifstream nodeFile(nodeFilename.c_str(), ios::binary);
+        if (!nodeFile)
+                throw ios_base::failure("Can't open " + nodeFilename);
 
-    nodeFile.close();
-    arcFile.close();
+        nodes = new DSNode[numNodes+1];
+        SSNode::setNodePointer(nodes);
+        for (NodeID id = 1; id <= numNodes; id++) {
+                // read the node info
 
-    ofstream metadataFile(metaDataFilename.c_str());
-    metadataFile << numExtractedNodes << "\t" << numExtractedArcs << endl;
-    metadataFile.close();
-
-    cout << "Extracted " << numExtractedNodes << " nodes and "
-         << numExtractedArcs << " arcs." << endl;
-
-    sort(nodeLengths.begin(), nodeLengths.end());
-
-    size_t totalLength = 0;
-    for (size_t i = 0; i < nodeLengths.size(); i++)
-        totalLength += nodeLengths[i];
-
-    size_t currLength = 0;
-    for (size_t i = 0; i < nodeLengths.size(); i++) {
-        currLength += nodeLengths[i];
-        if (currLength >= 0.5*totalLength) {
-            cout << endl << "N50 is " << nodeLengths[i] << " (total length: " << totalLength << ")" << endl;
-            cout << "This was found at node " << i << "/" << numNodes << endl;
-            break;
+                DSNode& node = getDSNode(id);
+                node.read(nodeFile);
         }
-    }
+        nodeFile.close();
 
-    cout << "The largest node contains " << nodeLengths.back() << " basepairs." << endl;
+        // B) create the arcs
+        ifstream arcFile(arcFilename.c_str());
+        if (!arcFile)
+                throw ios_base::failure("Can't open " + arcFilename);
+
+        // +2 because index 0 isn't used, final index denotes 'end'.
+        arcs = new Arc[numArcs+2];
+        DSNode::setArcsPointer(arcs);
+        for (ArcID i = 0; i < numArcs+2; i++)
+                arcs[i].read(arcFile);
+        arcFile.close();
 }
 
 size_t DBGraph::getN50()

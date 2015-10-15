@@ -49,7 +49,7 @@ TString::TString(ifstream& ifs)
         ifs.read((char*)buf, numBytes);
 }
 
-void TString::readFromStream(ifstream& ifs)
+void TString::read(ifstream& ifs)
 {
         size_t oldNumBytes = (length + 3) / 4;
 

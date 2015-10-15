@@ -350,10 +350,10 @@ void DBGraph::compareToSolution(const string& filename)
                 numTotal++;
                 if (trueMult[id] == 0) {
                         numIncorrect++;
-                        sizeCorrect = sizeCorrect + node.getMarginalLength();
+                        sizeIncorrect = sizeIncorrect + node.getMarginalLength();
                 } else {
                         numCorrect++;
-                        sizeIncorrect = sizeIncorrect + node.getMarginalLength();
+                        sizeCorrect = sizeCorrect + node.getMarginalLength();
                 }
 
                 sizeTotal = sizeTotal + node.getMarginalLength();
@@ -366,7 +366,7 @@ void DBGraph::compareToSolution(const string& filename)
         cout << " ===== Quality report =====" << endl;
         cout << "\tNumber of nodes that exist: " << numCorrect << " (" << 100.00 * numCorrect / numTotal << "%) -> (" << 100.00 * sizeIncorrect / sizeTotal << "% of graph sequence content)" << endl;
         cout << "\tNumber of nodes that do not exist: " << numIncorrect << " (" << 100.00 * numIncorrect / numTotal << "%) -> ("<<100.00 * sizeCorrect / sizeTotal << "% of graph sequence content)" <<endl;
-        cout << "\tThe fraction of the genome that is covered: " << 100.00 * sizeTotal / sizeGenome << "%" << endl;
+        cout << "\tThe fraction of the genome that is covered: " << 100.00 * sizeCorrect / sizeGenome << "%" << endl;
 }
 
 size_t DBGraph::findAllTrueOccurences(const string& P,

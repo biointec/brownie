@@ -248,6 +248,25 @@ public:
         bool operator!=(const KmerOverlap& rhs) const {
                 return !operator==(rhs);
         }
+
+        /**
+         * Write a kmeroverlap to file
+         * @param ofs Open output file stream
+         */
+        void write(std::ofstream& ofs) const {
+                unsigned char v = bf;
+                ofs.write((char*)&v, sizeof(v));
+        }
+
+        /**
+         * Read a kmeroverlap from file
+         * @param ifs Open input file stream
+         */
+        void read(std::ifstream& ifs) {
+                unsigned char v;
+                ifs.read((char*)&v, sizeof(v));
+                bf = v;
+        }
 };
 
 // ============================================================================

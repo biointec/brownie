@@ -108,6 +108,24 @@ public:
         bool isValid() const {
                 return nodeID != 0;
         }
+
+        /**
+         * Write a node to file
+         * @param ofs Open output file stream
+         */
+        void write(std::ofstream& ofs) const {
+                ofs.write((char*)&nodeID, sizeof(nodeID));
+                ofs.write((char*)&cov, sizeof(cov));
+        }
+
+        /**
+         * Load a node from file
+         * @param ifs Open input file stream
+         */
+        void read(std::ifstream& ifs) {
+                ifs.read((char*)&nodeID, sizeof(nodeID));
+                ifs.read((char*)&cov, sizeof(cov));
+        }
 };
 
 #endif

@@ -96,6 +96,26 @@ public:
         }
 
         /**
+         * Get the binary node filename
+         * @return String containing the binary node filename
+         */
+        std::string getBinNodeFilename(int filestage) const {
+                char stageStr[4];
+                sprintf(stageStr, "%d", filestage);
+                return settings.addTempDirectory("nodes.bin.stage") + stageStr;
+        }
+
+        /**
+         * Get the binary arc filename
+         * @return String containing the binary arc filename
+         */
+        std::string getBinArcFilename(int filestage) const {
+                char stageStr[4];
+                sprintf(stageStr, "%d", filestage);
+                return settings.addTempDirectory("arcs.bin.stage") + stageStr;
+        }
+
+        /**
          * Get the true multiplicity filename
          * @return String containing the true multiplicity filename
          */
@@ -148,9 +168,9 @@ public:
          * @return True or false
          */
         bool stageThreeNecessary() const {
-                if (!Util::fileExists(getNodeFilename(3)))
+                if (!Util::fileExists(getBinNodeFilename(3)))
                         return true;
-                if (!Util::fileExists(getArcFilename(3)))
+                if (!Util::fileExists(getBinArcFilename(3)))
                         return true;
                 return !Util::fileExists(getMetaDataFilename(3));
         }

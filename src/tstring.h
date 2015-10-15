@@ -184,7 +184,7 @@ public:
          * Read a tstring from an input file stream
          * @param ifs Opened input file stream
          */
-        void readFromStream(std::ifstream &ifs);
+        void read(std::ifstream &ifs);
 
         /**
          * Set the sequence from an stl string

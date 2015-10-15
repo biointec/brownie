@@ -172,9 +172,9 @@ void Brownie::stageThree()
         cout << "Done counting multiplicity (" << Util::stopChronoStr() << ")" << endl;
 
         cout << "Extracting graph..." << endl;
-        graph.writeGraph(getNodeFilename(3),
-                         getArcFilename(3),
-                         getMetaDataFilename(3));
+        graph.writeGraphBin(getBinNodeFilename(3),
+                            getBinArcFilename(3),
+                            getMetaDataFilename(3));
 
 #ifdef DEBUG
         graph.sanityCheck();
@@ -206,9 +206,10 @@ void Brownie::stageFour()
         cout << "Creating graph... ";
         cout.flush();
         DBGraph testgraph(settings);
-        testgraph.createFromFile(getNodeFilename(3),
-                                 getArcFilename(3),
-                                 getMetaDataFilename(3));
+        testgraph.loadGraphBin(getBinNodeFilename(3),
+                               getBinArcFilename(3),
+                               getMetaDataFilename(3));
+
         cout << "done (" << testgraph.getNumNodes() << " nodes, "
              << testgraph.getNumArcs() << " arcs), ("
              << Util::stopChronoStr() << ")" << endl;
@@ -227,6 +228,22 @@ void Brownie::stageFour()
 
         testgraph.clipTips(0);
         testgraph.mergeSingleNodes(true);
+        // ================
+        size_t depth=settings.getK()+1;
+        testgraph.bubbleDetection(depth);
+
+        while(depth<500) {
+                bool continuEdit = testgraph.bubbleDetection(depth);
+                if (continuEdit)
+                        testgraph.mergeSingleNodes(false);
+                else
+                        break;
+                depth=depth+100;
+                cout << " Bubble depth: " << depth <<endl;
+        }
+
+        // ============
+
         testgraph.filterCoverage(0);
         testgraph.mergeSingleNodes(true);
         testgraph.extractStatistic(0);

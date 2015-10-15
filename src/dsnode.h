@@ -138,9 +138,6 @@ private:
         ArcID leftID;           // ID of the first left arc or merged node
         ArcID rightID;          // ID of the first right arc or merged node
         Bitfield arcInfo;       // number of arcs at each node
-        uint8_t flag;           // FIXME
-        bool visited;           // FIXME
-        bool anchorFlag;        // FIXME
 
         double expMult;
 
@@ -159,40 +156,8 @@ public:
         /**
          * Default constructor
          */
-        DSNode() : leftID(0), rightID(0), flag(0), visited(false), anchorFlag(false), expMult(0), readStartCov(0), kmerCov(0) {
+        DSNode() : leftID(0), rightID(0), expMult(0), readStartCov(0), kmerCov(0) {
                 arcInfo.up = 0;
-        }
-
-        void setFlag(uint8_t target) {
-                flag = target;
-        }
-
-        uint8_t getFlag() const {
-                return flag;
-        }
-
-        void setVisited(bool target) {
-                visited = true;
-        }
-
-        bool isVisited() const {
-                return visited;
-        }
-
-        /**
-         * Check whether this node is an anchor node or not
-         * @return True of false
-         */
-        bool isAnchor() const {
-                return anchorFlag;
-        }
-
-        /**
-         * Check whether this node is an anchor node or not
-         * @return True of false
-         */
-        void setAnchor(bool value) {
-                anchorFlag = value;
         }
 
         /**
@@ -473,7 +438,7 @@ public:
          * @param reversed True if you want arcs from the negative node
          * @return An iterator pointing to the first left arc
          */
-        ArcIt leftBegin(bool reversed) const {
+        ArcIt leftBegin(bool reversed = false) const {
                 return ArcIt(arcs + leftID, reversed);
         }
 
@@ -482,7 +447,7 @@ public:
          * @param reversed True if you want arcs from the negative node
          * @return An iterator pointing to the last left arc
          */
-        ArcIt leftEnd(bool reversed) const {
+        ArcIt leftEnd(bool reversed = false) const {
                 return ArcIt(arcs + leftID + arcInfo.p.numLeft, reversed);
         }
 
@@ -491,7 +456,7 @@ public:
          * @param reversed True if you want arcs from the negative node
          * @return An iterator pointing to the first left arc
          */
-        ArcIt rightBegin(bool reversed) const {
+        ArcIt rightBegin(bool reversed = false) const {
                 return ArcIt(arcs + rightID, reversed);
         }
 
@@ -500,7 +465,7 @@ public:
          * @param reversed True if you want arcs from the negative node
          * @return An iterator pointing to the last right arc
          */
-        ArcIt rightEnd(bool reversed) const {
+        ArcIt rightEnd(bool reversed = false) const {
                 return ArcIt(arcs + rightID + arcInfo.p.numRight, reversed);
         }
 
@@ -602,6 +567,43 @@ public:
          */
         Kmer getRightKmer() const {
                 return Kmer(sequence, sequence.getLength() - Kmer::getK());
+        }
+
+        /**
+         * Write a node to file
+         * @param ofs Open output file stream
+         */
+        void write(std::ofstream& ofs) const {
+                double kmerCov = getKmerCov();
+                Coverage readStCov = getReadStartCov();
+
+                ofs.write((char*)&kmerCov, sizeof(kmerCov));
+                ofs.write((char*)&readStCov, sizeof(readStCov));
+                ofs.write((char*)&leftID, sizeof(leftID));
+                ofs.write((char*)&rightID, sizeof(rightID));
+                ofs.write((char*)&arcInfo, sizeof(arcInfo));
+
+                sequence.write(ofs);
+        }
+
+        /**
+         * Load a node from file
+         * @param ifs Open input file stream
+         */
+        void read(std::ifstream& ifs) {
+                double kmerCov;
+                Coverage readStCov;
+
+                ifs.read((char*)&kmerCov, sizeof(kmerCov));
+                ifs.read((char*)&readStCov, sizeof(readStCov));
+                ifs.read((char*)&leftID, sizeof(leftID));
+                ifs.read((char*)&rightID, sizeof(rightID));
+                ifs.read((char*)&arcInfo, sizeof(arcInfo));
+
+                setKmerCov(kmerCov);
+                setReadStartCov(readStCov);
+
+                sequence.read(ifs);
         }
 };
 

@@ -95,13 +95,6 @@ private:
     void countReadFrequency(const ReadLibrary& input,
                             const KmerNodeTable &table);
 
-
-
-
-
-
-
-
     /**
      * Get an initial estimate for the node coverage, based on the
      * 15% largest nodes
@@ -112,51 +105,12 @@ private:
                                          vector<size_t> &kmerFreq) const;
 
     /**
-     * Estimate the node multiplicity based on the kmer occurrence and the
-     * expected kmer occurce (mu)
-     * @return True of at least one node has a new multiplicity
-     */
-    bool setNodeMultiplicity(const vector<vector<size_t> > &kmerFreq);
-
-    /**
      * Based on preset node multiplicities and node kmer occurences,
      * estimate the expected kmer occurence (mu)
      * @return The expected average occurence
      */
     double estimateReadStartCoverage(const ReadLibrary& input,
                                      const vector<size_t> & kmerFreq) const;
-
-    /**
-     * Coverage-based arc filtering
-     * @return True if at least one arc was removed
-     */
-    bool flowConservationBasedArcFiltering();
-
-    /**
-     * Filter all arcs to/from nodes with zero expected multiplicity
-     * @return True if at least one arc was removed
-     */
-    bool arcFilteringBasedOnExpMultiplicity();
-
-    /**
-     * Filter all arcs to/from nodes with zero expected multiplicity
-     * @return True if at least one arc was removed
-     */
-    bool arcFilteringBasedOnSignExpMultiplicity();
-
-    /**
-     * Starting from a seed node with coverage zero, find a cluster with
-     * coverage zero
-     * @param curr Current seed node
-     * @param cluster Vector of nodeIDs belonging to that cluster
-     * @return True of such cluster is found, false otherwise
-     */
-    bool findIsolatedCluster(SSNode& curr, std::vector<NodeID>& cluster);
-
-    /**
-     * Mark the anchor nodes
-     */
-    void setAnchorNodes();
 
     // ====================================================================
     // OTHER STUFF
@@ -400,19 +354,9 @@ public:
     // ====================================================================
 
     /**
-     * Filter disconnected nodes with multiplicity zero
-     */
-    void filterIsolatedChaff();
-
-    /**
      * Count the number of kmer occurences for each node
      */
     void countReadFrequency(const ReadLibrary& input);
-
-    /**
-     * Validate existing kmer frequencies
-     */
-    void validateKmerFrequency();
 
     /**
      * Set the node multiplicity based on an estimate for the coverage
@@ -530,6 +474,26 @@ public:
     void writeGraph(const std::string& nodeFilename,
                     const std::string& arcFilename,
                     const std::string& metaDataFilename);
+
+    /**
+     * Write graph to file (binary version)
+     * @param nodeFilename node filename
+     * @param arcFilename arc filename
+     * @param metaDataFilename Metadata filename
+     */
+    void writeGraphBin(const std::string& nodeFilename,
+                       const std::string& arcFilename,
+                       const std::string& metaDataFilename);
+
+    /**
+     * Load graph to file (binary version)
+     * @param nodeFilename node filename
+     * @param arcFilename arc filename
+     * @param metaDataFilename Metadata filename
+     */
+    void loadGraphBin(const std::string& nodeFilename,
+                      const std::string& arcFilename,
+                      const std::string& metaDataFilename);
 
     size_t getN50();
 

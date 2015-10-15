@@ -86,8 +86,8 @@ void DBGraph::readPairedReads(const ReadLibrary& input,
                 mRead1.read(ifs);
                 mRead2.read(ifs);
 
-                read1.readFromStream(ifs);
-                read2.readFromStream(ifs);
+                read1.read(ifs);
+                read2.read(ifs);
 
                 if (readPairCount++ % OUTPUT_FREQUENCY == 0) {
                         cout << "\tProcessing pair " << readPairCount << "/"

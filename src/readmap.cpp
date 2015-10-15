@@ -47,8 +47,8 @@ void DBGraph::detectPairedReadDirection(ReadLibrary& input,
         vector<size_t> dir(4, 0);
 
         while (ifs.good()) {
-                read1.readFromStream(ifs);
-                read2.readFromStream(ifs);
+                read1.read(ifs);
+                read2.read(ifs);
 
                 if (read1.getLength() == 0)
                         continue;
@@ -145,7 +145,7 @@ void DBGraph::mapIsolatedReadsToGraph(ReadLibrary &input,
         size_t readCount = 0, notMapped = 0, mapped = 0;
 
         while (ifs.good()) {
-                read.readFromStream(ifs);
+                read.read(ifs);
                 if (read.getLength() == 0)
                         continue;
 
@@ -201,8 +201,8 @@ void DBGraph::mapPairedReadsToGraph(ReadLibrary &input,
         Observations ilEst;
 
         while (ifs.good()) {
-                read1.readFromStream(ifs);
-                read2.readFromStream(ifs);
+                read1.read(ifs);
+                read2.read(ifs);
 
                 if (read1.getLength() == 0)
                         continue;

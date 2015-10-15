@@ -54,36 +54,12 @@ public:
                 assert(nodeID != 0);
         }
 
-        void setVisited(bool target) {
-                dsNode->setVisited(target);
-        }
-
-        bool isVisited() const {
-                return dsNode->isVisited();
-        }
-
         /**
          * Constructor
          * @param it Iterator pointing to this node
          */
         SSNode(const ArcIt& it) : nodeID(it->getNodeID()), dsNode(nodes + abs(nodeID)) {
                 assert(nodeID != 0);
-        }
-
-        /**
-         * Check whether this node is an anchor node or not
-         * @return True of false
-         */
-        bool isAnchor() const {
-                return dsNode->isAnchor();
-        }
-
-        /**
-         * Check whether this node is an anchor node or not
-         * @return True of false
-         */
-        void setAnchor(bool value) {
-                dsNode->setAnchor(value);
         }
 
         /**
@@ -100,10 +76,6 @@ public:
          */
         bool isLoop() const {
                 return dsNode->isLoop();
-        }
-
-        uint8_t getFlag() const {
-                return dsNode->getFlag();
         }
 
         /**
