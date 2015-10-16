@@ -1,5 +1,3 @@
-#include "../src/leastsquares.h"
-
 #include <gtest/gtest.h>
 #include <cstdio>
 #include <string>

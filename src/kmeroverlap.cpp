@@ -341,7 +341,7 @@ void KmerOverlapTable::validateStage2()
         FastAFile ass(false);
         ass.open("genome.fasta");
 
-        double numKmersReal = 0, numKmersFound = 0, numOLFound = 0, numOLReal = 0;
+        size_t numKmersReal = 0, numKmersFound = 0, numOLFound = 0, numOLReal = 0;
 
         string read, desc;
         while (ass.getNextRead (read, desc)) {
@@ -455,7 +455,7 @@ void KmerOverlapTable::validateStage2()
         }
 
         cout << "Validation report: " << endl;
-        cout << "\tExist in table: " << numKmersFound << "/" << numKmersReal << "(" << 100.00*numKmersFound/numKmersReal << "%)" << endl;
-        cout << "\tHave correct overlap: " << numOLFound << "/" << numOLReal << "(" << 100.00*numOLFound/numOLReal << "%)" << endl;
+        cout << "\tExist in table: " << numKmersFound << "/" << numKmersReal << "(" << 100.00*(double)numKmersFound/(double)numKmersReal << "%)" << endl;
+        cout << "\tHave correct overlap: " << numOLFound << "/" << numOLReal << "(" << 100.00*(double)numOLFound/(double)numOLReal << "%)" << endl;
 }
 #endif

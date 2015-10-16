@@ -237,3 +237,17 @@ TEST(kmer, compareTest)
                 EXPECT_EQ(kmer > kmerRC, kmerString > complement);
         }
 }
+
+TEST(kmer, hashTest)
+{
+        for (int i = 1; i <= maxKmer; i += 2) {
+                TestKmer::setWordSize(i);
+
+                TestKmer A(source);
+                TestKmer B(source);
+                B.setFlag1(true);
+               // A.setFlag2(true);
+
+                EXPECT_EQ(A.getHash() == B.getHash(), true);
+        }
+}

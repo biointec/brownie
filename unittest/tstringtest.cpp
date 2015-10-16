@@ -93,7 +93,7 @@ TEST(TString, iteratorTest)
         for (TString::iterator it = tStr.begin(); it != tStr.end(); it++)
                 EXPECT_EQ(*it, Kmer(source, cnt++));
 
-        EXPECT_EQ(cnt, source.size() - Kmer::getWordSize() + 1);
+        EXPECT_EQ(cnt, source.size() - Kmer::getK() + 1);
 }
 
 TEST(TString, reverseIteratorTest)
@@ -102,7 +102,7 @@ TEST(TString, reverseIteratorTest)
         string source("ACGTACGTACGTGGATTCTTAGCCGTACGCCG");
         TString tStr(source);
 
-        int cnt = source.size() - Kmer::getWordSize();
+        int cnt = source.size() - Kmer::getK();
         for (TString::reverse_iterator it = tStr.rbegin(); it != tStr.rend(); it++)
                 EXPECT_EQ(*it, Kmer(source, cnt--));
 
