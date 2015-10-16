@@ -385,6 +385,9 @@ TKmer<numBytes>::TKmer(const char* str)
 
         work[kMSLL] = Nucleotide::pack32(str, k % 32);
 
+        for (size_t i = kMSLL+1; i < llSize; i++)
+                work[i] = 0;
+
         memcpy(buf, work, numBytes);
 }
 
@@ -401,6 +404,9 @@ TKmer<numBytes>::TKmer(const std::string& str, size_t offset)
                 work[i] = Nucleotide::pack32(cstr);
 
         work[kMSLL] = Nucleotide::pack32(cstr, k % 32);
+
+        for (size_t i = kMSLL+1; i < llSize; i++)
+                work[i] = 0;
 
         memcpy(buf, work, numBytes);
 }
@@ -472,6 +478,7 @@ void TKmer<numBytes>::pushNucleotideRight(char c)
         work[kMSLL] |= Nucleotide::charToNucleotide(c) << (2*(k % 32) - 2);
 
         // restore the metadata
+        work[kMSLL] &= ~metaMask;
         work[kMSLL] |= metaData;
 
         memcpy(buf, work, numBytes);
