@@ -702,7 +702,7 @@ size_t TKmer<numBytes>::getHash() const
         work[kMSLL] &= ~metaMask;
 
         size_t hash = 0;
-        for (size_t i = 0; i < kMSLL; i++) {
+        for (size_t i = 0; i <= kMSLL; i++) {
                 uint64_t &w = work[i];
 
                 w = ~w + (w << 21); // key = (key << 21) - key - 1;
