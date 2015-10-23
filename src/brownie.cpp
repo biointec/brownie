@@ -256,9 +256,9 @@ void Brownie::stageFour()
         Util::startChrono();
         cout << "Creating graph... ";
         cout.flush();
-        graph.createFromFile(getNodeFilename(3),
-                             getArcFilename(3),
-                             getMetaDataFilename(3));
+        graph.loadGraphBin(getBinNodeFilename(3),
+                               getBinArcFilename(3),
+                               getMetaDataFilename(3));
         string nodeFileName=getNodeFilename(4);
         string arcFileName=getArcFilename(4);
         string metaDataFileName=getMetaDataFilename(4);
