@@ -27,6 +27,7 @@ private:
                 graphIsMissing,
                 anotherKmer
         };
+        double maxTimePerRead=1;
         const float maxErrorRate=.3;
         const size_t avgQualityError=40;
         DBGraph &dbg;
@@ -38,6 +39,7 @@ private:
         int numOfReads;
         int numOfAllReads;
         int numOfSupportedReads;
+        int minSimPer;
 
         ifstream readsFile;
         ofstream outFastq;
@@ -70,9 +72,16 @@ private:
         int findDifference(string const &guess, string const &original,
                            string const &qProfile, int start);
         int findDifference(string const &a, string const &b);
-        vector<string> getAllSolutions(SSNode const &rootNode, string const &readPart,
-                             string const &qProfile, bool forward);
-
+        vector<string> getAllSolutions(SSNode const &rootNode, string const &readPart, bool forward);
+        bool findRecSolutionsForward(vector<string> &results, SSNode const rootNode,
+                                      string const &readPart,
+                                      string currentPath,clock_t& start);
+        bool findRecSolutionsBackward(vector<string> &results, SSNode const rootNode,
+                                      string const &readPart,
+                                      string currentPath,clock_t& start);
+        bool findRecSolutionsRec(vector<string> &results, SSNode const rootNode,
+                                      string const &readPart,
+                                      string currentPath,bool forward);
         bool correctionByKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         bool findKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         bool findSimilarKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);

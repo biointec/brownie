@@ -18,6 +18,7 @@ ReadCorrection::ReadCorrection(DBGraph &g, Settings &s) :
         dbg(g), library(NULL), settings(s), kmerSize(s.getK()),
         numOfSupportedReads(0), numOfAllReads(0), numOfReads(0)
 {
+        minSimPer=60;
         cout << endl << "welcome to error correction part" << endl;
         //*******************************************************
         cout << "populateTable" << endl;
@@ -68,7 +69,7 @@ void ReadCorrection::readInputReads(vector<readStructStr> &reads) {
  */
 void ReadCorrection::correctReads(vector<readStructStr> &reads) {
         int supportedReads = 0;
-#pragma omp parallel for reduction(+:supportedReads)
+        #pragma omp parallel for reduction(+:supportedReads)
         for (int i = 0; i < reads.size(); ++i) {
                 if (correctRead(reads[i])) {
                         supportedReads++;
@@ -99,8 +100,8 @@ void ReadCorrection::writeOutputReads(vector<readStructStr> const &reads) {
  * @return true if correction is found
  */
 bool ReadCorrection::findKmer(readCorrectionStatus &status,
-                string const &original, string &guess,
-                string const &qProfile) {
+                              string const &original, string &guess,
+                              string const &qProfile) {
         bool found = false;
         TString read = original;
         int startOfRead = 0;
@@ -108,10 +109,10 @@ bool ReadCorrection::findKmer(readCorrectionStatus &status,
                 Kmer kmer = *it;
                 if (!checkForAnswer(kmer, startOfRead, original, guess, qProfile, status)) {
                         startOfRead++;
-                        if (status == anotherKmer
-                                        || status == kmerNotfound) {
+                        if (status == anotherKmer|| status == kmerNotfound)
                                 continue;
-                        }
+                        else
+                                break;
                 } else {
                         found = true;
                         break;
@@ -242,6 +243,11 @@ bool ReadCorrection::correctionByMEM(readCorrectionStatus &status, string const 
  * correct a single read
  */
 bool ReadCorrection::correctRead(readStructStr &readInfo) {
+        if (readInfo.strID=="@SRR1151311.15739.2")
+        {
+                int stop=0;
+                stop++;
+        }
         unsigned int readLength=readInfo.originalContent.length();
         readCorrectionStatus status = kmerNotfound;
         string original =  readInfo.originalContent;
@@ -287,7 +293,7 @@ void ReadCorrection::printProgress(clock_t const &begin) {
                 << "%  progress. Approximate remaining time is "
                 << remainingTime
                 << " minutes. Error correction is less than "
-                << (numOfSupportedReads / numOfReads) * 100 << "%"
+                << ((double)numOfSupportedReads /(double) numOfReads) * 100 << "%"
                 << "\r";
         cout.flush();
 }
@@ -454,12 +460,9 @@ bool ReadCorrection::checkForIndels(string const &ref, string query,
                 int const maxError, string const &qProfile,
                 string &newRead) {
         NW_Alignment Nw;
-        string refCopy1 = ref;
-
-        double fullsim = Nw.alignment(refCopy1, refCopy1);
-        double sim = Nw.alignment(refCopy1, query);
-        if ((sim / fullsim) > .8 ) {
-                newRead = applyINDchanges(refCopy1, query);
+        if (Nw.get_similarity_perEnhanced(ref,query) > minSimPer ) {
+                string refCopy=ref;
+                newRead = applyINDchanges(refCopy, query);
                 double dif = findDifference(ref, newRead, qProfile, 0);
                 if (dif < maxError) {
                         return true;
@@ -478,8 +481,7 @@ bool ReadCorrection::expand(SSNode const &node, string const &original,
                 : qProfile.length();
         if (forward ? node.getNumRightArcs() : node.getNumLeftArcs() > 0) {
                 string remainingInRead = original.substr(bounds.first, bounds.second);
-                string remainingInQuality = qProfile.substr(bounds.first, bounds.second);
-                vector<string> results = getAllSolutions(node, remainingInRead, remainingInQuality, forward);
+                vector<string> results = getAllSolutions(node, remainingInRead,  forward);
                 if (results.size() > 0) {
                         string bestMatch;
                         if (findBestMatch(results, remainingInRead, forward, bestMatch, readLength)) {
@@ -525,12 +527,8 @@ bool ReadCorrection::recursiveCompare(SSNode const &leftNode,
                         pair<int, int> bounds(0, readLeftExtreme);
                         leftFound = expand(leftNode, original, qProfile, guess, bounds, false, status);
                 }
-                bool middleFound = false;
-                int errorCommonThreshold = commonInRead.length()*avgQualityError * maxErrorRate;
-                if (findDifference(commonInNode, original, qProfile, readLeftExtreme) < errorCommonThreshold) {
-                        guess.replace(readLeftExtreme, commonInRead.length(), commonInNode);
-                        middleFound = true;
-                }
+                bool middleFound = true;
+                guess.replace(readLeftExtreme, commonInRead.length(), commonInNode);
                 if (!rightFound) {
                         pair<int, int> bounds(readRightExtreme, readLength - readRightExtreme);
                         rightFound = expand(leftNode, original, qProfile, guess, bounds, true, status);
@@ -583,22 +581,22 @@ bool ReadCorrection::findBestMatch(vector<string> const &results,
                 string &original,
                 bool rightDir, string &bestMatch, int readLength) {
         bool find = false;
+        NW_Alignment Nw;
         if (!rightDir) {
                 std::reverse(original.begin(), original.end());
         }
-        double minSim = 20;
-        NW_Alignment Nw;
+        double minSim = 0;
         for (auto const &result : results) {
                 string strItem = result;
                 if (!rightDir) {
                         std::reverse(strItem.begin(), strItem.end());
                 }
-                double newSim = Nw.get_similarity_per(strItem, original);
+                double newSim = Nw.get_similarity_perEnhanced(strItem, original);
                 if (newSim > minSim) {
                         bestMatch = result;
                         minSim = newSim;
                         find = true;
-                        if (newSim == 100)
+                        if (newSim > 99)
                                 return find;
                 }
         }
@@ -658,83 +656,110 @@ typedef pair<nodePath, int> minHeapElement;
  */
 vector<string> ReadCorrection::getAllSolutions(SSNode const &rootNode,
                 string const &readPart,
-                string const &qProfile,
                 bool forward) {
         vector<string> results;
-        string root;
-        std::stack<nodePath> mystack;
-        clock_t begin = clock();
-        mystack.push(make_pair(rootNode, root));
-        while (!mystack.empty()) {
-                pair<SSNode, string> r = mystack.top();
-                mystack.pop();
-                SSNode leftNode = r.first;
-                string currentPath = r.second;
-                for (ArcIt it = (forward ? leftNode.rightBegin() : leftNode.leftBegin());
-                                it !=  (forward ? leftNode.rightEnd() : leftNode.leftEnd());
-                                ++it) {
-                        SSNode rrNode = dbg.getSSNode(it->getNodeID());
-                        if (rrNode.getNodeID() == -leftNode.getNodeID() || !rrNode.isValid())
-                                continue;
-                        string nodeContent = rrNode.getSequence();
-                        string content;
-                        string newPath;
-                        if (forward) {
-                                content = nodeContent.substr(kmerSize - 1, nodeContent.length());
-                                newPath = currentPath + content;
-                        } else {
-                                content = nodeContent.substr(0, nodeContent.length() - (kmerSize - 1));
-                                newPath = content + currentPath;
-                        }
-                        if (newPath.length() < readPart.length()) {
-                                if (newPath.length() > kmerSize ) {
-                                        double errorDif;
-                                        double errorCommonThreshold = newPath.length() * maxErrorRate * avgQualityError;
-                                        if (forward) {
-                                                errorDif = findDifference(newPath, readPart, qProfile, 0);
-                                        } else {
-                                                string tempNewPath = newPath;
-                                                string tempqProfile = qProfile;
-                                                string tempReadPart = readPart;
-                                                std::reverse(tempNewPath.begin(), tempNewPath.end());
-                                                std::reverse(tempqProfile.begin(), tempqProfile.end());
-                                                std::reverse(tempReadPart.begin(), tempReadPart.end());
-                                                errorDif = findDifference(tempNewPath, tempReadPart, tempqProfile, 0);
-                                        }
-                                        if (errorDif < errorCommonThreshold) {
-                                                mystack.push(make_pair(rrNode, newPath));
-                                        }
+        clock_t start=clock();
+        if (forward){
+                string rootContent = "";
+                findRecSolutionsForward(results, rootNode,readPart,rootContent,start);
+                return results;
+        }
+        else{
+                string rootContent = "";
+                findRecSolutionsBackward(results, rootNode,readPart,rootContent,start);
+                return results;
+        }
+}
 
-                                } else {
-                                        mystack.push(make_pair(rrNode, newPath));
-                                }
-                        } else {
-                                string newStr = newPath.substr(0, readPart.length());
-                                results.push_back(newStr);
+bool ReadCorrection::findRecSolutionsForward(vector<string> &results, SSNode const rootNode,
+                                      string const &readPart,
+                                      string currentPath,clock_t& start
+) {
+        clock_t end=clock();
+        double passedTime=double(end-start)/(double) (CLOCKS_PER_SEC*60);
+        if(passedTime>maxTimePerRead)
+                return 0;
+        if (currentPath.length()>readPart.length()){
+                string newStr = currentPath.substr(0, readPart.length());
+                results.push_back(newStr);
+        }
+        else{
+                NW_Alignment Nw;
+                if (currentPath.length()<kmerSize|| Nw.get_similarity_perEnhanced(currentPath,readPart.substr(0,currentPath.length()) )>minSimPer){
+                        for (ArcIt it=rootNode.rightBegin();it!=rootNode.rightEnd();it++){
+                                SSNode rNode = dbg.getSSNode(it->getNodeID());
+                                string nodeContent = rNode.getSequence();
+                                string  path = currentPath + nodeContent.substr(kmerSize - 1, nodeContent.length());;
+                                findRecSolutionsForward(results,rNode,readPart,path,start);
                         }
-                        if (results.size() > 200) {
-                                //stop because it is taking too much effort
-                                break;
-                        }
-                }
-                clock_t endt = clock();
-                double passedTime = (double) (endt - begin) / (double) (CLOCKS_PER_SEC * 60);
-                if (passedTime > .1) { //stop because it is taking too much time
-                        cout << "this read took more than .1 minute to process";
-                        break;
+
                 }
         }
-        return results;
+}
+
+
+bool ReadCorrection::findRecSolutionsBackward(vector<string> &results, SSNode const rootNode,
+                                      string const &readPart,
+                                      string currentPath,clock_t& start
+) {
+        clock_t end=clock();
+        double passedTime=double(end-start)/(double) (CLOCKS_PER_SEC*60);
+        if(passedTime>maxTimePerRead)
+                return 0;
+        if (currentPath.length()>readPart.length()){
+                string newStr = currentPath.substr(0, readPart.length());
+                results.push_back(newStr);
+        }
+        else{
+                NW_Alignment Nw;
+                std::reverse(currentPath.begin(), currentPath.end());
+                if (currentPath.length()<kmerSize|| Nw.get_similarity_perEnhanced(currentPath,readPart.substr(0,currentPath.length()) )>minSimPer){
+                        std::reverse(currentPath.begin(), currentPath.end());
+                        for (ArcIt it=rootNode.leftBegin();it!=rootNode.leftEnd();it++){
+                                SSNode lNode = dbg.getSSNode(it->getNodeID());
+                                string nodeContent = lNode.getSequence();
+                                string  path =  nodeContent.substr(0, nodeContent.length() - (kmerSize - 1))+currentPath;
+                                findRecSolutionsBackward(results,lNode,readPart,path,start);
+                        }
+
+                }
+        }
 }
 
 
 
 
+bool ReadCorrection::findRecSolutionsRec(vector<string> &results, SSNode const rootNode,
+                                      string const &readPart,
+                                      string currentPath, bool forward)
+{
 
+        if (currentPath.length()>readPart.length()){
+                string newStr = currentPath.substr(0, readPart.length());
+                results.push_back(newStr);
+        }
+        else{
+                NW_Alignment Nw;
+                if (!forward)
+                        std::reverse(currentPath.begin(), currentPath.end());
+                if (currentPath.length()<kmerSize|| Nw.get_similarity_perEnhanced(currentPath,readPart.substr(0,currentPath.length()) )>minSimPer){
+                        if (!forward)
+                                std::reverse(currentPath.begin(), currentPath.end());
+                        for ( ArcIt it = (forward ? rootNode.rightBegin() : rootNode.leftBegin());
+                             it!=(forward ? rootNode.rightEnd() : rootNode.leftEnd());it++){
+                                SSNode nextNode = dbg.getSSNode(it->getNodeID());
+                                string nodeContent = nextNode.getSequence();
+                                string path="";
+                                if (forward)
+                                        path = currentPath + nodeContent.substr(kmerSize - 1, nodeContent.length());
+                                else
+                                        path =  nodeContent.substr(0, nodeContent.length() - (kmerSize - 1))+currentPath;
+                                findRecSolutionsRec(results,nextNode,readPart,path,forward);
+                        }
 
-
-
-
+                }
+        }
+}
 
 
 

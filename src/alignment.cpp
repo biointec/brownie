@@ -282,7 +282,7 @@ void NW_Alignment::init()
 {
     matchScore=1;
     mismatchPenalty=1;
-    gapPenalty=1;
+    gapPenalty=2;
 }
 
 double NW_Alignment::max(double x, double y)
@@ -297,6 +297,17 @@ double NW_Alignment::max(double x, double y, double z)
 double NW_Alignment::get_similarity_per(string s1,string s2){
   double fullScore= alignment(s1,s1);
   double simScore=alignment(s1,s2);
+  return (simScore/fullScore)*100;
+}
+double NW_Alignment::get_similarity_perEnhanced(string s1,string s2){
+ if (s1==s2)
+         return 100;
+ if (abs(s1.length()-s2.length())>maxGap )
+         return 0;
+  double fullScore= enhancedAlignment(s1,s1);
+  double simScore=enhancedAlignment(s1,s2);
+  if (simScore<0)
+          return 0;
   return (simScore/fullScore)*100;
 }
 void NW_Alignment::traceback(string& s1,string& s2, char **traceback ){
@@ -413,4 +424,79 @@ double NW_Alignment::alignment(string &s1, string &s2)
         //return 0;
         return result;
 
+}
+double NW_Alignment::enhancedAlignment(string &s1, string &s2){
+        if (s1==s2)
+                return (s1.length()*matchScore);
+
+        int n = s1.length() + 1, m = s2.length() + 1, i, j;
+        if (abs(m-n)>maxGap || m<maxGap || n<maxGap)
+            return 0;
+        char **tracebackArr=new char*[n];
+        for(int i = 0; i < n; i++)
+        {
+                tracebackArr[i] = new char[m];
+        }
+
+        int **s = new int*[n];
+        for(int i = 0; i < n; i++)
+        {
+                s[i] = new int[m];
+        }
+        int p=0;
+        for (int i=0; i<n; i++) {
+                s[i][p]=i*-1;
+                if (i>maxGap)
+                p++;
+        }
+        p=0;
+        for (int j = 0; j < m; j++)
+        {
+                s[p][ j] = j*-1;
+                if (j>maxGap)
+                p++;
+        }
+
+        for (int i = 1; i <= n-1; i++)
+        {
+                int jIndexMin=i-maxGap >0?i-maxGap:1;
+                int jIndexMax=i+maxGap<m?i+maxGap:m-1;
+            for (int j = jIndexMin; j <= jIndexMax; j++)//for (int j = 1; j <= m-1; j++) // for (int j = jIndexMin; j <= i+(d); j++)//
+                {
+                        int scroeDiag = 0;
+                        if(s1[i-1]==s2[j-1]|| s1[i-1]=='N'||s2[i-1]=='N')
+                                scroeDiag = s[i - 1][ j - 1] + matchScore;   //match
+                        else
+                                scroeDiag = s[i - 1][ j - 1]  -mismatchPenalty; //substitution
+                        int scroeLeft = s[i][ j - 1] - gapPenalty; //insert
+                        int scroeUp = s[i - 1][ j] - gapPenalty;  //delete
+                        int maxScore =  max(scroeDiag,scroeLeft,scroeUp);//  Math.Max(Math.Max(scroeDiag, scroeLeft), scroeUp);
+                        s[i][ j] = maxScore;
+                        if (scroeDiag==maxScore) {
+                                tracebackArr[i][j]='\\';
+                        } else {
+                                if (maxScore==scroeLeft) {
+                                        tracebackArr[i][j]='-';
+                                } else {
+                                        if(maxScore==scroeUp) {
+                                                tracebackArr[i][j]='|';
+                                        }
+                                }
+                        }
+
+                }
+        }
+        traceback(s1, s2,tracebackArr);
+        int result=s[n-1][m-1];
+        for(int i = 0; i < n; i++)
+        {
+                delete[] s[i];
+        }
+        delete[] s;
+        for(int i = 0; i < n; i++)
+        {
+                delete[] tracebackArr[i];
+        }
+        delete[] tracebackArr;
+        return result;
 }

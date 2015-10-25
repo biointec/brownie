@@ -28,73 +28,7 @@ extern "C" {
 
 void DBGraph::writeCytoscapeGraph(int ID)
 {
-    /*stringstream ss;//create a stringstream
-    ss << ID;//add number to the stream
-
-    cout << "Writing cytoscape graph files..." << endl;
-    ofstream ofs(("cytArcs_" + ss.str() + ".txt").c_str());
-
-    for (NodeID id = -numNodes; id <= numNodes; id++) {
-        if (id == 0)
-            continue;
-
-        SSNode node = getSSNode(id);
-        if (!node.isValid())
-            continue;
-
-        for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++)
-            ofs << id << "\t" << it->getNodeID() << endl;
-    }
-
-    ofs.close();
-
-    ofs.open(("cytColor" + ss.str() + ".txt").c_str());
-    ofs << "Color_" << ID << " (class=Integer)" << endl;
-
-    for (NodeID id = 1; id <= numNodes; id++) {
-
-        DSNode& node = getDSNode(id);
-        if (!node.isValid())
-            continue;
-
-        int value = trueMult[id] >= 1 ? 1 : 0;
-        ofs << id << "=" << value << endl;
-        ofs << -id << "=" << value << endl;
-    }
-
-    ofs.close();
-
-    ofs.open(("cytNodes_seq" + ss.str() + ".txt").c_str());
-    ofs << "Sequence_" << ID << " (class=String)" << endl;
-
-    for (NodeID id = 1; id <= numNodes; id++) {
-        DSNode& node = getDSNode(id);
-        if (!node.isValid())
-            continue;
-
-        ofs << id << "=" << getSSNode(id).getSequence() << endl;
-        ofs << -id << "=" << getSSNode(-id).getSequence() << endl;
-    }
-
-    ofs.close();
-
-    ofs.open(("cytNodes_seqSize" + ss.str() + ".txt").c_str());
-    ofs << "NodeLength_" << ID << " (class=Integer)" << endl;
-
-    for (NodeID id = 1; id <= numNodes; id++) {
-        DSNode& node = getDSNode(id);
-        if (!node.isValid())
-            continue;
-
-        ofs << id << "=" << getSSNode(id).getMarginalLength() << endl;
-        ofs << -id << "=" << getSSNode(-id).getMarginalLength() << endl;
-    }
-
-    ofs.close();*/
-    //comment by Mahdi
-    //for (srcID = 1; srcID <= numNodes; srcID++)
-    //        if (getSSNode(srcID).isValid())
-    //                break;
+#ifdef DEBUG
     int srcID=1;
     int i=0;
     for (i =srcID ; i <= numNodes; i++)
@@ -179,10 +113,12 @@ void DBGraph::writeCytoscapeGraph(int ID)
             << node.getMarginalLength() << "\t"<<double(node.getReadStartCov()/node.getMarginalLength()) <<"\t"<<nodeMultiplicity<<"\t"<< confidenceRatio<<"\t"<< correctnessRatio <<"\t"<<node.getSequence() << endl;
     }
     ofs.close();
+#endif
 }
 
 void DBGraph::writeLocalCytoscapeGraph(int ID, NodeID srcID, size_t maxDepth)
 {
+#ifdef DEBUG
 
     //comment by Mahdi
     //for (srcID = 1; srcID <= numNodes; srcID++)
@@ -266,10 +202,12 @@ void DBGraph::writeLocalCytoscapeGraph(int ID, NodeID srcID, size_t maxDepth)
             << node.getMarginalLength() << "\t"<<double(node.getReadStartCov()/node.getMarginalLength()) <<"\t"<<nodeMultiplicity<<"\t"<< confidenceRatio<<"\t"<< correctnessRatio <<"\t"<<node.getSequence() << endl;
     }
     ofs.close();
+#endif
 }
 
 void DBGraph::readReferenceGenome()
 {
+#ifdef DEBUG
         if (!reference.empty())
                 return;
 
@@ -286,6 +224,7 @@ void DBGraph::readReferenceGenome()
         }
 
         cout << "Done reading " << reference.size() << " reference contigs" << endl;
+#endif
 }
 
 struct readStructStr
@@ -299,44 +238,25 @@ struct readStructStr
 
 };
 
-void DBGraph::compareToSolution(const string& filename)
+void DBGraph::compareToSolution(const string& filename, bool load)
 {
-        // read the reference genome (genome.fasta) from disk
-        readReferenceGenome();
-
-        // try reading the multiplicity file from disk
-        trueMult.resize(numNodes + 1);
-        bool readingSuccesful = false;
-        if (Util::fileExists(filename)) {
-                ifstream ifs(filename.c_str());
-                for (NodeID id = 1; id <= numNodes; id++) {
-                        ifs >> trueMult[id];
-                        if (!ifs.good())
-                                break;
-                }
-
-                if (ifs.good())
-                        readingSuccesful = true;
-                ifs.close();
-        }
-
-        // if this fails, build a new one
-        if (!readingSuccesful) {
+#ifdef DEBUG
+        if (load){
+                // read the reference genome (genome.fasta) from disk
+                readReferenceGenome();
+                // try reading the multiplicity file from disk
+                trueMult.resize(numNodes + 1);
                 cout << "Building a new multiplicity file" << endl;
                 ofstream ofs(filename.c_str());
                 for (NodeID id = 1; id <= numNodes; id++) {
                         string P = getSSNode(id).getSequence();
                         vector<vector<size_t> > pos, posRC;
                         int ntOcc = findAllTrueOccurences(P, pos, posRC);
-
                         trueMult[id] = ntOcc;
-
                         ofs << trueMult[id] << "\n";
                 }
-
                 ofs.close();
         }
-
         size_t sizeCorrect = 0;
         size_t sizeIncorrect = 0;
         size_t sizeTotal = 0;
@@ -364,19 +284,22 @@ void DBGraph::compareToSolution(const string& filename)
                 sizeGenome += reference[i].size()/2 + 1 - Kmer::getK();
 
         cout << " ===== Quality report =====" << endl;
-        cout << "\tNumber of nodes that exist: " << numCorrect << " (" << 100.00 * numCorrect / numTotal << "%) -> (" << 100.00 * sizeIncorrect / sizeTotal << "% of graph sequence content)" << endl;
-        cout << "\tNumber of nodes that do not exist: " << numIncorrect << " (" << 100.00 * numIncorrect / numTotal << "%) -> ("<<100.00 * sizeCorrect / sizeTotal << "% of graph sequence content)" <<endl;
+        cout << "\tNumber of nodes that exist: " << numCorrect << " (" << 100.00 * numCorrect / numTotal << "%) -> (" << 100.00 *  sizeCorrect/ sizeTotal << "% of graph sequence content)" << endl;
+        cout << "\tNumber of nodes that do not exist: " << numIncorrect << " (" << 100.00 * numIncorrect / numTotal << "%) -> ("<<100.00 *  sizeIncorrect/ sizeTotal << "% of graph sequence content)" <<endl;
         cout << "\tThe fraction of the genome that is covered: " << 100.00 * sizeCorrect / sizeGenome << "%" << endl;
+
+#endif
 }
 
 size_t DBGraph::findAllTrueOccurences(const string& P,
                                       vector<vector<size_t> >& positions,
                                       vector<vector<size_t> >& positionsRC) const
 {
+
     positions.clear();
     positionsRC.clear();
     size_t ntOcc = 0;
-
+#ifdef DEBUG
     // normal strand
     for (size_t i = 0; i < refST.size(); i++) {
         positions.push_back(vector<size_t>());
@@ -422,13 +345,14 @@ size_t DBGraph::findAllTrueOccurences(const string& P,
         if (numOcc > 0)
             free(pos);
     }
-
+#endif
     return ntOcc;
 }
 
 void DBGraph::getActualPath(NodeID srcID, NodeID dstID, size_t distance,
                             vector<NodeID>& result) const
 {
+#ifdef DEBUG
     result.clear();
     result.push_back(srcID);
     SSNode curr = getSSNode(srcID);
@@ -487,6 +411,7 @@ void DBGraph::getActualPath(NodeID srcID, NodeID dstID, size_t distance,
 
         return;
     }
+#endif
 }
 
 bool DBGraph::getDistance(NodeID srcID, NodeID dstID, double maxDistance,
@@ -527,6 +452,7 @@ void DBGraph::getTrueOccurencesForReadPair(string &start,
         vector<string>& output,
         size_t maxSize)
 {
+#ifdef DEBUG
     vector<vector<size_t> > pos1, posRC1, pos2, posRC2;
     findAllTrueOccurences(start, pos1, posRC1);
     findAllTrueOccurences(stop, pos2, posRC2);
@@ -550,6 +476,7 @@ void DBGraph::getTrueOccurencesForReadPair(string &start,
                 if (posRC1[i][k] - posRC2[i][j] + start.size() <= maxSize)
                     output.push_back(Nucleotide::getRevCompl(reference[i].substr(posRC2[i][j], posRC1[i][k] - posRC2[i][j] + start.size())));
             }
+#endif
 }
 
 

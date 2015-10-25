@@ -215,7 +215,7 @@ void DBGraph::extractStatistic(int round) {
                         newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
                         denominator=denominator+newProbability;
                         i--;
-                        while(i>=0&& abs(newProbability-currentProb)> .00000001) {
+                        while(i>=0&& abs(newProbability-currentProb)> .0001) {
                                 currentProb=newProbability;
                                 newValue=avg*i*node.getMarginalLength();
                                 newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
@@ -228,7 +228,7 @@ void DBGraph::extractStatistic(int round) {
                 newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
                 denominator=denominator+newProbability;
                 i++;
-                while(i>0&& abs(newProbability-currentProb)> .000000001) {
+                while(i>0&& abs(newProbability-currentProb)> .0001) {
                         currentProb=newProbability;
                         newValue=avg*i*node.getMarginalLength();
                         newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
@@ -252,7 +252,7 @@ void DBGraph::extractStatistic(int round) {
 }
 
 bool DBGraph::nodeIsBubble(SSNode node, SSNode currNode){
-        if(node.getNumRightArcs()>1){
+        if(node.getNumRightArcs()>1&& hasLowCovNode(node)){
                 vector<pair<vector<NodeID>, vector<NodeID>> > possibleBubbles=searchForParallelNodes(node, 1000);
                 for (auto b : possibleBubbles){
                         vector<NodeID> upPath=b.first;
@@ -294,9 +294,11 @@ bool DBGraph::checkNodeIsReliable(SSNode node){
 
 }
 bool DBGraph::deleteUnreliableNodes(int round){
+        cout<<"Delete Unreliable Nodes starts"<<endl;
         double tp=0, tn=0, fp=0,fn=0;
         size_t numOfDel=0;
         bool change=false;
+        double threshold=this->redLineValueCov;// (!tip&& !bubble)? this->redLineValueCov:this->estimatedKmerCoverage;
         for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
                 if (lID==0)
                         continue;
@@ -308,42 +310,103 @@ bool DBGraph::deleteUnreliableNodes(int round){
                 if (!checkNodeIsReliable(node))
                         continue;
                 ArcIt it = node.rightBegin();
+                SSNode currNode = getSSNode(it->getNodeID());
                 while(it != node.rightEnd()) {
-                        SSNode currNode = getSSNode(it->getNodeID());
                         bool tip=currNode.getNumRightArcs()==0&&currNode.getNumLeftArcs()==1;
                         SSNode firstNodeInUpPath;
                         SSNode firstNodeInDoPath;
                         bool bubble=nodeIsBubble(node,currNode);
-                        double threshold= (!tip&& !bubble)? this->redLineValueCov:this->estimatedKmerCoverage;
                         if (currNode.getNodeKmerCov()<threshold){
-                                //#ifdef DEBUG
+                                #ifdef DEBUG
                                 if (trueMult[abs(currNode.getNodeID())]>0){
                                         fp++;
                                 }
                                 else{
                                         tp++;
                                 }
-                                //#endif
+                                #endif
                                 change= removeNode(currNode);
                                 numOfDel++;
                                 break;
                         }
                         else{
-                                //#ifdef DEBUG
+                                #ifdef DEBUG
                                 if (trueMult[abs(currNode.getNodeID())]>0){
                                         tn++;
                                 }
                                 else{
                                         fn++;
                                 }
-                                //#endif
+                                #endif
                         }
                         it++;
                 }
 
 
         }
+        size_t secondFP=0;
+        size_t secondTP=0;
+        for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
+                if (lID==0)
+                        continue;
 
+                SSNode node = getSSNode ( lID );
+
+                if(!node.isValid())
+                        continue;
+                if (!checkNodeIsReliable(node))
+                        continue;
+                ArcIt it = node.rightBegin();
+                SSNode currNode = getSSNode(it->getNodeID());
+                bool found=false;
+                while(it != node.rightEnd()) {
+                        if (!checkNodeIsReliable(currNode))
+                                it++;
+                        if (currNode.getExpMult()!=node.getExpMult() ||currNode.getExpMult()<2)
+                                it++;
+                        found=true;
+                        break;
+                }
+                if (found)
+                {
+                        ArcIt it = node.rightBegin();
+                        while(it != node.rightEnd()) {
+                                SSNode victim=getSSNode(it->getNodeID());
+                                if(victim.getNodeID()!=currNode.getNodeID()&&victim.getNodeKmerCov()<threshold){
+#ifdef DEBUG
+                                        if (trueMult[abs(victim.getNodeID())]>0)
+                                                secondFP++;
+                                        else
+                                                secondTP++;
+#endif
+                                        removeNode(victim);
+                                        break;
+                                }
+                                it++;
+                        }
+                        it = currNode.leftBegin();
+                        while(it!=currNode.leftEnd()){
+                                SSNode victim=getSSNode(it->getNodeID());
+                                if (!victim.isValid())
+                                        it++;
+                                if(victim.getNodeID()!=node.getNodeID()&&victim.getNodeKmerCov()<threshold){
+#ifdef DEBUG
+                                        if (trueMult[abs(victim.getNodeID())]>0)
+                                                secondFP++;
+                                        else
+                                                secondTP++;
+#endif
+                                        removeNode(victim);
+                                        break;
+                                }
+                                it++;
+                        }
+                }
+
+
+        }
+        cout<<"second FP        :"<<secondFP<<endl;
+        cout<<"second TP        :"<<secondTP<<endl;
         cout<<"number of deleted nodes in deleteUnreliableNodes :: "<<numOfDel<<endl;
         //#ifdef DEBUG
         cout<< "TP:     "<<tp<<"        TN:     "<<tn<<"        FP:     "<<fp<<"        FN:     "<<fn<<endl;
@@ -484,9 +547,7 @@ bool DBGraph::deleteExtraRightLink(SSNode rootNode, int round) {
                         bool result = llNode.deleteRightArc ( bestLNode.getNodeID() );
                         assert ( result );
                 }
-                if (trueMult[abs( bestLNode.getNodeID())]>0) {
-                        // cout<<"you deleted a correct node in guessNodeMultiplicity, node number is:	"<<bestLNode.getNodeID()<<"	cov:"<<bestLNode.getStReadCov()<<"	length:"<<bestLNode.getMarginalLength()<<"	"<< bestResult.first<<"	"<<bestResult.second <<endl;
-                }
+
                 bestLNode.deleteAllRightArcs();
                 bestLNode.deleteAllLeftArcs();
                 bestLNode.invalidate();
@@ -537,9 +598,7 @@ bool DBGraph::deleteExtraLeftLink(SSNode rootNode, int round) {
                                 assert ( result );
                         }
 
-                        if (trueMult[abs(bestLNode.getNodeID())]>0) {
-                                // cout<<"you deleted a correct node in guessNodeMultiplicity, node number is:	"<<bestLNode.getNodeID()<<"	"<<bestLNode.getStReadCov()<<"	"<<bestResult.first<<"	"<<bestResult.second <<endl;
-                        }
+
                         bestLNode.deleteAllRightArcs();
                         bestLNode.deleteAllLeftArcs();
                         bestLNode.invalidate();
@@ -590,8 +649,13 @@ bool DBGraph::mergeSingleNodes(bool force)
 
                 #ifdef DEBUG
                 if ( ( ( trueMult[abs ( lID )] >= 1 ) && ( trueMult[abs ( rID )] == 0 ) ) ||
-                        ( ( trueMult[abs ( rID )] >= 1 ) && ( trueMult[abs ( lID )] == 0 ) ) )
-                        numOfIncorrectConnection++;
+                        ( ( trueMult[abs ( rID )] >= 1 ) && ( trueMult[abs ( lID )] == 0 ) ) ){
+                                numOfIncorrectConnection++;
+                                trueMult[abs(lID)]=0;
+                                trueMult[abs(rID)]=0;
+
+                        }
+
                 #endif
 
                 left.deleteRightArc ( rID );
@@ -658,42 +722,49 @@ bool DBGraph::deleteSuspiciousNodes() {
                 if (leftCov < rightCov) {
 
                         if (leftCov<this->safeValueCov) {
+#ifdef DEBUG
                                 if (trueMult[abs( leftNode.getNodeID())]>0) {
                                         TP++;
                                 }
                                 else {
                                         FP++;
                                 }
-
+#endif
                                 removeNode(leftNode);
                                 modify=true;
                         } else {
+#ifdef DEBUG
                                 if (trueMult[abs (leftNode.getNodeID())]>0) {
                                         TN++;
                                 }
                                 else {
                                         FN++;
                                 }
+#endif
                         }
                 }
                 else {
 
                         if (rightCov< this->safeValueCov) {
+#ifdef DEBUG
                                 if (trueMult[abs (rNode.getNodeID())]>0) {
                                         TP++;
                                 }
                                 else {
                                         FP++;
                                 }
+#endif
                                 removeNode(rNode);
                                 modify=true;
                         } else {
+#ifdef DEBUG
                                 if (trueMult[abs(rNode.getNodeID())]>0) {
                                         TN++;
                                 }
                                 else {
                                         FN++;
                                 }
+#endif
                         }
 
 

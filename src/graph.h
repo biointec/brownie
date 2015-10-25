@@ -276,8 +276,12 @@ public:
     void updateReadFile(const map<long , string> &cacheTable  );
     string getReadByLine(long num, string fileName);
     void WriteReadsToTextFile();
-   vector<pair<vector<NodeID>, vector<NodeID>> >  searchForParallelNodes(SSNode node,vector<NodeID> &visited, vector<NodeID> &prevNode,vector<NodeID> &nodeColor, int depth);
+    vector<pair<vector<NodeID>, vector<NodeID>> >  searchForParallelNodes(SSNode node,vector<NodeID> &visited, vector<NodeID> &prevNode,vector<NodeID> &nodeColor, int depth);
     vector<pair<vector<NodeID>, vector<NodeID>> > searchForParallelNodes(SSNode node, int depth);
+    bool hasLowCovNode(SSNode root);
+    bool removePath(vector<NodeID> &delPath, vector<NodeID> &correctPath);
+    double getMeanPathCov( vector<NodeID> &path);
+    bool detectFalsePath( vector<NodeID> &upPath, vector<NodeID> &downPath);
     double findDifference2(string a, string b);
     bool alignToKmer(string& read,const string& kmer, int readLine, int& startPoint, bool& kmerReverse);
     bool votingCorrection(vector<pair< pair<double,double>, bool> >  &tempArray,map<long , string > &cacheTable, string kmer);
@@ -325,7 +329,7 @@ public:
      * Compare the current graph to the solution
      * @param filename Filename of file containing true multiplicities
      */
-    void compareToSolution(const string& filename);
+    void compareToSolution(const string& filename,bool load);
 
     size_t findAllTrueOccurences(const string& str,
                                  std::vector<std::vector<size_t> >& pos,

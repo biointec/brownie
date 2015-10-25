@@ -213,11 +213,11 @@ bool DBGraph::updateCutOffValue(int round)
                 int marginalLength=n.getMarginalLength();//+ settings.getK();
                 bool correctNode=false;
                 double nodeMultiplicityR=1;
-                //#ifdef DEBUG
+                #ifdef DEBUG
                 nodeMultiplicityR=trueMult[abs(n.getNodeID())];
                 if (nodeMultiplicityR>0)
                         correctNode=true;
-                //#endif
+                #endif
 
                 allNodes.push_back( make_pair(kmerCoverage, make_pair( nodeMultiplicityR, make_pair(correctNode,marginalLength)) ));
         }
@@ -225,7 +225,7 @@ bool DBGraph::updateCutOffValue(int round)
         unsigned int i=0;
         double Interval=.1;
         double  St=allNodes[0].first;
-
+        //frequencyArray.push_back(make_pair(make_pair(settings.getKmerCovOne(), 0) , make_pair(1,settings.getKmerCovOne())));
         while (i<allNodes.size()-1) {
                 double intervalCount=0;
                 int sumOfMarginalLenght=0;
@@ -241,12 +241,12 @@ bool DBGraph::updateCutOffValue(int round)
                 if (intervalCount!=0)
                         frequencyArray.push_back(make_pair(make_pair( sumOfMarginalLenght, correctNodeMarginalLength) , make_pair(representative,intervalCount)));
                 St=St+Interval;
-                if (St>this->estimatedKmerCoverage*3)
+                if (St>graph->estimatedKmerCoverage+graph->estimatedMKmerCoverageSTD*3)
                         break;
         }
         plotCovDiagram(frequencyArray);
         double ratio=1;
-        if (round<3)
+        if (round<4)
                 ratio=ratio+(double)round/10;
         this->redLineValueCov= this->cutOffvalue*ratio>this->redLineValueCov?this->cutOffvalue*ratio:this->redLineValueCov;
         ratio=.7;
@@ -262,12 +262,13 @@ bool DBGraph::updateCutOffValue(int round)
                 ratio=.8;
         this->certainVlueCov=this->cutOffvalue*ratio;
         this->updateCutOffValueRound++;
+        #ifdef DEBUG
         cout<<"certainValue: "<<this->certainVlueCov<<endl;
         cout<<"safeValue: "<<this->safeValueCov<<endl;
         cout<<"redLineValue: "<<this->redLineValueCov<<endl;
         getN50();
+        #endif
         //writing to file to make a plot
-        //#ifdef DEBUG
         //if (round>0)
 
         //#endif
@@ -314,7 +315,9 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
                 exp.doClassification();
                 this->erroneousClusterMean=exp.curErronousClusterMean;
                 this->correctClusterMean=exp.curCorrectClusterMean;
-                this->cutOffvalue=exp.intersectionPoint;
+                this->cutOffvalue=exp.findIntersectionPoint(1,estimatedKmerCoverage);
+                cout<<"intersectionPoint based two curves:"<<exp.intersectionPoint<<endl;
+                cout<<"my intersectionPoint:"<<this->cutOffvalue<<endl;
         }
        /* if (updateCutOffValueRound>1){
                 ExpMaxClustering exp;
@@ -328,7 +331,7 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
 
         #ifdef DEBUG
         string address =" plot.dem";
-        string command="gnuplot -e  \"filename='"+filename+"'\" -e \"outputfile='"+outputFileName+"'\""+address;
+        string command="gnuplot -e  \"filename='"+sFileName+"'\" -e \"outputfile='"+outputFileName+"'\""+address;
         system(command.c_str());
         #endif
 
@@ -360,26 +363,32 @@ bool DBGraph::filterCoverage(float round)
                 if(!n.isValid())
                         continue;
                 if (n.getNodeKmerCov()>this->certainVlueCov) {
+#ifdef DEBUG
                         if (trueMult[abs(i)] >= 1)
                                 tn++;
                         else
                                 fn++;
+#endif
                         continue;
                 }
                 bool Del=removeNode(n);
                 if (Del){
                         numFiltered++;
+#ifdef DEBUG
                         if (trueMult[abs(i)] >= 1)
                                 fp++;
                         else
                                 tp++;
+#endif
                 }
                 else
                 {
+#ifdef DEBUG
                         if (trueMult[abs(i)] >= 1)
                                 tn++;
                         else
                                 fn++;
+#endif
                 }
         }
         cout << "Number of coverage nodes deleted: " << numFiltered<<endl;
@@ -396,6 +405,10 @@ bool DBGraph::filterCoverage(float round)
 bool DBGraph::removeNode(SSNode & rootNode) {
        if (rootNode.getMarginalLength()>maxNodeSizeToDel)
               return false;
+       if (abs (rootNode.getNodeID())==2433815)
+       {
+                cout<<"big mistake what are you doing?"<<endl;
+       }
 
         for ( ArcIt it2 = rootNode.leftBegin(); it2 != rootNode.leftEnd(); it2++ ) {
                 SSNode llNode = getSSNode ( it2->getNodeID() );
@@ -966,7 +979,6 @@ void DBGraph::writeGraphBin(const std::string& nodeFilename,
         ofstream nodeFile(nodeFilename.c_str(), ios::binary);
         for (NodeID id = 1; id <= numNodes; id++) {
                 DSNode& node = getDSNode(id);
-
                 // write the node contents
                 node.write(nodeFile);
         }

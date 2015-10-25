@@ -48,6 +48,7 @@ private:
     double matchScore;
     double mismatchPenalty;
     double gapPenalty;
+    double maxGap=3;
     double max(double x, double y);
     double max(double x, double y, double z);
     void    traceback(string& s1,string& s2,char **traceback );
@@ -55,6 +56,8 @@ private:
 public:
     NW_Alignment();
     double alignment(string &s1, string &s2);
+    double enhancedAlignment(string &s1, string &s2);
     double get_similarity_per(string s1,string s2);
+    double get_similarity_perEnhanced(string s1,string s2);
 };
 

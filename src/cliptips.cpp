@@ -39,7 +39,6 @@ bool DBGraph::clipTips(int round)
         double threshold = redLineValueCov;
 
         for (NodeID id = 1; id <= numNodes; id++) {
-
                 SSNode node = getSSNode(id);
                 if (!node.isValid())
                         continue;
@@ -54,7 +53,8 @@ bool DBGraph::clipTips(int round)
                 SSNode startNode = (rightDE) ? getSSNode(-id) : getSSNode(id);
                 bool isolated = rightDE && leftDE;
                 bool joinedTip = startNode.getNumRightArcs() > 1;
-
+                if (isolated||joinedTip)
+                        threshold=this->safeValueCov;
                 bool remove = false;
                 if ((startNode.getNodeKmerCov() <threshold) &&
                     (startNode.getMarginalLength() < maxNodeSizeToDel))

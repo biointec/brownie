@@ -108,5 +108,5 @@ public:
                 //initialization("scov_001.dat", "erronousNodes.dat","correctNodes.dat",.01,1, 50 );
         }
         void doClassification();
-        void findIntersectionPoint(double curErronousClusterMean , double curCorrectClusterMean);
+        double findIntersectionPoint(double curErronousClusterMean , double curCorrectClusterMean);
 };

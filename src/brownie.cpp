@@ -59,25 +59,22 @@ void Brownie::stageOne()
 
         cout << "Entering stage 1" << endl;
         cout << "================" << endl;
-
         if (!stageOneNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 1..." << endl << endl;
                 return;
         }
-
         KmerTable *readParser = new KmerTable(settings);
-
         cout << "Generating kmers with k = " << Kmer::getK()
         << " from input files..." << endl;
-
+        size_t kmerGOne= readParser->getNumKmersCovGTOne();
+        size_t allKmers=readParser->getNumKmers() ;
         Util::startChrono();
         readParser->parseInputFiles(libraries);
         cout << "Parsed input files (" << Util::stopChronoStr() << ")" << endl;
-
         cout << "Total number of unique kmers in table: "
-        << readParser->getNumKmers() << " ("
-        << readParser->getNumKmersCovGTOne() << " with coverage > 1)" << endl;
+        << allKmers << " ("
+        << kmerGOne << " with coverage > 1)" << endl;
 
 #ifdef DEBUG
         readParser->validateStage1();
@@ -87,8 +84,8 @@ void Brownie::stageOne()
         cout << "Writing kmer file...";
         cout.flush();
         Util::startChrono();
-        readParser->writeAllKmers(getKmerFilename());
-        //readParser->writeKmersWithCovGTOne(getKmerFilename());
+        //readParser->writeAllKmers(getKmerFilename());
+        readParser->writeKmersWithCovGTOne(getKmerFilename());
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
         delete readParser;
@@ -149,7 +146,7 @@ void Brownie::stageThree()
         cout << "Entering stage 3" << endl;
         cout << "================" << endl;
 
-        if (!stageThreeNecessary()) {
+       if (!stageThreeNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 3..." << endl << endl;
                 return;
@@ -178,7 +175,6 @@ void Brownie::stageThree()
 
 #ifdef DEBUG
         graph.sanityCheck();
-        graph.compareToSolution(getTrueMultFilename(3));
 #endif
         graph.clear();
         cout << "Stage 3 finished.\n" << endl;
@@ -195,140 +191,118 @@ void Brownie::stageFour()
 
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
-
-        /*if (!stageFourNecessary()) {
+#ifndef DEBUG
+        if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                         "skipping stage 4..." << endl << endl;
                 return;
-        }*/
-
+        }
+#endif
         Util::startChrono();
         cout << "Creating graph... ";
         cout.flush();
+
         DBGraph testgraph(settings);
         testgraph.loadGraphBin(getBinNodeFilename(3),
                                getBinArcFilename(3),
                                getMetaDataFilename(3));
-
         cout << "done (" << testgraph.getNumNodes() << " nodes, "
              << testgraph.getNumArcs() << " arcs), ("
              << Util::stopChronoStr() << ")" << endl;
 
         cout << "Initial kmerCoverage : "<<testgraph.estimatedKmerCoverage<<endl;
 
-#ifdef DEBUG
+
         string command = "mkdir " + settings.getTempDirectory() + "cov";
         system(command.c_str());
         command="rm "+settings.getTempDirectory() + "cov/* && rm "+settings.getTempDirectory() + "cov/*.dat";
         cout<<command<<endl;
         system(command.c_str());
-
-        testgraph.compareToSolution(getTrueMultFilename(3));
+#ifdef DEBUG
+        testgraph.compareToSolution(getTrueMultFilename(3), true);
 #endif
-
         testgraph.clipTips(0);
         testgraph.mergeSingleNodes(true);
-        // ================
-        size_t depth=settings.getK()+1;
-        testgraph.bubbleDetection(depth);
-
-        while(depth<500) {
-                bool continuEdit = testgraph.bubbleDetection(depth);
-                if (continuEdit)
-                        testgraph.mergeSingleNodes(false);
-                else
-                        break;
-                depth=depth+100;
-                cout << " Bubble depth: " << depth <<endl;
-        }
-
-        // ============
-
         testgraph.filterCoverage(0);
         testgraph.mergeSingleNodes(true);
         testgraph.extractStatistic(0);
         DBGraph graph(settings);
+        graph.loadGraphBin(getBinNodeFilename(3),
+                               getBinArcFilename(3),
+                               getMetaDataFilename(3));
         graph.estimatedKmerCoverage=testgraph.estimatedKmerCoverage;
         graph.estimatedMKmerCoverageSTD=testgraph.estimatedMKmerCoverageSTD;
-        cout<<"estimated Kmer Coverage Mean: "<<graph.estimatedKmerCoverage<<endl;
-        cout<<"estimated Kmer Coverage STD: "<<graph.estimatedMKmerCoverageSTD<<endl;
         testgraph.clear();
         Util::startChrono();
         cout << "Creating graph... ";
         cout.flush();
-        graph.createFromFile(getNodeFilename(3),
-                             getArcFilename(3),
-                             getMetaDataFilename(3));
-        string nodeFileName=getNodeFilename(4);
-        string arcFileName=getArcFilename(4);
-        string metaDataFileName=getMetaDataFilename(4);
-
         cout << "done (" << graph.getNumNodes() << " nodes, "
         << graph.getNumArcs() << " arcs)" << endl;
         cout << "Created graph in "
         << Util::stopChrono() << "s." << endl;
         Util::startChrono();
-        //#ifdef DEBUG
-        graph.compareToSolution(getTrueMultFilename(3));
-        //#endif
+        #ifdef DEBUG
+        cout<<"estimated Kmer Coverage Mean: "<<graph.estimatedKmerCoverage<<endl;
+        cout<<"estimated Kmer Coverage STD: "<<graph.estimatedMKmerCoverageSTD<<endl;
+        graph.compareToSolution(getTrueMultFilename(3), true);
+        #endif
         //variables
-
-
         bool simplified = true;
-        size_t bigestN50=0;
         int round=1;
-        size_t minN50=100;
-        graph.getN50();
-        //&& graph.sizeOfGraph>settings.getGenomeSize()
-        while (simplified && graph.sizeOfGraph>settings.getGenomeSize() ) {
+        while (simplified  && graph.sizeOfGraph>settings.getGenomeSize()) {
+                //
                 //*******************************************************
-                graph.updateCutOffValue(round);
+                if (round==1)
+                        graph.updateCutOffValue(round);
                 bool tips=graph.clipTips(round);
-                bool continuEdit=tips;
-                while(continuEdit) {
+                if(tips) {
                         graph.mergeSingleNodes(false);
                         #ifdef DEBUG
-                        graph.compareToSolution(getTrueMultFilename(3));
+                        graph.compareToSolution(getTrueMultFilename(3), false);
                         #endif
-                        continuEdit=graph.clipTips(round);
+                        tips=graph.clipTips(round);
                 }
                 //*******************************************************
-                graph.updateCutOffValue(round);
                 bool bubble=false;
                 size_t depth=settings.getK()+1;
+                #ifdef DEBUG
+                graph.updateCutOffValue(round);
+                graph.compareToSolution(getTrueMultFilename(3), false);
+                #endif
+                graph.mergeSingleNodes(true);
                 bubble= graph.bubbleDetection(depth);
-                simplified=bubble==true?true:simplified;
-
+                bool continuEdit=false;
                 while(depth<500){
                         continuEdit= graph.bubbleDetection(depth);
                         if (continuEdit)
-                                graph.mergeSingleNodes(false);
-                        else
-                                break;
-                        depth=depth+100;
+                                graph.mergeSingleNodes(true);
+                       // else
+                       //        break;
+                        depth=depth+150;
                         cout<<"bubble depth:"<<depth <<endl;
                 }
                 #ifdef DEBUG
-                graph.compareToSolution(getTrueMultFilename(3));
+                graph.compareToSolution(getTrueMultFilename(3),false);
+                graph.updateCutOffValue(round);
                 #endif
                 graph.extractStatistic(round);
                 bool deleted=graph.deleteUnreliableNodes( round);
-                simplified=deleted==true?true:simplified;
                 while(graph.mergeSingleNodes(true));
-                //#ifdef DEBUG
+                #ifdef DEBUG
+                graph.compareToSolution(getTrueMultFilename(3),false);
                 graph.updateCutOffValue(round);
-                graph.compareToSolution(getTrueMultFilename(3));
                 cout<<"estimated Kmer Coverage Mean: "<<graph.estimatedKmerCoverage<<endl;
                 cout<<"estimated Kmer Coverage STD: "<<graph.estimatedMKmerCoverageSTD<<endl;
-                //#endif
-                simplified = tips    || deleted || bubble; //link |||| coverage
-
+                #endif
+                simplified = tips    || deleted || bubble;
                 round++;
 
         }
+        #ifdef DEBUG
+        graph.compareToSolution(getTrueMultFilename(3), false);
+        #endif
         cout<<"graph size:"<<graph.sizeOfGraph<<endl;
-
-        graph.writeGraph( nodeFileName,arcFileName,metaDataFileName);
+        graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));
         cout << " Ghraph correction completed in "
         << Util::stopChrono() << "s." << endl;
         Util::startChrono();
@@ -342,9 +316,6 @@ void Brownie::stageFour()
 
         graph.clear();
         cout << "Stage 4 finished.\n" << endl;
-        if (settings.getSkipStage5()) {
-                writeGraphExplicit(4);
-        }
 }
 
 void Brownie::stageFive()
@@ -361,6 +332,7 @@ void Brownie::stageFive()
         Util::startChrono();
         cout << "Creating graph... ";
         cout.flush();
+
         graph.createFromFile(getNodeFilename(4),
                              getArcFilename(4),
                              getMetaDataFilename(4));
@@ -368,13 +340,10 @@ void Brownie::stageFive()
         << graph.getNumArcs() << " arcs)" << endl;
         cout << "Created graph in "
         << Util::stopChrono() << "s." << endl;
-
         #ifdef DEBUG
-        graph.compareToSolution(getTrueMultFilename(3));
+        graph.compareToSolution(getTrueMultFilename(4),true);
         graph.writeCytoscapeGraph(0);
         #endif
-
-        cout<<"N50 size is: " <<graph.getN50()<<endl;
         Util::startChrono();
         ReadCorrection rc(graph, settings);
         rc.errorCorrection(libraries);
@@ -400,12 +369,14 @@ int main(int argc, char** args)
 {
         try {
                 Brownie brownie(argc, args);
-                bool debug=false;
-                #ifdef DEBUG
-                debug=true;
-                #endif
-              //  if(!debug)
-               //      brownie.printInFile();
+#ifndef DEBUG
+                cout<<"running in Release mode"<<endl;
+                brownie.printInFile();
+#endif
+#ifdef DEBUG
+                cout<<"In DEBUG mode"<<endl;
+#endif
+
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
                 << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL << endl;
                 cout << "Today is " << Util::getTime() << endl;
