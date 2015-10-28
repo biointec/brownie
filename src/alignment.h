@@ -59,5 +59,6 @@ public:
     double enhancedAlignment(string &s1, string &s2);
     double get_similarity_per(string s1,string s2);
     double get_similarity_perEnhanced(string s1,string s2);
+    int findDirectSim(string const &a, string const &b);
 };
 

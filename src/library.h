@@ -845,6 +845,16 @@ public:
          * Finalize read threading
          */
         void finalizeReadThreading();
+        double getReadLength(){
+                size_t readLengthAvg=0;
+                size_t totalNumOfReads=0;
+                for (auto it : container){
+                        readLengthAvg=((readLengthAvg *totalNumOfReads)+it.getReadLength()*it.getNumReads())/(totalNumOfReads+it.getNumReads());
+                        totalNumOfReads=totalNumOfReads+it.getNumReads();
+                }
+                if (totalNumOfReads!=0)
+                return readLengthAvg;
+        }
 };
 
 #endif

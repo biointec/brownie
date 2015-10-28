@@ -282,7 +282,7 @@ void NW_Alignment::init()
 {
     matchScore=1;
     mismatchPenalty=1;
-    gapPenalty=2;
+    gapPenalty=5;
 }
 
 double NW_Alignment::max(double x, double y)
@@ -299,16 +299,34 @@ double NW_Alignment::get_similarity_per(string s1,string s2){
   double simScore=alignment(s1,s2);
   return (simScore/fullScore)*100;
 }
+//size of two string should be same to avoid doing alignment in the first try
+int NW_Alignment::findDirectSim(string const &a, string const &b) {
+        int d = 0;
+        if (a.length()!=b.length())
+                return 0;
+        if (a==b)
+                return a.length();
+        for (unsigned int i = 0; i < a.length() && i < b.length(); i++) {
+                if (a[i] == b[i] || a[i] == 'N' || b[i] == 'N') {
+                        d++;
+                }
+        }
+        return d;
+
+}
 double NW_Alignment::get_similarity_perEnhanced(string s1,string s2){
- if (s1==s2)
-         return 100;
- if (abs(s1.length()-s2.length())>maxGap )
-         return 0;
-  double fullScore= enhancedAlignment(s1,s1);
-  double simScore=enhancedAlignment(s1,s2);
-  if (simScore<0)
-          return 0;
-  return (simScore/fullScore)*100;
+        if (s1==s2)
+                return 100;
+        if (abs(s1.length()-s2.length())>maxGap )
+                return 0;
+        double fullScore=100;
+        double simScore=0;
+        fullScore= enhancedAlignment(s1,s1);
+        simScore=enhancedAlignment(s1,s2);
+        if (simScore<0)
+                return 0;
+
+        return (simScore/fullScore)*100;
 }
 void NW_Alignment::traceback(string& s1,string& s2, char **traceback ){
         string news1="";

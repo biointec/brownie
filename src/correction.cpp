@@ -19,6 +19,7 @@ ReadCorrection::ReadCorrection(DBGraph &g, Settings &s) :
         numOfSupportedReads(0), numOfAllReads(0), numOfReads(0)
 {
         minSimPer=60;
+        maxTimePerRead=.02; //minutes
         cout << endl << "welcome to error correction part" << endl;
         //*******************************************************
         cout << "populateTable" << endl;
@@ -69,13 +70,15 @@ void ReadCorrection::readInputReads(vector<readStructStr> &reads) {
  */
 void ReadCorrection::correctReads(vector<readStructStr> &reads) {
         int supportedReads = 0;
+
         #pragma omp parallel for reduction(+:supportedReads)
+
         for (int i = 0; i < reads.size(); ++i) {
+
                 if (correctRead(reads[i])) {
                         supportedReads++;
                 }
         }
-        numOfSupportedReads += supportedReads;
 }
 
 /**
@@ -89,9 +92,11 @@ void ReadCorrection::writeOutputReads(vector<readStructStr> const &reads) {
                 //write correction
                 outFastq << readInfo.corrctReadContent << endl;
                 //write orientation
-                outFastq << readInfo.orientation << endl;
-                //write qProfile
-                outFastq << readInfo.qProfile << endl;
+                if (FASTQ == library->getFileType()) {
+                        outFastq << readInfo.orientation << endl;
+                        //write qProfile
+                        outFastq << readInfo.qProfile << endl;
+                }
         }
 }
 
@@ -211,7 +216,7 @@ bool ReadCorrection::correctionByMEM(vector<match_t> &matches, string const &ref
                         float diff = findDifference(refstr, foundKmerStr);
                         int startOfRead = m.query - shift;
                         Kmer kmer = refstr;
-                        if (kmerSize / (diff + 1) > 6 && checkForAnswer(kmer, startOfRead, original, guess, qProfile, status)) {
+                        if (kmerSize / (diff + 1) > 6 &&checkForAnswer(kmer, startOfRead, original, guess, qProfile, status)) {//
                                 return true;
                         }
                 }
@@ -242,13 +247,17 @@ bool ReadCorrection::correctionByMEM(readCorrectionStatus &status, string const 
 /**
  * correct a single read
  */
-bool ReadCorrection::correctRead(readStructStr &readInfo) {
-        if (readInfo.strID=="@SRR1151311.15739.2")
-        {
-                int stop=0;
-                stop++;
+bool startWith( string reference,string prefix){
+        if (prefix.length()>reference.length())
+                return false;
+        if(reference.substr(0, prefix.size()) == prefix) {
+                return true;
         }
-        unsigned int readLength=readInfo.originalContent.length();
+        return false;
+}
+bool ReadCorrection::correctRead(readStructStr &readInfo) {
+
+        clock_t start=clock();
         readCorrectionStatus status = kmerNotfound;
         string original =  readInfo.originalContent;
         string guess = original;
@@ -260,24 +269,13 @@ bool ReadCorrection::correctRead(readStructStr &readInfo) {
                 found = correctionByMEM(status, original, guess, qProfile);
         }
         //all attempt for error correction finished
+        checkReadSize(guess, readInfo);
         //now write the guessed Read into the file
-        if (guess.length() > readLength) {
-                guess = guess.substr(0, readLength);
-        } else if (guess.length() < readLength) {
-                cout << readInfo.intID << endl;
-                guess = original;
-        }
-        if (guess.length() != readInfo.qProfile.length()) {
-                if (guess.length() > readInfo.qProfile.length()) {
-                        guess = guess.substr(0, readInfo.qProfile.length());
-                }
-                if (guess.length() < readInfo.qProfile.length()) {
-                        readInfo.qProfile = readInfo.qProfile.substr(0, guess.length());
-                }
-        }
         //save the correction so we can write it to file later
         readInfo.corrctReadContent = guess;
         return found;
+
+
 }
 
 /**
@@ -311,7 +309,11 @@ void ReadCorrection::CorrectErrorsInLibrary(ReadLibrary *input) {
         while (readsFile.is_open()) {
                 vector<readStructStr> reads;
                 readInputReads(reads);
+                clock_t start=clock();
                 correctReads(reads);
+                clock_t end=clock();
+                double t=(end-start)/(double) (CLOCKS_PER_SEC*60);
+                cout<<"the latest batch of reads toke"<< t<<"minutes to correct"<<endl;
                 writeOutputReads(reads);
                 printProgress(begin);
         }
@@ -334,7 +336,24 @@ void ReadCorrection::errorCorrection(LibraryContainer &libraries) {
                 CorrectErrorsInLibrary(&input);
         }
 }
-
+void ReadCorrection::checkReadSize(string &guess,readStructStr &readInfo){
+        string original =  readInfo.originalContent;
+        unsigned int readLength=readInfo.originalContent.length();
+        if (guess.length() > readLength) {
+                guess = guess.substr(0, readLength);
+        } else if (guess.length() < readLength) {
+                cout << readInfo.intID << endl;
+                guess = original;
+        }
+        if (guess.length() != readInfo.qProfile.length()) {
+                if (guess.length() > readInfo.qProfile.length()) {
+                        guess = guess.substr(0, readInfo.qProfile.length());
+                }
+                if (guess.length() < readInfo.qProfile.length()) {
+                        readInfo.qProfile = readInfo.qProfile.substr(0, guess.length());
+                }
+        }
+}
 /**
  *
  * @return
@@ -713,7 +732,7 @@ bool ReadCorrection::findRecSolutionsBackward(vector<string> &results, SSNode co
         else{
                 NW_Alignment Nw;
                 std::reverse(currentPath.begin(), currentPath.end());
-                if (currentPath.length()<kmerSize|| Nw.get_similarity_perEnhanced(currentPath,readPart.substr(0,currentPath.length()) )>minSimPer){
+                if (currentPath.length()<kmerSize|| Nw.get_similarity_perEnhanced(currentPath,readPart.substr(0,currentPath.length()))>minSimPer){
                         std::reverse(currentPath.begin(), currentPath.end());
                         for (ArcIt it=rootNode.leftBegin();it!=rootNode.leftEnd();it++){
                                 SSNode lNode = dbg.getSSNode(it->getNodeID());

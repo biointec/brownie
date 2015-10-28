@@ -200,7 +200,7 @@ private:
     std::multimap<NodePair, GaussVal> signLinks;
     std::multimap<NodePair, GaussVal> nonSignLinks;
     std::multimap<NodePair, GaussVal> dubiousLinks;
-    double readLength;//=100;
+
     double coverage;//=100;
     int kmerSize;//=31;
 
@@ -237,12 +237,13 @@ public:
     double cutOffvalue;
     size_t maxNodeSizeToDel;
     int updateCutOffValueRound;
-
+    size_t avgreadLength;
     size_t n50;
     int numberOfValidNodes;
     size_t sizeOfGraph;
     double erroneousClusterMean;
     double correctClusterMean;
+    double readLength;//=100;
     /**
      * Careful concatenation, taking into account the estimated multiplicity
      */
@@ -499,7 +500,7 @@ public:
                       const std::string& arcFilename,
                       const std::string& metaDataFilename);
 
-    size_t getN50();
+    size_t updateGraphSize();
 
     /**
      * Extract nodes from graph and write to file
