@@ -19,15 +19,19 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
+#include <string>
+
 #include "brownie.h"
 
 #include "settings.h"
 #include "kmeroverlap.h"
+#include "kmeroverlaptable.h"
 #include "graph.h"
-#include "correction.h"
+
 #include "kmertable.h"
 #include "alignment.h"
-#include <string>
+#include "correction.h"
+#include "readcorrection.h"
 
 using namespace std;
 
@@ -191,13 +195,13 @@ void Brownie::stageFour()
 
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
-#ifndef DEBUG
+
         if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                         "skipping stage 4..." << endl << endl;
                 return;
         }
-#endif
+
         Util::startChrono();
         cout << "Creating graph... ";
         cout.flush();
@@ -341,12 +345,16 @@ void Brownie::stageFive()
         cout << "Created graph in "
         << Util::stopChrono() << "s." << endl;
         #ifdef DEBUG
-        graph.compareToSolution(getTrueMultFilename(4),true);
-        graph.writeCytoscapeGraph(0);
+     //   graph.compareToSolution(getTrueMultFilename(4),true);
+      //  graph.writeCytoscapeGraph(0);
         #endif
         Util::startChrono();
-        ReadCorrection rc(graph, settings);
-        rc.errorCorrection(libraries);
+       // ReadCorrection rc(graph, settings);
+      //  rc.errorCorrection(libraries);
+
+        ReadCorrectionJan rcJan(graph, settings);
+        rcJan.doErrorCorrection(libraries);
+
         cout << "Error correction completed in "
         << Util::stopChrono() << "s." << endl;
         cout << "Stage 5 finished.\n" << endl;
@@ -364,14 +372,13 @@ void Brownie::writeGraphExplicit(int stage)
         graph.clear();
 }
 
-
 int main(int argc, char** args)
 {
         try {
                 Brownie brownie(argc, args);
 #ifndef DEBUG
                 cout<<"running in Release mode"<<endl;
-                brownie.printInFile();
+              //  brownie.printInFile();
 #endif
 #ifdef DEBUG
                 cout<<"In DEBUG mode"<<endl;

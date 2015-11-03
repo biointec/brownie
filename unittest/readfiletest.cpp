@@ -19,15 +19,15 @@ TEST(readFile, SAMGZTest)
         file->open("test.sam.gz");
 
         string target("TAATCCCCGCCAAATTCGTGACCTGTCATTCGTCG");
-        string read, description;
-        file->getNextRead(read, description);
+        string read;
+        file->getNextRead(read);
 
         EXPECT_EQ(read, target);
 
         target = "CGACAGGGATAGTGTAGCTGACCGTTGTGACTGGC";
 
         int numReads = 1;
-        while (file->getNextRead(read, description)) {
+        while (file->getNextRead(read)) {
                 numReads++;
 
                 if (numReads == 10)
@@ -46,15 +46,15 @@ TEST(readFile, SAMTest)
         file->open("test.sam");
 
         string target("TAATCCCCGCCAAATTCGTGACCTGTCATTCGTCG");
-        string read, description;
-        file->getNextRead(read, description);
+        string read;
+        file->getNextRead(read);
 
         EXPECT_EQ(read, target);
 
         target = "CGACAGGGATAGTGTAGCTGACCGTTGTGACTGGC";
 
         int numReads = 1;
-        while (file->getNextRead(read, description)) {
+        while (file->getNextRead(read)) {
                 numReads++;
 
                 if (numReads == 10)
@@ -65,6 +65,26 @@ TEST(readFile, SAMTest)
 
         file->close();
         delete file;
+}
+
+TEST(readFile, SAMCopyTest)
+{
+        ReadFile *in = new SamFile(false);
+        in->open("test.sam");
+
+        ReadFile *out = new SamFile(false);
+        out->open("test.copy.sam", WRITE);
+
+        ReadRecord record;
+        while (in->getNextRecord(record)) {
+                out->writeRecord(record);
+        }
+
+        in->close();
+        delete in;
+
+        out->close();
+        delete out;
 }
 
 // ============================================================================
@@ -78,8 +98,8 @@ TEST(readFile, FastAGZTest)
 
         string target("GAACGGTCCGGCCGCATCCATTTCTTCCCTGTAGCGAATCGCGAAAATCGTCCGGA"
                       "GTCTTAGTGTCTAAAGGTGGTTCACACGGAGATATGAGCGCGCC");
-        string read, description;
-        file->getNextRead(read, description);
+        string read;
+        file->getNextRead(read);
 
         EXPECT_EQ(read, target);
 
@@ -87,11 +107,37 @@ TEST(readFile, FastAGZTest)
                  "TAGAAATGCCCCAGGGAAGAGGTATAGTAGATAGACGGCT";
 
         int numReads = 1;
-        while (file->getNextRead(read, description)) {
+        while (file->getNextRead(read)) {
                 numReads++;
 
                 if (numReads == 10)
                         EXPECT_EQ(read, target);
+        }
+
+        EXPECT_EQ(numReads, 10);
+
+        file->close();
+        delete file;
+
+        file = new FastAFile(true);
+        file->open("test.fa.gz");
+
+        target = "GAACGGTCCGGCCGCATCCATTTCTTCCCTGTAGCGAATCGCGAAAATCGTCCGGA"
+                      "GTCTTAGTGTCTAAAGGTGGTTCACACGGAGATATGAGCGCGCC";
+        ReadRecord record;
+        file->getNextRecord(record);
+
+        EXPECT_EQ(record.getRead(), target);
+
+        target = "GGTGAACTGACTCCGAGTGCCATACTGTTCTTCGACCACGGTCATGGACCCAGTCGTATT"
+                 "TAGAAATGCCCCAGGGAAGAGGTATAGTAGATAGACGGCT";
+
+        numReads = 1;
+        while (file->getNextRecord(record)) {
+                numReads++;
+
+                if (numReads == 10)
+                        EXPECT_EQ(record.getRead(), target);
         }
 
         EXPECT_EQ(numReads, 10);
@@ -107,8 +153,8 @@ TEST(readFile, FastATest)
 
         string target("GAACGGTCCGGCCGCATCCATTTCTTCCCTGTAGCGAATCGCGAAAATCGTCCGGA"
                       "GTCTTAGTGTCTAAAGGTGGTTCACACGGAGATATGAGCGCGCC");
-        string read, description;
-        file->getNextRead(read, description);
+        string read;
+        file->getNextRead(read);
 
         EXPECT_EQ(read, target);
 
@@ -116,7 +162,7 @@ TEST(readFile, FastATest)
                  "TAGAAATGCCCCAGGGAAGAGGTATAGTAGATAGACGGCT";
 
         int numReads = 1;
-        while (file->getNextRead(read, description)) {
+        while (file->getNextRead(read)) {
                 numReads++;
 
                 if (numReads == 10)
@@ -129,6 +175,26 @@ TEST(readFile, FastATest)
         delete file;
 }
 
+TEST(readFile, FastACopyTest)
+{
+        ReadFile *in = new FastAFile(false);
+        in->open("test.fa");
+
+        ReadFile *out = new FastAFile(false);
+        out->open("test.copy.fa", WRITE);
+
+        ReadRecord record;
+        while (in->getNextRecord(record)) {
+                out->writeRecord(record);
+        }
+
+        in->close();
+        delete in;
+
+        out->close();
+        delete out;
+}
+
 // ============================================================================
 // FASTQ FORMAT
 // ============================================================================
@@ -139,15 +205,15 @@ TEST(readFile, FastQTest)
         file->open("test.fastq.gz");
 
         string target("ATATAGATGTACATAAATTAGTTGAAGTATATGAACG");
-        string read, description;
-        file->getNextRead(read, description);
+        string read;
+        file->getNextRead(read);
 
         EXPECT_EQ(read, target);
 
         target = "TAGGAAAGCGAAGCCATTCAATACGAAGTATTGTATA";
 
         int numReads = 1;
-        while (file->getNextRead(read, description)) {
+        while (file->getNextRead(read)) {
                 numReads++;
 
                 if (numReads == 9)
@@ -167,15 +233,15 @@ TEST(readFile, FastQGZTest)
         file->open("test.fastq");
 
         string target("ATATAGATGTACATAAATTAGTTGAAGTATATGAACG");
-        string read, description;
-        file->getNextRead(read, description);
+        string read;
+        file->getNextRead(read);
 
         EXPECT_EQ(read, target);
 
         target = "TAGGAAAGCGAAGCCATTCAATACGAAGTATTGTATA";
 
         int numReads = 1;
-        while (file->getNextRead(read, description)) {
+        while (file->getNextRead(read)) {
                 numReads++;
 
                 if (numReads == 9)
@@ -186,6 +252,26 @@ TEST(readFile, FastQGZTest)
 
         file->close();
         delete file;
+}
+
+TEST(readFile, FastQCopyTest)
+{
+        ReadFile *in = new FastQFile(false);
+        in->open("test.fastq");
+
+        ReadFile *out = new FastQFile(false);
+        out->open("test.copy.fastq", WRITE);
+
+        ReadRecord record;
+        while (in->getNextRecord(record)) {
+                out->writeRecord(record);
+        }
+
+        in->close();
+        delete in;
+
+        out->close();
+        delete out;
 }
 
 // ============================================================================
@@ -199,8 +285,8 @@ TEST(readFile, RawGZTest)
 
         string target("GAACGGTCCGGCCGCATCCATTTCTTCCCTGTAGCGAATCGCGAAAATCGTCCGGA"
                       "GTCTTAGTGTCTAAAGGTGGTTCACACGGAGATATGAGCGCGCC");
-        string read, description;
-        file->getNextRead(read, description);
+        string read;
+        file->getNextRead(read);
 
         EXPECT_EQ(read, target);
 
@@ -208,7 +294,7 @@ TEST(readFile, RawGZTest)
                  "TAGAAATGCCCCAGGGAAGAGGTATAGTAGATAGACGGCT";
 
         int numReads = 1;
-        while (file->getNextRead(read, description)) {
+        while (file->getNextRead(read)) {
                 numReads++;
 
                 if (numReads == 10)
@@ -229,8 +315,8 @@ TEST(readFile, RawTest)
         string target("GAACGGTCCGGCCGCATCCATTTCTTCCCTGTAGCGAATCGCGAAAATCGTCCGGA"
                       "GTCTTAGTGTCTAAAGGTGGTTCACACGGAGATATGAGCGCGCC");
 
-        string read, description;
-        file->getNextRead(read, description);
+        string read;
+        file->getNextRead(read);
 
         EXPECT_EQ(read, target);
 
@@ -238,7 +324,7 @@ TEST(readFile, RawTest)
                  "TAGAAATGCCCCAGGGAAGAGGTATAGTAGATAGACGGCT";
 
         int numReads = 1;
-        while (file->getNextRead(read, description)) {
+        while (file->getNextRead(read)) {
                 numReads++;
 
                 if (numReads == 10)
@@ -249,4 +335,24 @@ TEST(readFile, RawTest)
 
         file->close();
         delete file;
+}
+
+TEST(readFile, FastRawTest)
+{
+        ReadFile *in = new RawFile(false);
+        in->open("test.raw");
+
+        ReadFile *out = new RawFile(false);
+        out->open("test.copy.raw", WRITE);
+
+        ReadRecord record;
+        while (in->getNextRecord(record)) {
+                out->writeRecord(record);
+        }
+
+        in->close();
+        delete in;
+
+        out->close();
+        delete out;
 }

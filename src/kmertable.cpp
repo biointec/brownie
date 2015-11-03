@@ -72,7 +72,7 @@ KmerLSB MixingLSB::mix(KmerLSB input) const
 
 KmerLSB MixingLSB::invmix(KmerLSB input) const
 {
-      return imixingF[input];
+        return imixingF[input];
 }
 
 // ============================================================================
@@ -210,7 +210,8 @@ void KmerTable::workerThread(size_t thisThread, LibraryContainer* inputs)
                 // if there are no kmers to store, produce local k-mers
                 if (myKmerBuf.size() == 0) {
                         // get a number of reads (mutex lock)
-                        inputs->getReadChunk(myReadBuf, settings.getThreadWorkSize());
+                        size_t blockID, recordOffset;
+                        inputs->getReadChunk(myReadBuf, blockID, recordOffset);
 
                         // process these input reads (lock-free)
                         parseReads(thisThread, myReadBuf, tempKmerBuf, myKmerBuf);
@@ -290,20 +291,18 @@ void KmerTable::parseInputFiles(LibraryContainer &inputs)
 
         numThreadReady = 0;
 
-        inputs.initiateReadThreading();
+        inputs.startIOThreads(settings.getThreadWorkSize(),
+                              settings.getThreadWorkSize() * settings.getNumThreads());
 
         // start worker threads
         vector<thread> workerThreads(numThreads);
         for (size_t i = 0; i < workerThreads.size(); i++)
                 workerThreads[i] = thread(&KmerTable::workerThread, this, i, &inputs);
 
-        // read all input data
-        inputs.threadReads();
-
         // wait for worker threads to finish
         for_each(workerThreads.begin(), workerThreads.end(), mem_fn(&thread::join));
 
-        inputs.finalizeReadThreading();
+        inputs.joinIOThreads();
 }
 
 void KmerTable::clear()
@@ -415,8 +414,8 @@ void KmerTable::validateStage1()
 
         size_t numKmers = 0, numFound = 0, numCovGTOne = 0;
 
-        string read, desc;
-        while (ass.getNextRead (read, desc)) {
+        string read;
+        while (ass.getNextRead (read)) {
                 for (KmerIt it(read); it.isValid(); it++) {
                         Kmer kmer = it.getKmer();
 

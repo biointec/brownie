@@ -1,6 +1,5 @@
 /***************************************************************************
  *   Copyright (C) 2014, 2015 Jan Fostier (jan.fostier@intec.ugent.be)     *
- *   Copyright (C) 2014, 2015 Mahdi Heydari (mahdi.heydari@intec.ugent.be) *
  *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,15 +18,49 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#include "kmeroverlap.h"
+#include <thread>
+#include "library.h"
+#include "readcorrection.h"
 
 using namespace std;
 
-// ============================================================================
-// KMER OVERLAP CLASS
-// ============================================================================
+void ReadCorrectionJan::workerThread(size_t myID, LibraryContainer& libraries)
+{
+        // local storage of reads
+        vector<ReadRecord> myReadBuf;
 
-const unsigned char KmerOverlap::leftMask[4] = {128, 64, 32, 16};
-const unsigned char KmerOverlap::rightMask[4] = {8, 4, 2, 1};
-const unsigned char KmerOverlap::cLeftMask = 240;
-const unsigned char KmerOverlap::cRightMask = 15;
+        while (true) {
+                size_t blockID, recordID;
+                bool result = libraries.getRecordChunk(myReadBuf, blockID, recordID);
+
+                if (result)
+                        libraries.commitRecordChunk(myReadBuf, blockID, recordID);
+
+                if (!result)
+                        break;
+        }
+}
+
+void ReadCorrectionJan::doErrorCorrection(LibraryContainer& libraries)
+{
+        const unsigned int& numThreads = settings.getNumThreads();
+        cout << "Number of threads: " << numThreads << endl;
+
+        libraries.startIOThreads(settings.getThreadWorkSize(),
+                                 settings.getThreadWorkSize() * settings.getNumThreads(),
+                                 true);
+
+        // read all input data
+        //libraries.threadReads();
+
+        // start worker threads
+        vector<thread> workerThreads(numThreads);
+        for (size_t i = 0; i < workerThreads.size(); i++)
+                workerThreads[i] = thread(&ReadCorrectionJan::workerThread,
+                                          this, i, ref(libraries));
+
+        // wait for worker threads to finish
+        for_each(workerThreads.begin(), workerThreads.end(), mem_fn(&thread::join));
+
+        libraries.joinIOThreads();
+}

@@ -93,7 +93,8 @@ void DBGraph::workerThread(size_t thisThread, LibraryContainer* inputs)
         // local storage of reads
         vector<string> myReadBuf;
 
-        while (inputs->getReadChunk(myReadBuf, settings.getThreadWorkSize()))
+        size_t blockID, recordOffset;
+        while (inputs->getReadChunk(myReadBuf, blockID, recordOffset))
                 parseReads(thisThread, myReadBuf);
 }
 
@@ -110,19 +111,18 @@ void DBGraph::countNodeandArcFrequency(LibraryContainer &inputs)
         cout << "Number of threads: " << numThreads << endl;
         cout << "Counting node and arc frequency: " << endl;
 
-        inputs.initiateReadThreading();
+        inputs.startIOThreads(settings.getThreadWorkSize(),
+                              settings.getThreadWorkSize() * settings.getNumThreads());
 
         // start worker threads
         vector<thread> workerThreads(numThreads);
         for (size_t i = 0; i < workerThreads.size(); i++)
                 workerThreads[i] = thread(&DBGraph::workerThread, this, i, &inputs);
 
-        inputs.threadReads();
-
         // wait for worker threads to finish
         for_each(workerThreads.begin(), workerThreads.end(), mem_fn(&thread::join));
 
-        inputs.finalizeReadThreading();
+        inputs.joinIOThreads();
 
         delete table;
 }
@@ -148,7 +148,6 @@ void DBGraph::extractStatistic(int round) {
 
         size_t totalLength=0;
 
-        double coverage=0;
         double StandardErrorMean=0;
         double avg=0;
         for ( NodeID lID = 1; lID <= numNodes; lID++ ) {
@@ -284,7 +283,6 @@ bool DBGraph::checkNodeIsReliable(SSNode node){
         pair<int, pair<double,double> > result=nodesExpMult[abs( node.getNodeID())];
         double confidenceRatio=result.second.first;
         double inCorrctnessRatio=result.second.second;
-        double nodeMultiplicity=result.first;
         if (1/confidenceRatio>.001|| 1/inCorrctnessRatio<.001)
                 return false;
         if(node.getNumRightArcs()- node.getExpMult()>0)
@@ -312,10 +310,8 @@ bool DBGraph::deleteUnreliableNodes(int round){
                 ArcIt it = node.rightBegin();
                 SSNode currNode = getSSNode(it->getNodeID());
                 while(it != node.rightEnd()) {
-                        bool tip=currNode.getNumRightArcs()==0&&currNode.getNumLeftArcs()==1;
                         SSNode firstNodeInUpPath;
                         SSNode firstNodeInDoPath;
-                        bool bubble=nodeIsBubble(node,currNode);
                         if (currNode.getNodeKmerCov()<threshold){
                                 #ifdef DEBUG
                                 if (trueMult[abs(currNode.getNodeID())]>0){

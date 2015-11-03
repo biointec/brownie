@@ -199,7 +199,7 @@ bool ReadCorrection::seedIsContainedInKmer(match_t const &m, string const &refer
 bool ReadCorrection::correctionByMEM(vector<match_t> &matches, string const &reference,
                 readCorrectionStatus &status, string const &original,
                 string &guess, string const &qProfile) {
-        for (int i = 0; i < matches.size(); i++) {
+        for (size_t i = 0; i < matches.size(); i++) {
                 match_t m = matches[i];
                 if (m.len >= kmerSize) {
                         continue; //we already in previous step checked this kmer
@@ -303,9 +303,9 @@ void ReadCorrection::printProgress(clock_t const &begin) {
  */
 void ReadCorrection::CorrectErrorsInLibrary(ReadLibrary *input) {
         library = input;
-        numOfAllReads = library->getNumOfReads();
+        numOfAllReads = library->getNumReads();
         //opening file for input and output
-        readsFile.open(library->getFilename().c_str(), ios::in);
+        readsFile.open(library->getInputFilename().c_str(), ios::in);
         outFastq.open(library->getOutputFileName(), ios::out);
         clock_t begin=clock();
         while (readsFile.is_open()) {
@@ -329,7 +329,7 @@ void ReadCorrection::errorCorrection(LibraryContainer &libraries) {
                 ReadLibrary &input = libraries.getInput(i);
 
                 cout << "Processing file " << i+1 << "/" << libraries.getSize()
-                        << ": " << input.getFilename() << ", type: "
+                        << ": " << input.getInputFilename() << ", type: "
                         << input.getFileType() << endl;
                 CorrectErrorsInLibrary(&input);
         }
@@ -405,7 +405,7 @@ int ReadCorrection::lowQualityPos(string quality, int startOfRead,
         for (int j = 0; j < round; ++j) {
                 char lowValue = '~';
                 int k = 0;
-                for (unsigned int i = startOfRead;
+                for (int i = startOfRead;
                                 i < (startOfRead + kmer.length()); ++i) {
                         if (lowValue > quality[i]
                                         && quality[i] >= preLow
@@ -695,6 +695,7 @@ bool ReadCorrection::findRecSolutionsForward(vector<string> &results, SSNode con
 
                 }
         }
+        return true;
 }
 
 
@@ -724,10 +725,8 @@ bool ReadCorrection::findRecSolutionsBackward(vector<string> &results, SSNode co
 
                 }
         }
+        return true;
 }
-
-
-
 
 bool ReadCorrection::findRecSolutionsRec(vector<string> &results, SSNode const rootNode,
                                       string const &readPart,
@@ -742,7 +741,7 @@ bool ReadCorrection::findRecSolutionsRec(vector<string> &results, SSNode const r
                 NW_Alignment Nw;
                 if (!forward)
                         std::reverse(currentPath.begin(), currentPath.end());
-                if (currentPath.length()<kmerSize|| Nw.get_similarity_perEnhanced(currentPath,readPart.substr(0,currentPath.length()) )>minSimPer){
+                if (currentPath.length() <kmerSize|| Nw.get_similarity_perEnhanced(currentPath,readPart.substr(0,currentPath.length()) )>minSimPer){
                         if (!forward)
                                 std::reverse(currentPath.begin(), currentPath.end());
                         for ( ArcIt it = (forward ? rootNode.rightBegin() : rootNode.leftBegin());
@@ -759,19 +758,5 @@ bool ReadCorrection::findRecSolutionsRec(vector<string> &results, SSNode const r
 
                 }
         }
+        return true;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

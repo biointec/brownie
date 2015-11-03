@@ -215,8 +215,8 @@ void DBGraph::readReferenceGenome()
 
         FastAFile ass(false);
         ass.open("genome.fasta");
-        string read, desc;
-        while (ass.getNextRead(read, desc)) {
+        string read;
+        while (ass.getNextRead(read)) {
                 read.append(read);
                 reference.push_back(read);
                 refST.push_back(ST_CreateTree(read.c_str(), read.size()));

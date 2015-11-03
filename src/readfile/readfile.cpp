@@ -1,8 +1,6 @@
 /***************************************************************************
- *   Copyright (C) 2010 Jan Fostier (jan.fostier@intec.ugent.be)           *
- *   Original Velvet code by Daniel Zerbino (zerbino@ebi.ac.uk)            *
- *                                                                         *
- *   This file is part of Velvet 2.0                                       *
+ *   Copyright (C) 2010-215 Jan Fostier (jan.fostier@intec.ugent.be)       *
+ *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -102,4 +100,11 @@ ReadFile::ReadFile(bool gzipped) : rfHandler(NULL)
                 rfHandler = new RegularReadFileHandler();
 #endif
 
+}
+
+void ReadFile::writeRecord(const ReadRecord& record)
+{
+        rfHandler->writeLine(record.preRead);
+        rfHandler->writeLine(record.read);
+        rfHandler->writeLine(record.postRead);
 }
