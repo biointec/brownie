@@ -55,7 +55,8 @@ DBGraph::DBGraph(const Settings& settings) : settings(settings), nodes(NULL),
 void DBGraph::initialize()
 {
     //correct it later it should read this information from setting file, but setting dosn't have such infomratin right now
-    readLength=100;//settings.getReadLength();
+    avgreadLength=1;
+    readLength=settings.getReadLength();
     coverage=100;//settings.getCoverage();
     minCertainVlueCov=2;
     minSafeValueCov=2.5;
@@ -69,8 +70,7 @@ void DBGraph::initialize()
     updateCutOffValueRound=1;
     maxNodeSizeToDel=readLength*3;
     cutOffvalue=redLineValueCov;
-
-    sizeOfGraph=settings.getGenomeSize()*2;
+    sizeOfGraph=settings.getGenomeSize();
 }
 
 int DBGraph::parseLine(char* line)
@@ -141,23 +141,6 @@ void DBGraph::canonicalBubble()
 }
 
 
-
-bool DBGraph::continueEdit(size_t& bigestN50, string& nodeFileName, string& arcFileName,string& metaDataFilename) {
-    size_t genomeSize=settings.getGenomeSize();
-    size_t currentN50=getN50();
-    if ((sizeOfGraph/(genomeSize)<.9) && (genomeSize/1000)<bigestN50) { // && preSize<(genomeSize+genomeSize*.1)|| (preSize<genomeSize)
-        if (currentN50>bigestN50) {
-            bigestN50=currentN50;
-        }
-        return false;
-    }
-    if (currentN50>=bigestN50) {
-        if(currentN50>bigestN50)
-            writeGraph(nodeFileName, arcFileName, metaDataFilename);
-        bigestN50=currentN50;
-    }
-    return true;
-}
 bool DBGraph::filterChimeric(int round)
 {
         cout<<"*********************<<filter Chimeric starts>>......................................... "<<endl;
@@ -246,27 +229,27 @@ bool DBGraph::updateCutOffValue(int round)
         }
         plotCovDiagram(frequencyArray);
         double ratio=1;
-        if (round<4)
+        if (round<6)
                 ratio=ratio+(double)round/10;
         this->redLineValueCov= this->cutOffvalue*ratio>this->redLineValueCov?this->cutOffvalue*ratio:this->redLineValueCov;
         ratio=.7;
-        if (round<3)
+        if (round<4)
                 ratio=ratio+(double)round/10;
         else
                 ratio=1;
         this->safeValueCov=this->cutOffvalue*ratio;
-        ratio=.4;
-        if (round<5)
+        ratio=.3;
+        if (round<3)
                 ratio=ratio+(double)round/10;
         else
-                ratio=.8;
+                ratio=.5;
         this->certainVlueCov=this->cutOffvalue*ratio;
         this->updateCutOffValueRound++;
         #ifdef DEBUG
         cout<<"certainValue: "<<this->certainVlueCov<<endl;
         cout<<"safeValue: "<<this->safeValueCov<<endl;
         cout<<"redLineValue: "<<this->redLineValueCov<<endl;
-        getN50();
+        updateGraphSize();
         #endif
         //writing to file to make a plot
         //if (round>0)
@@ -349,9 +332,10 @@ struct readStructStr
 };
 
 
-bool DBGraph::filterCoverage(float round)
+bool DBGraph::filterCoverage(float cutOff)
 {
         cout<<"*********************<<Filter Coverage starts>>......................................... "<<endl;
+        cout<<"cut off value for removing nodes is :"<<cutOff<<endl;
         int tp=0;
         int tn=0;
         int fp=0;
@@ -362,7 +346,7 @@ bool DBGraph::filterCoverage(float round)
                 SSNode n = getSSNode(i);
                 if(!n.isValid())
                         continue;
-                if (n.getNodeKmerCov()>this->certainVlueCov) {
+                if (n.getNodeKmerCov()>cutOff) {
 #ifdef DEBUG
                         if (trueMult[abs(i)] >= 1)
                                 tn++;
@@ -1043,7 +1027,7 @@ void DBGraph::loadGraphBin(const std::string& nodeFilename,
         arcFile.close();
 }
 
-size_t DBGraph::getN50()
+size_t DBGraph::updateGraphSize()
 {
     vector<size_t> nodeLengths;
 
@@ -1099,7 +1083,7 @@ size_t DBGraph::getN50()
         }
     }
     cout << "The largest node contains " << nodeLengths.back() << " basepairs." << endl;
-    return n50;
+    return sizeOfGraph;
 
 }
 

@@ -27,7 +27,7 @@ private:
                 graphIsMissing,
                 anotherKmer
         };
-        double maxTimePerRead=1;
+        double maxTimePerRead;
         const float maxErrorRate=.3;
         const size_t avgQualityError=40;
         DBGraph &dbg;
@@ -85,7 +85,7 @@ private:
         bool correctionByKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         bool findKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         bool findSimilarKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
-
+        void checkReadSize(string &guess,readStructStr &readInfo);
         bool correctionByMEM(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         bool correctionByMEM(vector<match_t> &matches, string const &reference, readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         int shiftSize(match_t const &m, string const &reference);

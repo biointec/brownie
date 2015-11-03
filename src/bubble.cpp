@@ -786,7 +786,7 @@ bool DBGraph::bubbleDetection(int depth) {
                 }
         }
         //#ifdef DEBUG
-        cout<< "TP:     "<<TP<<"        TN:     "<<TN<<"        FP:     "<<FP<<"        FN:     "<<FN<<endl;
+        cout<<endl<< "TP:     "<<TP<<"        TN:     "<<TN<<"        FP:     "<<FP<<"        FN:     "<<FN<<endl;
         cout << "Sensitivity: ("<<100*((double)TP/(double)(TP+FN))<<"%)"<<endl;
         cout<<"Specificity: ("<<100*((double)TN/(double)(TN+FP))<<"%)"<<endl;
         //#endif

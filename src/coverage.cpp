@@ -145,9 +145,7 @@ void DBGraph::extractStatistic(int round) {
         vector <SSNode> nodeArray;
         int percentage=5;
         double sumOfReadStcov=0;
-
         size_t totalLength=0;
-
         double StandardErrorMean=0;
         double avg=0;
         for ( NodeID lID = 1; lID <= numNodes; lID++ ) {
@@ -278,12 +276,15 @@ bool DBGraph::nodeIsBubble(SSNode node, SSNode currNode){
         return false;
 }
 bool DBGraph::checkNodeIsReliable(SSNode node){
-        if (node.getMarginalLength()<maxNodeSizeToDel) // smaller nodes might not be correct, these ndoes can never be deleted
+        if (node.getMarginalLength()<kmerSize) // smaller nodes might not be correct, these ndoes can never be deleted
                 return false;
         pair<int, pair<double,double> > result=nodesExpMult[abs( node.getNodeID())];
         double confidenceRatio=result.second.first;
         double inCorrctnessRatio=result.second.second;
-        if (1/confidenceRatio>.001|| 1/inCorrctnessRatio<.001)
+        double nodeMultiplicity=result.first;
+        if (1/confidenceRatio>.001)
+                return false;
+        if( 1/inCorrctnessRatio<.001)
                 return false;
         if(node.getNumRightArcs()- node.getExpMult()>0)
                 return true;
@@ -300,7 +301,6 @@ bool DBGraph::deleteUnreliableNodes(int round){
         for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
                 if (lID==0)
                         continue;
-
                 SSNode node = getSSNode ( lID );
 
                 if(!node.isValid())
@@ -310,19 +310,22 @@ bool DBGraph::deleteUnreliableNodes(int round){
                 ArcIt it = node.rightBegin();
                 SSNode currNode = getSSNode(it->getNodeID());
                 while(it != node.rightEnd()) {
+                        bool tip=currNode.getNumRightArcs()==0&&currNode.getNumLeftArcs()==1;
                         SSNode firstNodeInUpPath;
                         SSNode firstNodeInDoPath;
-                        if (currNode.getNodeKmerCov()<threshold){
+                        bool bubble=nodeIsBubble(node,currNode);
+                        double threshold=(!tip&& !bubble)? this->redLineValueCov:(this->estimatedKmerCoverage-this->estimatedMKmerCoverageSTD*2>this->redLineValueCov)?this->estimatedKmerCoverage-this->estimatedMKmerCoverageSTD*2:this->redLineValueCov;
+                        if (currNode.getNodeKmerCov()<threshold &&removeNode(currNode)){
                                 #ifdef DEBUG
-                                if (trueMult[abs(currNode.getNodeID())]>0){
+                                if (trueMult[abs(currNode.getNodeID())]>0 ){
                                         fp++;
                                 }
                                 else{
                                         tp++;
                                 }
                                 #endif
-                                change= removeNode(currNode);
                                 numOfDel++;
+                                change=true;
                                 break;
                         }
                         else{
@@ -368,14 +371,14 @@ bool DBGraph::deleteUnreliableNodes(int round){
                         ArcIt it = node.rightBegin();
                         while(it != node.rightEnd()) {
                                 SSNode victim=getSSNode(it->getNodeID());
-                                if(victim.getNodeID()!=currNode.getNodeID()&&victim.getNodeKmerCov()<threshold){
+                                if(victim.getNodeID()!=currNode.getNodeID()&&victim.getNodeKmerCov()<threshold&& removeNode(victim)){
 #ifdef DEBUG
                                         if (trueMult[abs(victim.getNodeID())]>0)
                                                 secondFP++;
                                         else
                                                 secondTP++;
 #endif
-                                        removeNode(victim);
+                                        change=true;
                                         break;
                                 }
                                 it++;
@@ -385,14 +388,14 @@ bool DBGraph::deleteUnreliableNodes(int round){
                                 SSNode victim=getSSNode(it->getNodeID());
                                 if (!victim.isValid())
                                         it++;
-                                if(victim.getNodeID()!=node.getNodeID()&&victim.getNodeKmerCov()<threshold){
+                                if(victim.getNodeID()!=node.getNodeID()&&victim.getNodeKmerCov()<threshold &&removeNode(victim)){
 #ifdef DEBUG
                                         if (trueMult[abs(victim.getNodeID())]>0)
                                                 secondFP++;
                                         else
                                                 secondTP++;
 #endif
-                                        removeNode(victim);
+                                        change=true;
                                         break;
                                 }
                                 it++;

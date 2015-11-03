@@ -31,69 +31,77 @@ void DBGraph::writeCytoscapeGraph(int ID)
 #ifdef DEBUG
     int srcID=1;
     int i=0;
+    set<NodeID> nodesHandled;
     for (i =srcID ; i <= numNodes; i++)
         if (getSSNode(i).isValid())
             break;
     //const size_t maxDepth =150;    // maximium sequence depth (exclusive srcID length)
-    srcID=i;
     stringstream ss, ss2;   // create a stringstream
     ss << ID;               // add number to the stream
     ss2 << srcID;
     cout << "Writing cytoscape graph files around node " << srcID << endl;
     ofstream ofs(("cytArcs_" + ss2.str() + "_" +ss.str() + ".txt").c_str());
     ofs << "Source node\tTarget node\tArc coverage"<< endl;
+    for (i =srcID ; i <= numNodes; i++){
+            if (!getSSNode(i).isValid())
+                    continue;
+            if (nodesHandled.find(i) != nodesHandled.end())
+                    continue;
+            if (nodesHandled.find(i) != nodesHandled.end())
+                    continue;
+            srcID=i;
 
-    multimap<size_t, NodeID> nodeDepth;     // map of all nodes in the local graph and its depth
-    nodeDepth.insert(pair<size_t, NodeID>(0, srcID));
-    set<NodeID> nodesHandled;               // nodes that were already handled
+            multimap<size_t, NodeID> nodeDepth;     // map of all nodes in the local graph and its depth
+            nodeDepth.insert(pair<size_t, NodeID>(0, srcID));
+            // nodes that were already handled
 
-    while (!nodeDepth.empty()) {
-        // get and erase the current node
-        multimap<size_t, NodeID>::iterator
-        e = nodeDepth.begin();
-        size_t thisDepth = e->first;
-        NodeID thisID = e->second;
-        nodeDepth.erase(e);
+            while (!nodeDepth.empty()) {
+                    // get and erase the current node
+                    multimap<size_t, NodeID>::iterator
+                    e = nodeDepth.begin();
+                    size_t thisDepth = e->first;
+                    NodeID thisID = e->second;
+                    nodeDepth.erase(e);
 
-        // if the node was already handled, skip
-        if (nodesHandled.find(thisID) != nodesHandled.end())
-            continue;
-        if (nodesHandled.find(-thisID) != nodesHandled.end())
-            continue;
+                    // if the node was already handled, skip
+                    if (nodesHandled.find(thisID) != nodesHandled.end())
+                            continue;
+                    if (nodesHandled.find(-thisID) != nodesHandled.end())
+                            continue;
 
 
-        // mark this node as handled
-        nodesHandled.insert(thisID);
+                    // mark this node as handled
+                    nodesHandled.insert(thisID);
 
-        // if we're too far in the graph, stop
-        //if (thisDepth > maxDepth)
-        //    continue;
-        if (thisID== 10633) {
-            int stop=0;
-            stop++;
-        }
-        SSNode thisNode = getSSNode(thisID);
-        for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
-            SSNode rNode = getSSNode(it->getNodeID());
-            if (!rNode.isValid())
-                continue;
-            if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
-                continue;
-            ofs << thisID << "\t" << it->getNodeID() << "\t" << it->getCoverage() << endl;
-            nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
-        }
+                    // if we're too far in the graph, stop
+                    //if (thisDepth > maxDepth)
+                    //    continue;
+                    if (thisID== 10633) {
+                            int stop=0;
+                            stop++;
+                    }
+                    SSNode thisNode = getSSNode(thisID);
+                    for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
+                            SSNode rNode = getSSNode(it->getNodeID());
+                            if (!rNode.isValid())
+                                    continue;
+                            if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
+                                    continue;
+                            ofs << thisID << "\t" << it->getNodeID() << "\t" << it->getCoverage() << endl;
+                            nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
+                    }
 
-        for (ArcIt it = thisNode.leftBegin(); it != thisNode.leftEnd(); it++) {
-            SSNode lNode = getSSNode(it->getNodeID());
-            if (!lNode.isValid())
-                continue;
-            if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
-                continue;
-            ofs << it->getNodeID() << "\t" << thisID << "\t" << it->getCoverage() << endl;
-            nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
-        }
+                    for (ArcIt it = thisNode.leftBegin(); it != thisNode.leftEnd(); it++) {
+                            SSNode lNode = getSSNode(it->getNodeID());
+                            if (!lNode.isValid())
+                                    continue;
+                            if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
+                                    continue;
+                            ofs << it->getNodeID() << "\t" << thisID << "\t" << it->getCoverage() << endl;
+                            nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
+                    }
+            }
     }
-
     ofs.close();
 //comment by mahdi , adding new parameter in output file
     ofs.open(("cytNodes_" + ss2.str() + "_" +ss.str() + ".txt").c_str());

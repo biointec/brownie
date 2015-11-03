@@ -205,7 +205,10 @@ void Brownie::stageFour()
         Util::startChrono();
         cout << "Creating graph... ";
         cout.flush();
-
+        double readLength=libraries.getReadLength();
+        if (readLength<=settings.getK() ||readLength>500)
+                readLength=150;
+        settings.setReadLenght(readLength);
         DBGraph testgraph(settings);
         testgraph.loadGraphBin(getBinNodeFilename(3),
                                getBinArcFilename(3),
@@ -213,10 +216,8 @@ void Brownie::stageFour()
         cout << "done (" << testgraph.getNumNodes() << " nodes, "
              << testgraph.getNumArcs() << " arcs), ("
              << Util::stopChronoStr() << ")" << endl;
-
         cout << "Initial kmerCoverage : "<<testgraph.estimatedKmerCoverage<<endl;
-
-
+        cout<<endl<<"Maximum node size to delete is::     "<<testgraph.maxNodeSizeToDel<<endl;
         string command = "mkdir " + settings.getTempDirectory() + "cov";
         system(command.c_str());
         command="rm "+settings.getTempDirectory() + "cov/* && rm "+settings.getTempDirectory() + "cov/*.dat";
@@ -225,9 +226,10 @@ void Brownie::stageFour()
 #ifdef DEBUG
         testgraph.compareToSolution(getTrueMultFilename(3), true);
 #endif
+
         testgraph.clipTips(0);
         testgraph.mergeSingleNodes(true);
-        testgraph.filterCoverage(0);
+        testgraph.filterCoverage(testgraph.cutOffvalue);
         testgraph.mergeSingleNodes(true);
         testgraph.extractStatistic(0);
         DBGraph graph(settings);
@@ -251,57 +253,73 @@ void Brownie::stageFour()
         graph.compareToSolution(getTrueMultFilename(3), true);
         #endif
         //variables
-        bool simplified = true;
         int round=1;
-        while (simplified  && graph.sizeOfGraph>settings.getGenomeSize()) {
-                //
-                //*******************************************************
-                if (round==1)
-                        graph.updateCutOffValue(round);
-                bool tips=graph.clipTips(round);
-                if(tips) {
-                        graph.mergeSingleNodes(false);
+        graph.updateGraphSize();
+        double coverageCutOff=1;
+        do{
+                graph.filterCoverage(coverageCutOff);
+                bool simplified = true;
+                while (simplified ) {// &&
+                        //
+                        //*******************************************************
+                        if (round==1)
+                                graph.updateCutOffValue(round);
+                        bool tips=graph.clipTips(round);
+                        if(tips) {
+                                graph.mergeSingleNodes(true);
+                                #ifdef DEBUG
+                                graph.compareToSolution(getTrueMultFilename(3), false);
+                                #endif
+                        }
+                        //*******************************************************
+                        bool bubble=false;
+                        size_t depth=settings.getK()+1;
                         #ifdef DEBUG
+                        graph.updateCutOffValue(round);
                         graph.compareToSolution(getTrueMultFilename(3), false);
                         #endif
-                        tips=graph.clipTips(round);
+                        bubble= graph.bubbleDetection(depth);
+                        graph.mergeSingleNodes(true);
+                        bool continuEdit=false;
+                        while(depth<500){
+                                continuEdit= graph.bubbleDetection(depth);
+                                if (continuEdit)
+                                        graph.mergeSingleNodes(true);
+                                depth=depth+150;
+                                cout<<"bubble depth:"<<depth <<endl;
+                                bubble=false?continuEdit:bubble;
+                        }
+                        #ifdef DEBUG
+                        graph.compareToSolution(getTrueMultFilename(3),false);
+                        graph.updateCutOffValue(round);
+                        #endif
+                        graph.extractStatistic(round);
+                        bool deleted=graph.deleteUnreliableNodes( round);
+                        continuEdit=deleted;
+                        while(continuEdit){
+                                continuEdit=graph.deleteUnreliableNodes( round);
+                                graph.mergeSingleNodes(false);
+                                graph.extractStatistic(round);
+                        }
+                        while(graph.mergeSingleNodes(true));
+                        #ifdef DEBUG
+                        graph.compareToSolution(getTrueMultFilename(3),false);
+                        graph.updateCutOffValue(round);
+                        cout<<"estimated Kmer Coverage Mean: "<<graph.estimatedKmerCoverage<<endl;
+                        cout<<"estimated Kmer Coverage STD: "<<graph.estimatedMKmerCoverageSTD<<endl;
+                        #endif
+                        simplified = tips    || deleted || bubble;
+                        graph.updateGraphSize();
+                        round++;
                 }
-                //*******************************************************
-                bool bubble=false;
-                size_t depth=settings.getK()+1;
-                #ifdef DEBUG
-                graph.updateCutOffValue(round);
-                graph.compareToSolution(getTrueMultFilename(3), false);
-                #endif
-                graph.mergeSingleNodes(true);
-                bubble= graph.bubbleDetection(depth);
-                bool continuEdit=false;
-                while(depth<500){
-                        continuEdit= graph.bubbleDetection(depth);
-                        if (continuEdit)
-                                graph.mergeSingleNodes(true);
-                       // else
-                       //        break;
-                        depth=depth+150;
-                        cout<<"bubble depth:"<<depth <<endl;
-                }
-                #ifdef DEBUG
-                graph.compareToSolution(getTrueMultFilename(3),false);
-                graph.updateCutOffValue(round);
-                #endif
-                graph.extractStatistic(round);
-                bool deleted=graph.deleteUnreliableNodes( round);
-                while(graph.mergeSingleNodes(true));
-                #ifdef DEBUG
-                graph.compareToSolution(getTrueMultFilename(3),false);
-                graph.updateCutOffValue(round);
-                cout<<"estimated Kmer Coverage Mean: "<<graph.estimatedKmerCoverage<<endl;
-                cout<<"estimated Kmer Coverage STD: "<<graph.estimatedMKmerCoverageSTD<<endl;
-                #endif
-                simplified = tips    || deleted || bubble;
-                round++;
-
+                coverageCutOff++;
+                cout<<"coverage cut off ::"<<coverageCutOff<<endl;
+                cout<<"certainVlueCov   ::"<<graph.certainVlueCov<<endl;;
+                if (coverageCutOff>graph.certainVlueCov)
+                        break;
+                graph.updateGraphSize();
         }
+        while(graph.sizeOfGraph>settings.getGenomeSize()*.98);
         #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), false);
         #endif
@@ -344,10 +362,11 @@ void Brownie::stageFive()
         << graph.getNumArcs() << " arcs)" << endl;
         cout << "Created graph in "
         << Util::stopChrono() << "s." << endl;
-        #ifdef DEBUG
-     //   graph.compareToSolution(getTrueMultFilename(4),true);
-      //  graph.writeCytoscapeGraph(0);
-        #endif
+#ifdef DEBUG
+        graph.compareToSolution(getTrueMultFilename(4),true);
+        graph.updateGraphSize();
+        graph.writeCytoscapeGraph(0);
+#endif
         Util::startChrono();
        // ReadCorrection rc(graph, settings);
       //  rc.errorCorrection(libraries);
