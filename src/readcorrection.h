@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2010-215 Jan Fostier (jan.fostier@intec.ugent.be)       *
+ *   Copyright (C) 2015 Jan Fostier (jan.fostier@intec.ugent.be)           *
  *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -18,38 +18,37 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#ifndef FASTAFILE_H
-#define FASTAFILE_H
+#ifndef READCORRECTION_H
+#define READCORRECTION_H
 
-#include "readfile.h"
+#include "settings.h"
+#include "graph.h"
 
-class FastAFile : public ReadFile
+class ReadCorrectionJan
 {
+private:
+        const DBGraph &dbg;
+        const Settings &settings;
+
+        /**
+         * Entry routine for worker thread
+         * @param myID Unique threadID
+         * @param libaries Library container with libraries to be corrected
+         */
+        void workerThread(size_t myID, LibraryContainer& libraries);
 
 public:
         /**
          * Default constructor
-         * @param gzipped True if the file is gzipped
          */
-        FastAFile(bool gzipped) : ReadFile(gzipped) {};
+        ReadCorrectionJan(const DBGraph& g, const Settings& s) :
+                dbg(g), settings(s) {}
 
         /**
-         * Get the next read from a file
-         * @param read String containing the read (output)
+         * Perform error correction in the libaries
+         * @param libraries Library container with libraries to be corrected
          */
-        bool getNextRead(std::string &read);
-
-        /**
-         * Get the next record from a file
-         * @param record Record to store output
-         */
-        bool getNextRecord(ReadRecord& record);
-
-        /**
-         * Write a record to file
-         * @param record Record to write
-         */
-        void writeRecord(const ReadRecord& record);
+        void doErrorCorrection(LibraryContainer &libraries);
 };
 
 #endif

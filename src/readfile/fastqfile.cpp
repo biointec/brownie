@@ -1,8 +1,6 @@
 /***************************************************************************
- *   Copyright (C) 2010 Jan Fostier (jan.fostier@intec.ugent.be)           *
- *   Original Velvet code by Daniel Zerbino (zerbino@ebi.ac.uk)            *
- *                                                                         *
- *   This file is part of Velvet 2.0                                       *
+ *   Copyright (C) 2010-215 Jan Fostier (jan.fostier@intec.ugent.be)       *
+ *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -29,11 +27,10 @@ using namespace std;
 // FASTQ FILE
 // ============================================================================
 
-bool FastQFile::getNextRead(string &read, string &description)
+bool FastQFile::getNextRead(string &read)
 {
         // empty output strings
         read.clear();
-        description.clear();
 
         // read sequence identifier
         char c = rfHandler->getCharacter();
@@ -43,9 +40,7 @@ bool FastQFile::getNextRead(string &read, string &description)
                 return false;
         if (c != '@')
                 throw ios::failure("File doesn't appear to be in fastQ format");
-        description = rfHandler->getLine();
-        if (!description.empty() && description[description.size() - 1] == '\n')
-                description.erase(description.size() - 1);
+        rfHandler->getLine();
 
         // read the actual read
         read = rfHandler->getLine();
@@ -60,8 +55,33 @@ bool FastQFile::getNextRead(string &read, string &description)
         return !read.empty();
 }
 
-void FastQFile::writeRead(const string& read, const string& description)
+bool FastQFile::getNextRecord(ReadRecord& record)
 {
-        cerr << "Writing of FastQ files is yet implemented" << endl;
-        exit(EXIT_FAILURE);
+        // empty output strings
+        record.clear();
+
+        // read sequence identifier
+        char c = rfHandler->peekCharacter();
+
+        // end of file might be reached
+        if (!good())
+                return false;
+        if (c != '@')
+                throw ios::failure("File doesn't appear to be in fastQ format");
+        record.preRead = rfHandler->getLine();
+
+        // read the actual read
+        record.read = rfHandler->getLine();
+        if (!record.read.empty() && record.read.back() == '\n') {
+                record.read.pop_back();
+                record.postRead = '\n';
+        }
+
+        record.qualityOff = record.postRead.size();
+        // read the + line
+        record.postRead.append(rfHandler->getLine());
+        // read the quality scores
+        record.postRead.append(rfHandler->getLine());
+
+        return !record.read.empty();
 }

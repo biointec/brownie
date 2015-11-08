@@ -1,8 +1,6 @@
 /***************************************************************************
- *   Copyright (C) 2010 Jan Fostier (jan.fostier@intec.ugent.be)           *
- *   Original Velvet code by Daniel Zerbino (zerbino@ebi.ac.uk)            *
- *                                                                         *
- *   This file is part of Velvet 2.0                                       *
+ *   Copyright (C) 2010-215 Jan Fostier (jan.fostier@intec.ugent.be)       *
+ *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -28,25 +26,36 @@ using namespace std;
 // FASTA FILE
 // ============================================================================
 
-bool RawFile::getNextRead(std::string &read, std::string &description)
+bool RawFile::getNextRead(std::string &read)
 {
         // empty output strings
         read.clear();
-        description.clear();
 
         // read until something non-empty is encountered
-        while (rfHandler->good() && read.empty()) {
-                const char * buffer = rfHandler->getLine();
-                read.append(buffer);
-                if (!read.empty() && read[read.size() - 1] == '\n')
-                        read.erase(read.size() - 1);
-        }
+        if (!rfHandler->good())
+                return false;
+
+        read = rfHandler->getLine();
+        if (!read.empty() && read.back() == '\n')
+                read.pop_back();
 
         return !read.empty();
 }
 
-void RawFile::writeRead(const std::string &read, const std::string &description)
+bool RawFile::getNextRecord(ReadRecord& record)
 {
-        // in the raw format, we simply write the reads, and nothing else
-        rfHandler->writeLine(read);
+        // empty output strings
+        record.clear();
+
+        // read until something non-empty is encountered
+        if (!rfHandler->good())
+                return false;
+
+        record.read = rfHandler->getLine();
+        if (!record.read.empty() && record.read.back() == '\n') {
+                record.postRead = '\n';
+                record.read.pop_back();
+        }
+
+        return !record.read.empty();
 }

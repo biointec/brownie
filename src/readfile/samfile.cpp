@@ -1,8 +1,6 @@
 /***************************************************************************
- *   Copyright (C) 2010 Jan Fostier (jan.fostier@intec.ugent.be)           *
- *   Original Velvet code by Daniel Zerbino (zerbino@ebi.ac.uk)            *
- *                                                                         *
- *   This file is part of Velvet 2.0                                       *
+ *   Copyright (C) 2010-215 Jan Fostier (jan.fostier@intec.ugent.be)       *
+ *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -28,11 +26,10 @@ using namespace std;
 // SAM FILE
 // ============================================================================
 
-bool SamFile::getNextRead(string &read, string &description)
+bool SamFile::getNextRead(string &read)
 {
         // empty output strings
         read.clear();
-        description.clear();
 
         // read past header files
         while (rfHandler->good() && rfHandler->peekCharacter() == '@')
@@ -43,7 +40,7 @@ bool SamFile::getNextRead(string &read, string &description)
         istringstream oss(result);
 
         string qname, flag, rname, position, dummy;
-        oss >> description >> flag >> rname >> position >> dummy >> dummy >>
+        oss >> dummy >> flag >> rname >> position >> dummy >> dummy >>
                         dummy >> dummy >> dummy >> read;
 
         if (read.empty())       // end of file might be reached
@@ -52,8 +49,34 @@ bool SamFile::getNextRead(string &read, string &description)
         return true;
 }
 
-void SamFile::writeRead(const std::string& read, const std::string& description)
+bool SamFile::getNextRecord(ReadRecord& record)
 {
-        // not yet implemented
+        // empty output strings
+        record.clear();
+
+        // read past header files
+        while (rfHandler->good() && rfHandler->peekCharacter() == '@')
+                record.preRead.append(rfHandler->getLine());
+
+        // read sequence identifier
+        string result = rfHandler->getLine();
+
+        if (result.empty())
+                return false;
+
+        istringstream oss(result);
+
+        string qname, flag, rname, position, dummy;
+        oss >> dummy >> flag >> rname >> position >> dummy >> dummy >>
+                        dummy >> dummy >> dummy;
+
+        record.preRead.append(result.substr(0, oss.tellg()));
+        record.preRead.push_back('\t');
+        oss >> record.read;
+        record.postRead.append(result.substr(oss.tellg()));
+
+        return !record.read.empty();
 }
+
+
 

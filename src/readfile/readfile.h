@@ -1,8 +1,6 @@
 /***************************************************************************
- *   Copyright (C) 2010 Jan Fostier (jan.fostier@intec.ugent.be)           *
- *   Original Velvet code by Daniel Zerbino (zerbino@ebi.ac.uk)            *
- *                                                                         *
- *   This file is part of Velvet 2.0                                       *
+ *   Copyright (C) 2010-215 Jan Fostier (jan.fostier@intec.ugent.be)       *
+ *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -39,6 +37,48 @@
 // ============================================================================
 
 typedef enum { READ, WRITE } ReadFileMode;
+
+// ============================================================================
+// READ RECORD
+// ============================================================================
+
+class ReadRecord {
+
+public:
+        /**
+         * Default constructor
+         */
+        ReadRecord() {}
+
+        void clear() {
+                preRead.clear();
+                read.clear();
+                postRead.clear();
+                qualityOff = 0;
+        }
+
+        std::string getRead() const {
+                return read;
+        }
+
+        size_t getReadLength() const {
+                return read.length();
+        }
+
+        std::string getQualityString() const {
+                if (qualityOff >= postRead.size())
+                        return std::string();
+
+                return postRead.substr(qualityOff, read.size());
+        }
+
+//private:
+        std::string preRead;    // everything in the record that precedes the read
+        std::string read;       // read itself
+        std::string postRead;   // everything in the record that procedes the read
+
+        size_t qualityOff;      // quality score offset within the record
+};
 
 // ============================================================================
 // READFILE HANDLER
@@ -189,7 +229,6 @@ public:
          */
         void writeLine(const std::string &line) {
                 fputs(line.c_str(), fh);
-                fputc('\n', fh);
         }
 
         /**
@@ -307,7 +346,6 @@ public:
          */
         void writeLine(const std::string &line) {
                 gzwrite(ifs, line.c_str(), line.length());
-                gzwrite(ifs, "\n", 1);
         }
 
         /**
@@ -377,7 +415,7 @@ public:
         /**
          * Open a file
          * @param filename File to open
-         * @param mode 
+         * @param mode
          */
         void open(const std::string& filename, ReadFileMode mode = READ) {
                 rfHandler->open(filename, mode);
@@ -408,20 +446,21 @@ public:
         /**
          * Get the next read from a file
          * @param read String containing the read (output)
-         * @param description Description of the read (output)
          */
-        virtual bool getNextRead(std::string &read,
-                                 std::string &description) = 0;
+        virtual bool getNextRead(std::string &read) = 0;
 
         /**
-         * Write a read to file
-         * @param read Read to write (input)
-         * @param description Description of the read (input)
-         * @param readID ReadID (input)
-         * @param cat Category (input)
+         * Get the next record from a file
+         * @param record Record to store output
+         * @return true upon succesful reading
          */
-        virtual void writeRead(const std::string &read,
-                               const std::string &description) = 0;
+        virtual bool getNextRecord(ReadRecord& record) = 0;
+
+        /**
+         * Write a record to file
+         * @param record Record to write
+         */
+        virtual void writeRecord(const ReadRecord& record);
 };
 
 #endif

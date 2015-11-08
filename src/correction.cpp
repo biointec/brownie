@@ -305,9 +305,9 @@ void ReadCorrection::printProgress(clock_t const &begin) {
  */
 void ReadCorrection::CorrectErrorsInLibrary(ReadLibrary *input) {
         library = input;
-        numOfAllReads = library->getNumOfReads();
+        numOfAllReads = library->getNumReads();
         //opening file for input and output
-        readsFile.open(library->getFilename().c_str(), ios::in);
+        readsFile.open(library->getInputFilename().c_str(), ios::in);
         outFastq.open(library->getOutputFileName(), ios::out);
         clock_t begin=clock();
         while (readsFile.is_open()) {
@@ -334,7 +334,7 @@ void ReadCorrection::errorCorrection(LibraryContainer &libraries) {
                 ReadLibrary &input = libraries.getInput(i);
 
                 cout << "Processing file " << i+1 << "/" << libraries.getSize()
-                        << ": " << input.getFilename() << ", type: "
+                        << ": " << input.getInputFilename() << ", type: "
                         << input.getFileType() << endl;
                 CorrectErrorsInLibrary(&input);
         }
@@ -858,12 +858,9 @@ void ReadCorrection::findBridge(vector<string> &results  ,SSNode startNode,SSNod
                                 SSNode rNode = dbg.getSSNode(it->getNodeID());
                                 string nodeContent = rNode.getSequence();
                                 string  path = currentPath + nodeContent.substr(kmerSize - 1, nodeContent.length());;
-                               //dbg.writeLocalCytoscapeGraph(1,rNode.getNodeID(),5);
-                               //double size=readPart.length()-currentPath.length();
-                                double length= dijk.shortestPath(rNode,endNode);
-
-                                if (readPart.length()-currentPath.length()>=length)
-                                        findBridge(results,rNode,endNode,readPart,path);
+                                //double length= dijk.shortestPath(rNode,endNode);
+                                //if (readPart.length()-currentPath.length()>=length)
+                                findBridge(results,rNode,endNode,readPart,path);
                         }
 
                 }

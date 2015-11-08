@@ -1,8 +1,6 @@
 /***************************************************************************
- *   Copyright (C) 2010 Jan Fostier (jan.fostier@intec.ugent.be)           *
- *   Original Velvet code by Daniel Zerbino (zerbino@ebi.ac.uk)            *
- *                                                                         *
- *   This file is part of Velvet 2.0                                       *
+ *   Copyright (C) 2010-215 Jan Fostier (jan.fostier@intec.ugent.be)       *
+ *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -29,11 +27,10 @@ using namespace std;
 // FASTA FILE
 // ============================================================================
 
-bool FastAFile::getNextRead(string &read, string &description)
+bool FastAFile::getNextRead(string &read)
 {
         // empty output strings
         read.clear();
-        description.clear();
 
         // read lines until '>' encountered (skip ; lines)
         string dummy;
@@ -41,12 +38,8 @@ bool FastAFile::getNextRead(string &read, string &description)
                 rfHandler->getLine();
 
         // read description lines
-        if (rfHandler->good()) {
-                const char *result = rfHandler->getLine();
-                description.append(result + 1);
-        }
-        if (!description.empty() && description[description.size() - 1] == '\n')
-                description.erase(description.size() - 1);
+        if (rfHandler->good())
+                rfHandler->getLine();
 
         // read the actual read
         while (rfHandler->good() && rfHandler->peekCharacter() != '>') {
@@ -59,9 +52,50 @@ bool FastAFile::getNextRead(string &read, string &description)
         return !read.empty();
 }
 
-void FastAFile::writeRead(const string& read, const string& description)
+bool FastAFile::getNextRecord(ReadRecord& record)
 {
-        rfHandler->writeChar('>');
-        rfHandler->writeLine(description);
-        rfHandler->writeLine(read);
+        record.clear();
+
+        // read lines until '>' encountered (skip ; lines)
+        string dummy;
+        while (rfHandler->good() && rfHandler->peekCharacter() != '>') {
+                const char *result = rfHandler->getLine();
+                record.preRead.append(result);
+        }
+
+        // read description lines
+        if (rfHandler->good()) {
+                const char *result = rfHandler->getLine();
+                record.preRead.append(result);
+        }
+
+        // read the actual read
+        while (rfHandler->good() && rfHandler->peekCharacter() != '>') {
+                const char *result = rfHandler->getLine();
+                record.read.append(result);
+                if (!record.read.empty() && record.read.back() == '\n')
+                        record.read.pop_back();
+        }
+
+        record.postRead = '\n';
+
+        return !record.read.empty();
 }
+
+void FastAFile::writeRecord(const ReadRecord& record)
+{
+        rfHandler->writeLine(record.preRead);
+
+        size_t offset = 0;
+        while (offset < record.read.size()) {
+                int remaining = record.read.size() - offset;
+                rfHandler->writeLine(record.read.substr(offset, min(70, remaining)));
+                offset += 70;
+                if (offset < record.read.size())
+                        rfHandler->writeChar('\n');
+        }
+
+        rfHandler->writeLine(record.postRead);
+}
+
+

@@ -1,8 +1,6 @@
 /***************************************************************************
- *   Copyright (C) 2010 Jan Fostier (jan.fostier@intec.ugent.be)           *
- *   Original Velvet code by Daniel Zerbino (zerbino@ebi.ac.uk)            *
- *                                                                         *
- *   This file is part of Velvet 2.0                                       *
+ *   Copyright (C) 2010-215 Jan Fostier (jan.fostier@intec.ugent.be)       *
+ *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -37,17 +35,14 @@ public:
         /**
          * Get the next read from a file
          * @param read String containing the read (output)
-         * @param description Read description (output)
          */
-        bool getNextRead(std::string &read, std::string &description);
+        bool getNextRead(std::string &read);
 
         /**
-         * Write a read to file
-         * @param read Read to write (input)
-         * @param description Description of the read (input)
+         * Get the next record from a file
+         * @param record Record to store output
          */
-        void writeRead(const std::string &read,
-                       const std::string &description);
+        bool getNextRecord(ReadRecord& record);
 };
 
 #endif
