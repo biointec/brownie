@@ -191,19 +191,19 @@ void Brownie::stageFour()
 
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
-#ifndef DEBUG
+//#ifndef DEBUG
         if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                         "skipping stage 4..." << endl << endl;
                 return;
         }
-#endif
+//#endif
         Util::startChrono();
         cout << "Creating graph... ";
         cout.flush();
         double readLength=libraries.getReadLength();
         if (readLength<=settings.getK() ||readLength>500)
-                readLength=150;
+                readLength=250;
         settings.setReadLenght(readLength);
         DBGraph testgraph(settings);
         testgraph.loadGraphBin(getBinNodeFilename(3),
@@ -219,10 +219,6 @@ void Brownie::stageFour()
         command="rm "+settings.getTempDirectory() + "cov/* && rm "+settings.getTempDirectory() + "cov/*.dat";
         cout<<command<<endl;
         system(command.c_str());
-#ifdef DEBUG
-        testgraph.compareToSolution(getTrueMultFilename(3), true);
-#endif
-
         testgraph.clipTips(0);
         testgraph.mergeSingleNodes(true);
         testgraph.filterCoverage(testgraph.cutOffvalue);
@@ -258,8 +254,7 @@ void Brownie::stageFour()
                 while (simplified ) {// &&
                         //
                         //*******************************************************
-                        if (round==1)
-                                graph.updateCutOffValue(round);
+                        graph.updateCutOffValue(round);
                         bool tips=graph.clipTips(round);
                         if(tips) {
                                 graph.mergeSingleNodes(true);
@@ -277,12 +272,14 @@ void Brownie::stageFour()
                         bubble= graph.bubbleDetection(depth);
                         graph.mergeSingleNodes(true);
                         bool continuEdit=false;
-                        while(depth<500){
+                        size_t maxDepth=(round)*100>1000?1000:(round)*100;
+                        while(depth<maxDepth){
+                                depth=depth+150;
+                                cout<<"bubble depth:"<<depth <<endl;
                                 continuEdit= graph.bubbleDetection(depth);
                                 if (continuEdit)
                                         graph.mergeSingleNodes(true);
-                                depth=depth+150;
-                                cout<<"bubble depth:"<<depth <<endl;
+
                                 bubble=false?continuEdit:bubble;
                         }
                         #ifdef DEBUG
@@ -309,13 +306,13 @@ void Brownie::stageFour()
                         round++;
                 }
                 coverageCutOff++;
-                cout<<"coverage cut off ::"<<coverageCutOff<<endl;
-                cout<<"certainVlueCov   ::"<<graph.certainVlueCov<<endl;;
                 if (coverageCutOff>graph.certainVlueCov)
                         break;
                 graph.updateGraphSize();
+                cout<<"coverage cut off ::"<<coverageCutOff<<endl;
+                cout<<"certainVlueCov   ::"<<graph.certainVlueCov<<endl;;
         }
-        while(graph.sizeOfGraph>settings.getGenomeSize()*.98);
+        while(graph.sizeOfGraph>settings.getGenomeSize());
         #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), false);
         #endif
@@ -390,7 +387,7 @@ int main(int argc, char** args)
                 Brownie brownie(argc, args);
 #ifndef DEBUG
                 cout<<"running in Release mode"<<endl;
-                brownie.printInFile();
+               // brownie.printInFile();
 #endif
 #ifdef DEBUG
                 cout<<"In DEBUG mode"<<endl;

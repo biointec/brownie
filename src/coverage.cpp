@@ -251,7 +251,7 @@ void DBGraph::extractStatistic(int round) {
 
 bool DBGraph::nodeIsBubble(SSNode node, SSNode currNode){
         if(node.getNumRightArcs()>1&& hasLowCovNode(node)){
-                vector<pair<vector<NodeID>, vector<NodeID>> > possibleBubbles=searchForParallelNodes(node, 1000);
+                vector<pair<vector<NodeID>, vector<NodeID>> > possibleBubbles=searchForParallelNodes(node, 500);
                 for (auto b : possibleBubbles){
                         vector<NodeID> upPath=b.first;
                         vector<NodeID> downPath=b.second;
@@ -300,6 +300,9 @@ bool DBGraph::deleteUnreliableNodes(int round){
         bool change=false;
         double threshold=this->redLineValueCov;// (!tip&& !bubble)? this->redLineValueCov:this->estimatedKmerCoverage;
         for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
+                if (lID % OUTPUT_FREQUENCY == 0)
+                        (cout << "Extracting node -" <<numNodes<< "/ "<<lID<<" /"<<numNodes
+                        << " from graph.\r").flush();
                 if (lID==0)
                         continue;
                 SSNode node = getSSNode ( lID );
@@ -405,7 +408,7 @@ bool DBGraph::deleteUnreliableNodes(int round){
 
 
         }
-        cout<<"second FP        :"<<secondFP<<endl;
+        cout<<endl<<"second FP        :"<<secondFP<<endl;
         cout<<"second TP        :"<<secondTP<<endl;
         cout<<"number of deleted nodes in deleteUnreliableNodes :: "<<numOfDel<<endl;
         //#ifdef DEBUG
@@ -648,6 +651,7 @@ bool DBGraph::mergeSingleNodes(bool force)
                         continue;
 
                 #ifdef DEBUG
+                if (trueMult.size()>0)
                 if ( ( ( trueMult[abs ( lID )] >= 1 ) && ( trueMult[abs ( rID )] == 0 ) ) ||
                         ( ( trueMult[abs ( rID )] >= 1 ) && ( trueMult[abs ( lID )] == 0 ) ) ){
                                 numOfIncorrectConnection++;

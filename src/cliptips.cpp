@@ -66,7 +66,7 @@ bool DBGraph::clipTips(int round)
 #ifdef DEBUG
 
                 if (remove) {
-                        if (trueMult[id] > 0) {
+                        if (trueMult.size()>0&& trueMult[id] > 0) {
                                 if (isolated)
                                         fps++;
                                 else if(joinedTip)
@@ -82,7 +82,7 @@ bool DBGraph::clipTips(int round)
                                         tp++;
                         }
                 } else {
-                        if (trueMult[id] > 0) {
+                        if (trueMult.size()>0&& trueMult[id] > 0) {
                                 if(isolated)
                                         tns++;
                                 else if(joinedTip)
