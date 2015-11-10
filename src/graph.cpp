@@ -227,7 +227,8 @@ bool DBGraph::updateCutOffValue(int round)
                 if (St>graph->estimatedKmerCoverage+graph->estimatedMKmerCoverageSTD*3)
                         break;
         }
-        plotCovDiagram(frequencyArray);
+        if (frequencyArray.size()>0)
+                plotCovDiagram(frequencyArray);
         double ratio=1;
         if (round<6)
                 ratio=ratio+(double)round/10;

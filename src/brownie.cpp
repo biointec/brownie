@@ -88,8 +88,8 @@ void Brownie::stageOne()
         cout << "Writing kmer file...";
         cout.flush();
         Util::startChrono();
-        //readParser->writeAllKmers(getKmerFilename());
-        readParser->writeKmersWithCovGTOne(getKmerFilename());
+        readParser->writeAllKmers(getKmerFilename());
+        //readParser->writeKmersWithCovGTOne(getKmerFilename());
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
         delete readParser;
@@ -249,7 +249,7 @@ void Brownie::stageFour()
         graph.compareToSolution(getTrueMultFilename(3), true);
         #endif
         //variables
-        int round=1;
+       /* int round=1;
         graph.updateGraphSize();
         double coverageCutOff=1;
         do{
@@ -320,7 +320,7 @@ void Brownie::stageFour()
         #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), false);
         #endif
-        cout<<"graph size:"<<graph.sizeOfGraph<<endl;
+        cout<<"graph size:"<<graph.sizeOfGraph<<endl;*/
         graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));
         cout << " Ghraph correction completed in "
         << Util::stopChrono() << "s." << endl;
