@@ -124,10 +124,6 @@ void NW_Alignment::traceback(string& s1,string& s2, char **traceback ){
 double NW_Alignment::alignment(string &s1, string &s2)
 {
         int n = s1.length() + 1, m = s2.length() + 1, i, j;
-
-        //int s[n][m];
-
-        //char traceback[n][m];
         char **tracebackArr=new char*[n];
         for(int i = 0; i < n; i++)
         {
@@ -148,13 +144,12 @@ double NW_Alignment::alignment(string &s1, string &s2)
         }
         for (int i = 1; i <= n-1; i++)
         {
-                for (int j = 1; j <= m-1; j++) // for (int j = jIndexMin; j <= i+(d); j++)//
+                for (int j = 1; j <= m-1; j++)
                 {
 
                         int scroeDiag = 0;
 
                         if(s1[i-1]==s2[j-1]|| s1[i-1]=='N'||s2[i-1]=='N')
-                                //if (s1.substr(i - 1, 1) == s2.substr(j - 1, 1))
                                 scroeDiag = s[i - 1][ j - 1] + matchScore;   //match
                                 else
                                         scroeDiag = s[i - 1][ j - 1]  -mismatchPenalty; //substitution
@@ -189,7 +184,6 @@ double NW_Alignment::alignment(string &s1, string &s2)
                 delete[] tracebackArr[i];
         }
         delete[] tracebackArr;
-        //return 0;
         return result;
 
 }
@@ -268,3 +262,25 @@ double NW_Alignment::enhancedAlignment(string &s1, string &s2){
         delete[] tracebackArr;
         return result;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

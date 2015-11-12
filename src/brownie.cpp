@@ -249,7 +249,7 @@ void Brownie::stageFour()
         graph.compareToSolution(getTrueMultFilename(3), true);
         #endif
         //variables
-       /* int round=1;
+        int round=1;
         graph.updateGraphSize();
         double coverageCutOff=1;
         do{
@@ -320,7 +320,7 @@ void Brownie::stageFour()
         #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), false);
         #endif
-        cout<<"graph size:"<<graph.sizeOfGraph<<endl;*/
+        cout<<"graph size:"<<graph.sizeOfGraph<<endl;
         graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));
         cout << " Ghraph correction completed in "
         << Util::stopChrono() << "s." << endl;
@@ -365,11 +365,11 @@ void Brownie::stageFive()
         graph.writeCytoscapeGraph(0);
 #endif
         Util::startChrono();
-       // ReadCorrection rc(graph, settings);
-      //  rc.errorCorrection(libraries);
+        ReadCorrection rc(graph, settings);
+        rc.errorCorrection(libraries);
 
-        ReadCorrectionJan rcJan(graph, settings);
-        rcJan.doErrorCorrection(libraries);
+        //ReadCorrectionJan rcJan(graph, settings);
+        //rcJan.doErrorCorrection(libraries);
 
         cout << "Error correction completed in "
         << Util::stopChrono() << "s." << endl;
