@@ -63,18 +63,18 @@ void Brownie::stageOne()
 
         cout << "Entering stage 1" << endl;
         cout << "================" << endl;
-        if (!stageOneNecessary()) {
+     /*   if (!stageOneNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 1..." << endl << endl;
                 return;
-        }
+        }*/
         KmerTable *readParser = new KmerTable(settings);
         cout << "Generating kmers with k = " << Kmer::getK()
         << " from input files..." << endl;
-        size_t kmerGOne= readParser->getNumKmersCovGTOne();
-        size_t allKmers=readParser->getNumKmers() ;
         Util::startChrono();
         readParser->parseInputFiles(libraries);
+        size_t kmerGOne= readParser->getNumKmersCovGTOne();
+        size_t allKmers=readParser->getNumKmers() ;
         cout << "Parsed input files (" << Util::stopChronoStr() << ")" << endl;
         cout << "Total number of unique kmers in table: "
         << allKmers << " ("
@@ -105,11 +105,11 @@ void Brownie::stageTwo()
         cout << "Entering stage 2" << endl;
         cout << "================" << endl;
 
-        if (!stageTwoNecessary()) {
+        /*if (!stageTwoNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 2..." << endl << endl;
                 return;
-        }
+        }*/
 
         // create a kmer table from the reads
         KmerOverlapTable overlapTable(settings);
@@ -199,7 +199,7 @@ void Brownie::stageFour()
         if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                         "skipping stage 4..." << endl << endl;
-                return;
+               // return;
         }
 
         Util::startChrono();
@@ -406,8 +406,8 @@ int main(int argc, char** args)
                 brownie.stageOne();
                 brownie.stageTwo();
                 brownie.stageThree();
-                brownie.stageFour();
-                brownie.stageFive();
+               /* brownie.stageFour();
+                brownie.stageFive();*/
         } catch (exception &e) {
                 cerr << "Fatal error: " << e.what() << endl;
                 return EXIT_FAILURE;

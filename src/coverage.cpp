@@ -205,8 +205,6 @@ void DBGraph::extractStatistic(int round) {
 
                 double denominator=0;
                 double currentProb=maxProb;
-                double inCorrctnessRatio=0;
-
 
                 size_t i=1;
                 bool minus=true;
@@ -227,41 +225,13 @@ void DBGraph::extractStatistic(int round) {
                 }while(abs(newProbability-currentProb)> .000001&& i>5);
                 double confidenceRatio=maxProb/denominator;
 
-                /*
-                int i=nodeMultiplicity-1;
-                if(i>0) {
-                        double newValue=avg*i*node.getMarginalLength();
-                        newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
-                        denominator=denominator+newProbability;
-                        i--;
-                        while(i>=0&& abs(newProbability-currentProb)> .0001) {
-                                currentProb=newProbability;
-                                newValue=avg*i*node.getMarginalLength();
-                                newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
-                                denominator=denominator+newProbability;
-                                i--;
-                        }
-                }
-                i=nodeMultiplicity+1;
-                newValue=avg*i*node.getMarginalLength();
-                newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
-                denominator=denominator+newProbability;
-                i++;
-                while(i>0&& abs(newProbability-currentProb)> .0001) {
-                        currentProb=newProbability;
-                        newValue=avg*i*node.getMarginalLength();
-                        newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
-                        denominator=denominator+newProbability;
-                        i++;
-                }*/
-
                 double expectToSee=avg*nodeMultiplicity*node.getMarginalLength();
                 double observedprob=0;
                 if(node.getReadStartCov()<expectToSee)
                         observedprob=gsl_ran_poisson_pdf(node.getReadStartCov(),expectToSee);
                 else
                         observedprob=gsl_ran_poisson_pdf(expectToSee,expectToSee);
-                inCorrctnessRatio=gsl_ran_poisson_pdf(expectToSee,expectToSee)/observedprob;
+                double inCorrctnessRatio=gsl_ran_poisson_pdf(expectToSee,expectToSee)/observedprob;
 
                 node.setExpMult(nodeMultiplicity);
                 nodesExpMult[node.getNodeID()]=make_pair(nodeMultiplicity,make_pair( confidenceRatio,inCorrctnessRatio));
@@ -309,8 +279,6 @@ bool DBGraph::checkNodeIsReliable(SSNode node){
                 return false;
         if( 1/inCorrctnessRatio<.001)
                 return false;
-        if(node.getNumRightArcs()- node.getExpMult()>0)
-                return true;
         return false;
 
 
