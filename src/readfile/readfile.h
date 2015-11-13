@@ -61,6 +61,10 @@ public:
                 return read;
         }
 
+        std::string& getRead() {
+                return read;
+        }
+
         size_t getReadLength() const {
                 return read.length();
         }

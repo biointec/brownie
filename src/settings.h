@@ -120,7 +120,7 @@ public:
      * @return The IO block size in number of kmers
      */
     size_t getThreadWorkSize() const {
-        return 10000;
+        return 1000000;
     }
     //added by mahdi
     size_t getCoverage()const {

@@ -224,7 +224,7 @@ public:
          * Get the length of the node (# nucleotides in DNA string)
          * @return The length of the node
          */
-        NodeLength getLength() const {
+        size_t getLength() const {
                 return dsNode->getLength();
         }
 
@@ -232,7 +232,7 @@ public:
          * The marginal length == length - k + 1
          * @return The marginal length of the node
          */
-        NodeLength getMarginalLength() const {
+        size_t getMarginalLength() const {
                 return dsNode->getMarginalLength();
         }
 
@@ -416,7 +416,7 @@ public:
          * @param targetID Identifier for the target node
          * @return Pointer to the specific arc, NULL if not found
          */
-        Arc* getLeftArc(NodeID targetID) {
+        Arc* getLeftArc(NodeID targetID) const {
                 if (nodeID > 0)
                         return dsNode->getLeftArc(targetID);
                 return dsNode->getRightArc(-targetID);
@@ -427,7 +427,7 @@ public:
          * @param targetID Identifier for the target node
          * @return Pointer to the specific arc, NULL if not found
          */
-        Arc* getRightArc(NodeID targetID) {
+        Arc* getRightArc(NodeID targetID) const {
                 if (nodeID > 0)
                         return dsNode->getRightArc(targetID);
                 return dsNode->getLeftArc(-targetID);
@@ -438,7 +438,7 @@ public:
          * @param nucleotide Nucleotide under consideration
          * @return Pointer to the specific arc, NULL if not found
          */
-        NodeID getLeftArc(char nucleotide) {
+        NodeID getLeftArc(char nucleotide) const {
                 for (ArcIt it = leftBegin(); it != leftEnd(); it++) {
                        // cout << "This is node " << getNodeID() << " left arc to " << it->getNodeID() << " with right charachter " << SSNode(it).peekNucleotideRight() << endl;
                         if (SSNode(it).peekNucleotideMarginalRight() == nucleotide)
@@ -453,7 +453,7 @@ public:
          * @param nucleotide Nucleotide under consideration
          * @return Pointer to the specific arc, NULL if not found
          */
-        NodeID getRightArc(char nucleotide) {
+        NodeID getRightArc(char nucleotide) const {
                 for (ArcIt it = rightBegin(); it != rightEnd(); it++)
                         if (SSNode(it).peekNucleotideMarginalLeft() == nucleotide)
                                 return it->getNodeID();
@@ -501,6 +501,19 @@ public:
                         Nucleotide::revCompl(seq);
 
                 return seq;
+        }
+
+        /**
+         * Get a subsequence of this node
+         * @param offset Start offset
+         * @param len Length of node
+         * @return stl string containing the sequence
+         */
+        std::string substr(size_t offset, size_t len) const {
+                if (nodeID > 0)
+                        return dsNode->substr(offset, len);
+                else
+                        return Nucleotide::getRevCompl(dsNode->substr(getLength() - len - offset, len));
         }
 
         /**

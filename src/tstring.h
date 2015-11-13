@@ -199,6 +199,14 @@ public:
         std::string getSequence() const;
 
         /**
+         * Get a subsequence of this node
+         * @param offset Start offset
+         * @param len Length of node
+         * @return stl string containing the sequence
+         */
+        std::string substr(size_t offset, size_t len) const;
+
+        /**
          * Complement the tight string
          */
         void complement();

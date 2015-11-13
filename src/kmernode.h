@@ -43,6 +43,12 @@ class NodePosPair : public std::pair<NodeID, PositionID>
 public:
         /**
          * Default constructor
+         */
+        NodePosPair() :
+                std::pair<NodeID, PositionID>(0, 0) {}
+
+        /**
+         * Default constructor
          * @param id Node identifier
          * @param pos Position identifier
          */
@@ -66,10 +72,10 @@ public:
         }
 
         /**
-         * Get the position
-         * @return Position
+         * Get the offset position
+         * @return Offset position
          */
-        PositionID getPosition() const {
+        PositionID getOffset() const {
                 return second;
         }
 };

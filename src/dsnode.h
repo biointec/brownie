@@ -333,7 +333,7 @@ public:
          * Get the length of the node (# nucleotides in DNA string)
          * @return The length of the node
          */
-        NodeLength getLength() const {
+        size_t getLength() const {
                 return sequence.getLength();
         }
 
@@ -499,6 +499,16 @@ public:
          */
         std::string getSequence() const {
                 return sequence.getSequence();
+        }
+
+        /**
+         * Get a subsequence of this node
+         * @param offset Start offset
+         * @param len Length of node
+         * @return stl string containing the sequence
+         */
+        std::string substr(size_t offset, size_t len) const {
+                return sequence.substr(offset, len);
         }
 
         /**

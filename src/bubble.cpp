@@ -13,7 +13,6 @@
 #include <sys/sysinfo.h>
 #include <vector>
 #include "sparseSA.hpp"
-#include "fasta.hpp"
 #include <sstream>
 #include <stack>
 #include <algorithm>

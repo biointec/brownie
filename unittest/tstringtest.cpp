@@ -51,6 +51,18 @@ TEST(TString, squareBracket)
         EXPECT_EQ(tStr1[21], 'A');
 }
 
+TEST(TString, subString)
+{
+        string source1("ACGTACGTACGTGGATTCCCGA");
+
+        TString tStr1(source1);
+
+        EXPECT_EQ(tStr1.substr(0, 1), "A");
+        EXPECT_EQ(tStr1.substr(10, 1), "G");
+        EXPECT_EQ(tStr1.substr(10, 3), "GTG");
+        EXPECT_EQ(tStr1.substr(10, 30), "GTGGATTCCCGA");
+}
+
 TEST(TString, toStringTest)
 {
         string source1("ACGTACGTACGTGGATTCCCGA");

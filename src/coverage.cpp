@@ -33,7 +33,6 @@
 #include <sys/sysinfo.h>
 #include <vector>
 #include "sparseSA.hpp"
-#include "fasta.hpp"
 #include <sstream>
 #include <stack>
 #include <algorithm>
@@ -44,7 +43,7 @@
 using namespace std;
 
 void DBGraph::parseReads(size_t thisThread,
-                         vector<string>& readBuffer) const
+                         vector<string>& readBuffer)
 {
         for (size_t i = 0; i < readBuffer.size(); i++) {
                 const string& read = readBuffer[i];

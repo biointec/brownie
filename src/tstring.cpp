@@ -103,6 +103,30 @@ string TString::getSequence() const
         return oss.str();
 }
 
+string TString::substr(size_t offset, size_t len) const
+{
+        if (offset >= length)
+                return string();
+
+        len = min(len, length - offset);
+        string result;
+        result.reserve(len);
+
+        size_t byteID = offset / 4, byteOff = 2 * (offset % 4);
+
+        for (size_t i = offset; i < offset + len; i++) {
+                result.push_back(Nucleotide::nucleotideToChar(buf[byteID] >> byteOff));
+
+                byteOff += 2;
+                if (byteOff == 8)  {
+                        byteOff = 0;
+                        byteID++;
+                }
+        }
+
+        return result;
+}
+
 void TString::complement()
 {
         const size_t numBytes = (length + 3) / 4;

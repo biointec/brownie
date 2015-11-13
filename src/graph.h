@@ -25,9 +25,6 @@
 #include "global.h"
 #include "ssnode.h"
 #include "dsnode.h"
-#include "gaussval.h"
-#include "observations.h"
-//#include "anchorpath.h"
 #include <cstdlib>
 #include <deque>
 #include <map>
@@ -35,9 +32,7 @@
 #include <gsl/gsl_cdf.h>
 #include <gsl/gsl_math.h>
 #include "sparseSA.hpp"
-#include "fasta.hpp"
 #include <queue>
-typedef std::pair<NodePair, GaussVal> Observation;
 
 // ============================================================================
 // CLASS PROTOTYPES
@@ -75,7 +70,7 @@ private:
      * @param readBuffer Input read buffer
      */
     void parseReads(size_t thisThread,
-                    std::vector<std::string>& readBuffer) const;
+                    std::vector<std::string>& readBuffer);
 
     /**
      * Entry routine for worker thread
@@ -173,13 +168,7 @@ private:
     void threadThroughReads(const std::string& filename, size_t numReads,
                             const NodeEndTable &table);
 
-    bool checkReduction(NodeID lID, vector<NodeID> vmID, NodeID rID);
-
-
     void markPairedArcs(const std::vector<NodeID>& seq);
-
-    bool reduction(NodeID lID, vector<NodeID> vmID, NodeID rID);
-    bool covBasedReduction(NodeID lID, vector<NodeID> vmID, NodeID rID);
 
     // ====================================================================
     // VARIABLES
@@ -194,12 +183,6 @@ private:
     NodeID numArcs;         // number of arcs
 
     MapType mapType;
-
-    map<NodePair, Observations> nodeDist;
-
-    std::multimap<NodePair, GaussVal> signLinks;
-    std::multimap<NodePair, GaussVal> nonSignLinks;
-    std::multimap<NodePair, GaussVal> dubiousLinks;
 
     double coverage;//=100;
     int kmerSize;//=31;
@@ -388,15 +371,6 @@ public:
     void mapReads();
 
     // ====================================================================
-    // PERM.CPP PUBLIC
-    // ====================================================================
-
-    /**
-     * Perform graph reductions using paired-end reads
-     */
-    void perm();
-
-    // ====================================================================
     // GRAPH CONSTRUCTION
     // ====================================================================
 
@@ -432,11 +406,6 @@ public:
     void threadThroughReads();
 
     /**
-     * Concatenate consecutive nodes
-     */
-    bool concatenation();
-
-    /**
      * Clear all nodes and arcs in this graph
      */
     void clear() {
@@ -467,7 +436,18 @@ public:
      * @param nodeID Identifier for the node
      * @return A Single Stranded node
      */
-    SSNode getSSNode(NodeID nodeID) const {
+    const SSNode getSSNode(NodeID nodeID) const {
+        NodeID uNodeID = abs(nodeID);
+        assert(uNodeID != 0 && uNodeID <= numNodes);
+        return SSNode(nodes + uNodeID, nodeID);
+    }
+
+    /**
+     * Get a single stranded node, given the nodeID
+     * @param nodeID Identifier for the node
+     * @return A Single Stranded node
+     */
+    SSNode getSSNode(NodeID nodeID) {
         NodeID uNodeID = abs(nodeID);
         assert(uNodeID != 0 && uNodeID <= numNodes);
         return SSNode(nodes + uNodeID, nodeID);

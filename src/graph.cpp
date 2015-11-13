@@ -1089,8 +1089,9 @@ size_t DBGraph::updateGraphSize()
 
 void DBGraph::populateTable() {
         table = new KmerNodeTable(settings, numNodes);
-        table->populateTable ( nodes );
+        table->populateTable(nodes);
 }
+
 bool DBGraph::kmerExistsInGraph(Kmer const &kmer) const {
         return getNodePosPair(kmer).isValid();
 }

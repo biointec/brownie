@@ -370,7 +370,7 @@ bool ReadCorrection::checkForAnswer(Kmer const &kmer, int startOfRead,
                 return false;
         }
         status = kmerfound;
-        int startOfNode = result.getPosition();
+        int startOfNode = result.getOffset();
         SSNode leftNode = dbg.getSSNode(result.getNodeID());
         string nodeContent = leftNode.getSequence();
         return recursiveCompare(leftNode, nodeContent, startOfNode, startOfRead,

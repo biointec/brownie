@@ -38,11 +38,7 @@ const DSNode* KmerNodeRef::nodes = NULL;
 KmerNodeRef KmerNodeTable::insert(const Kmer& kmer, NodeID id,
                                   PositionID pos, const DSNode &node)
 {
-        //ofstream kmerTablef;
-        //kmerTablef.open("correctKmer.txt", std::ios_base::app);
-	//kmerTablef<<"NodeID"<<","<<"kmer"<<","<<"position";
-
-	// choose the right representative kmer
+        // choose the right representative kmer
         Kmer kmerRC = kmer.getReverseComplement();
         bool reverse = (settings.isDoubleStranded()) && (kmerRC < kmer);
         const Kmer &reprKmer = (reverse) ? kmerRC : kmer;
@@ -55,9 +51,7 @@ KmerNodeRef KmerNodeTable::insert(const Kmer& kmer, NodeID id,
         // insert value in table
         KmerNodeValue val(reprKmer, KmerNode(reprID, reprPos));
         pair<KmerNodeIt, bool> insResult = table->insert(val);
-	string st=reprKmer.str();
-	//kmerTablef<<reprID<<","<<st<<","<<reprPos<<endl;
-	//kmerTablef.close();
+
         return KmerNodeRef(insResult.first, reverse);
 }
 
@@ -156,11 +150,7 @@ void KmerNodeTable::find(const Kmer& kmer, vector<NodePosPair>& npp) const
 
 void KmerNodeTable::populateTable(const DSNode* nodes)
 {
-        //ofstream kmerTablef;
-        //kmerTablef.open("correctKmer.txt");
-	//kmerTablef<<"NodeID"<<","<<"kmer"<<","<<"position"<<endl;
-        //kmerTablef.close();
-	KmerNodeRef::setNodes(nodes);
+        KmerNodeRef::setNodes(nodes);
         // count the number of k-mers in the graph
         size_t numKmers = 0;
         for (NodeID id = 1; id <= numNodes; id++) {
@@ -183,12 +173,10 @@ void KmerNodeTable::populateTable(const DSNode* nodes)
                 Kmer kmer(tStr);
                 PositionID pos = 0;
                 insert(kmer, id, pos++, node);
-                //comment by Madhi
 
-		for (size_t i = Kmer::getK(); i < tStr.getLength(); i++) {
+                for (size_t i = Kmer::getK(); i < tStr.getLength(); i++) {
                         kmer.pushNucleotideRight(tStr[i]);
                         insert(kmer, id, pos++, node);
-		        //comment by Madhi
                 }
         }
 }

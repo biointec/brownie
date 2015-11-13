@@ -298,7 +298,6 @@ public:
                         readLengthAvg=((readLengthAvg *totalNumOfReads)+it.getReadLength()*it.getNumReads())/(totalNumOfReads+it.getNumReads());
                         totalNumOfReads=totalNumOfReads+it.getNumReads();
                 }
-                if (totalNumOfReads!=0)
                 return readLengthAvg;
         }
 };

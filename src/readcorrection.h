@@ -23,11 +23,149 @@
 
 #include "settings.h"
 #include "graph.h"
+#include "alignment.h"
+
+// ============================================================================
+// CLASS PROTOTYPES
+// ============================================================================
+
+class NodePosPair;
+
+
+class DFSNode
+{
+public:
+        NodeID nodeID;
+        size_t readPos;
+        int score;
+
+        DFSNode() : nodeID(0), readPos(0), score(0) {}
+
+        DFSNode(NodeID nodeID_, size_t readPos_, int score_) : nodeID(nodeID_),
+                readPos(readPos_), score(score_) {}
+
+        bool operator< (const DFSNode& rhs) {
+                return rhs.score < score;
+        }
+};
+
+// ============================================================================
+// READ CORRECTION CLASS
+// ============================================================================
 
 class ReadCorrectionJan
 {
 private:
         const DBGraph &dbg;
+        const Settings &settings;
+        AlignmentJan alignment;
+
+        /**
+         * Get the marginal length of a string
+         * @param str String under consideration
+         */
+        size_t getMarginalLength(const std::string& str) const {
+                return str.length() + 1 - Kmer::getK();
+        }
+
+        /**
+         * Find the node position pairs for a read
+         * @param read Reference to the read
+         * @param npp Vector of node position pairs
+         */
+        void findNPPSlow(std::string& read, std::vector<NodePosPair>& npp);
+
+        /**
+         * Find the node position pairs for a read
+         * @param read Reference to the read
+         * @param npp Vector of node position pairs
+         */
+        void findNPPFast(std::string& read, std::vector<NodePosPair>& npp);
+
+        /**
+         * Correct a specific read record
+         * @param TODO
+         */
+        void correctRead(std::string& read, std::vector<NodePosPair> npp,
+                         size_t& first, size_t& last);
+
+        /**
+         * Correct a specific read record
+         * @param record Record to correct (input/output)
+         * @return true of the read was corrected, false otherwise
+         */
+        bool correctRead(ReadRecord& record);
+
+        /**
+         * Correct the records in one chunk
+         * @param npp Vector of node position pairs
+         * @param consistency Vector containining the consistency (output)
+         */
+        void checkConsistency(std::vector<NodePosPair>& npp,
+                              vector<bool>& consistency);
+
+        /**
+         * Find the largest consecutive run and use this as seed
+         * @param npp Vector of node position pairs
+         * @param consistency Vector containining the consistency
+         * @param seeds Vector containing start/end positions of seeds
+         */
+        void findSeed(const std::vector<NodePosPair>& npp,
+                      const std::vector<bool>& consistency,
+                      std::vector<std::pair<size_t, size_t> >& seeds);
+
+        /**
+         * Find the largest consecutive run and use this as seed
+         * @param read Reference to the read
+         * @param npp Vector of node position pairs
+         * @param first First position of the seed (output)
+         * @param last Last position of the seed (output)
+         */
+        void extendSeed(std::string& read, std::vector<NodePosPair>& npp,
+                        size_t& first, size_t& last);
+
+        /**
+         * Find the largest consecutive run and use this as seed
+         * @param read Reference to the read
+         * @param npp Vector of node position pairs
+         * @param first First position of the seed
+         * @param last Last position of the seed
+         * @return false if no seed was found
+         */
+        void applyReadCorrection(std::string& read,
+                              const std::vector<NodePosPair>& npp,
+                              size_t first, size_t last);
+
+        void recSearch(NodeID curr, string& read, vector<NodePosPair>& npp,
+                       size_t currPos, size_t& counter, int score,
+                       int& bestScore, size_t& seedLast);
+
+        void revCompl(vector<NodePosPair>& npp);
+
+public:
+        /**
+         * Default constructor
+         * @param dbg_ Reference to the De Bruijn graph
+         * @param settings_ Reference to the settings class
+         */
+        ReadCorrectionJan(const DBGraph& dbg_, const Settings& settings_) :
+                dbg(dbg_), settings(settings_), alignment(100, 3, 1, -1, -3) {}
+
+        /**
+         * Correct the records in one chunk
+         * @param readChunk Chunk of records to correct
+         */
+        void correctChunk(std::vector<ReadRecord>& readChunk);
+};
+
+// ============================================================================
+// READ CORRECTION HANDLER CLASS
+// ============================================================================
+
+class ReadCorrectionHandler
+{
+private:
+        DBGraph &dbg;
         const Settings &settings;
 
         /**
@@ -41,8 +179,7 @@ public:
         /**
          * Default constructor
          */
-        ReadCorrectionJan(const DBGraph& g, const Settings& s) :
-                dbg(g), settings(s) {}
+        ReadCorrectionHandler(DBGraph& g, const Settings& s);
 
         /**
          * Perform error correction in the libaries
