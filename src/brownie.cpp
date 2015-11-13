@@ -367,8 +367,8 @@ void Brownie::stageFive()
         ReadCorrection rc(graph, settings);
         rc.errorCorrection(libraries);
 
-        //ReadCorrectionJan rcJan(graph, settings);
-        //rcJan.doErrorCorrection(libraries);
+        //ReadCorrectionHandler rcHandler(graph, settings);
+        //rcHandler.doErrorCorrection(libraries);
 
         cout << "Error correction completed in "
         << Util::stopChrono() << "s." << endl;
