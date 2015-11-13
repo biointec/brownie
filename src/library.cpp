@@ -236,7 +236,7 @@ bool LibraryContainer::getReadChunk(vector<string>& buffer,
         for (size_t i = recordOffset; i < actReadBuffer->size(); i++) {
                 actReadBlockOffset++;
                 thisChunkSize += (*actReadBuffer)[i].getReadLength() + 1 - Kmer::getK();
-                buffer.push_back(actReadBuffer->back().getRead());
+                buffer.push_back((*actReadBuffer)[i].getRead());
                 if (thisChunkSize >= targetChunkSize)
                         break;
         }

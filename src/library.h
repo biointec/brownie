@@ -299,6 +299,7 @@ public:
                         totalNumOfReads=totalNumOfReads+it.getNumReads();
                 }
                 return readLengthAvg;
+
         }
 };
 

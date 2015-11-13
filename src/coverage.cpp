@@ -190,12 +190,12 @@ void DBGraph::extractStatistic(int round) {
                 if (!node.isValid())
                         continue;
                 int nodeMultiplicity=1;
-                double numerator=0;
+                double maxProb=0;
                 double newValue=avg*nodeMultiplicity*node.getMarginalLength();
                 double newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
-                while(newProbability>numerator) {
+                while(newProbability>maxProb) {
                         nodeMultiplicity++;
-                        numerator=newProbability;
+                        maxProb=newProbability;
                         newValue=avg*nodeMultiplicity*node.getMarginalLength();
                         newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
                 }
@@ -203,42 +203,35 @@ void DBGraph::extractStatistic(int round) {
                 nodeMultiplicity--;
 
                 double denominator=0;
-                double currentProb=numerator;
-                double inCorrctnessRatio=0;
-                int i=nodeMultiplicity-1;
-                if(i>0) {
-                        double newValue=avg*i*node.getMarginalLength();
-                        newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
-                        denominator=denominator+newProbability;
-                        i--;
-                        while(i>=0&& abs(newProbability-currentProb)> .0001) {
-                                currentProb=newProbability;
-                                newValue=avg*i*node.getMarginalLength();
-                                newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
-                                denominator=denominator+newProbability;
-                                i--;
-                        }
-                }
-                i=nodeMultiplicity+1;
-                newValue=avg*i*node.getMarginalLength();
-                newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
-                denominator=denominator+newProbability;
-                i++;
-                while(i>0&& abs(newProbability-currentProb)> .0001) {
-                        currentProb=newProbability;
-                        newValue=avg*i*node.getMarginalLength();
-                        newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
-                        denominator=denominator+newProbability;
-                        i++;
-                }
+                double currentProb=maxProb;
 
-                newValue=avg*nodeMultiplicity*node.getMarginalLength();
-                if(node.getReadStartCov()<newValue)
+                size_t i=1;
+                bool minus=true;
+                do{
+                        currentProb=newProbability;
+                        double newValue=0;
+                        if (minus&& nodeMultiplicity>i){
+                                newValue=avg*(nodeMultiplicity-i)*node.getMarginalLength();
+                                minus=false;
+                        }
+                        else{
+                                newValue=avg*(nodeMultiplicity+i)*node.getMarginalLength();
+                                minus=true;
+                                i++;
+                        }
                         newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
+                        denominator=denominator+newProbability;
+                }while(abs(newProbability-currentProb)> .000001&& i>5);
+                double confidenceRatio=maxProb/denominator;
+
+                double expectToSee=avg*nodeMultiplicity*node.getMarginalLength();
+                double observedprob=0;
+                if(node.getReadStartCov()<expectToSee)
+                        observedprob=gsl_ran_poisson_pdf(node.getReadStartCov(),expectToSee);
                 else
-                        newProbability=gsl_ran_poisson_pdf(newValue,newValue);
-                inCorrctnessRatio=gsl_ran_poisson_pdf(newValue,newValue)/newProbability;
-                double confidenceRatio=numerator/denominator;
+                        observedprob=gsl_ran_poisson_pdf(expectToSee,expectToSee);
+                double inCorrctnessRatio=gsl_ran_poisson_pdf(expectToSee,expectToSee)/observedprob;
+
                 node.setExpMult(nodeMultiplicity);
                 nodesExpMult[node.getNodeID()]=make_pair(nodeMultiplicity,make_pair( confidenceRatio,inCorrctnessRatio));
 
@@ -249,7 +242,7 @@ void DBGraph::extractStatistic(int round) {
 
 bool DBGraph::nodeIsBubble(SSNode node, SSNode currNode){
         if(node.getNumRightArcs()>1&& hasLowCovNode(node)){
-                vector<pair<vector<NodeID>, vector<NodeID>> > possibleBubbles=searchForParallelNodes(node, 1000);
+                vector<pair<vector<NodeID>, vector<NodeID>> > possibleBubbles=searchForParallelNodes(node, 500);
                 for (auto b : possibleBubbles){
                         vector<NodeID> upPath=b.first;
                         vector<NodeID> downPath=b.second;
@@ -285,8 +278,6 @@ bool DBGraph::checkNodeIsReliable(SSNode node){
                 return false;
         if( 1/inCorrctnessRatio<.001)
                 return false;
-        if(node.getNumRightArcs()- node.getExpMult()>0)
-                return true;
         return false;
 
 
@@ -298,6 +289,9 @@ bool DBGraph::deleteUnreliableNodes(int round){
         bool change=false;
         double threshold=this->redLineValueCov;// (!tip&& !bubble)? this->redLineValueCov:this->estimatedKmerCoverage;
         for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
+                if (lID % OUTPUT_FREQUENCY == 0)
+                        (cout << "Extracting node -" <<numNodes<< "/ "<<lID<<" /"<<numNodes
+                        << " from graph.\r").flush();
                 if (lID==0)
                         continue;
                 SSNode node = getSSNode ( lID );
@@ -403,7 +397,7 @@ bool DBGraph::deleteUnreliableNodes(int round){
 
 
         }
-        cout<<"second FP        :"<<secondFP<<endl;
+        cout<<endl<<"second FP        :"<<secondFP<<endl;
         cout<<"second TP        :"<<secondTP<<endl;
         cout<<"number of deleted nodes in deleteUnreliableNodes :: "<<numOfDel<<endl;
         //#ifdef DEBUG
@@ -646,6 +640,7 @@ bool DBGraph::mergeSingleNodes(bool force)
                         continue;
 
                 #ifdef DEBUG
+                if (trueMult.size()>0)
                 if ( ( ( trueMult[abs ( lID )] >= 1 ) && ( trueMult[abs ( rID )] == 0 ) ) ||
                         ( ( trueMult[abs ( rID )] >= 1 ) && ( trueMult[abs ( lID )] == 0 ) ) ){
                                 numOfIncorrectConnection++;

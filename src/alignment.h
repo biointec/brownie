@@ -28,21 +28,6 @@
 #include <iostream>
 using namespace std;
 
-class alignment
-{
-public:
-    void init();
-    void cleanup();
-
-    int nw(string  seq_1,std::string   seq_2, string&  seq_1_al, string&  seq_2_al, bool prm);
-    void  dpm_init( int ** F, char ** traceback, int L1, int L2, int d );
-    int nw_align( int ** F, char ** traceback, string  seq_1, string  seq_2, string&  seq_1_al, string&  seq_2_al,int  d );
-    int  max( int f1, int f2, int f3, char * ptr );
-    void  print_matrix( int ** F, string seq_1, string seq_2 );
-    void  print_traceback( char ** traceback, string seq_1, string seq_2 );
-    void  print_al( string& seq_1_al, string& seq_2_al );
-
-};
 
 
 class NW_Alignment {

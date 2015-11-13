@@ -63,18 +63,18 @@ void Brownie::stageOne()
 
         cout << "Entering stage 1" << endl;
         cout << "================" << endl;
-        if (!stageOneNecessary()) {
+     /*   if (!stageOneNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 1..." << endl << endl;
                 return;
-        }
+        }*/
         KmerTable *readParser = new KmerTable(settings);
         cout << "Generating kmers with k = " << Kmer::getK()
         << " from input files..." << endl;
-        size_t kmerGOne= readParser->getNumKmersCovGTOne();
-        size_t allKmers=readParser->getNumKmers() ;
         Util::startChrono();
         readParser->parseInputFiles(libraries);
+        size_t kmerGOne= readParser->getNumKmersCovGTOne();
+        size_t allKmers=readParser->getNumKmers() ;
         cout << "Parsed input files (" << Util::stopChronoStr() << ")" << endl;
         cout << "Total number of unique kmers in table: "
         << allKmers << " ("
@@ -88,8 +88,8 @@ void Brownie::stageOne()
         cout << "Writing kmer file...";
         cout.flush();
         Util::startChrono();
-        //readParser->writeAllKmers(getKmerFilename());
-        readParser->writeKmersWithCovGTOne(getKmerFilename());
+        readParser->writeAllKmers(getKmerFilename());
+        //readParser->writeKmersWithCovGTOne(getKmerFilename());
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
         delete readParser;
@@ -105,11 +105,11 @@ void Brownie::stageTwo()
         cout << "Entering stage 2" << endl;
         cout << "================" << endl;
 
-        if (!stageTwoNecessary()) {
+        /*if (!stageTwoNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 2..." << endl << endl;
                 return;
-        }
+        }*/
 
         // create a kmer table from the reads
         KmerOverlapTable overlapTable(settings);
@@ -199,7 +199,7 @@ void Brownie::stageFour()
         if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                         "skipping stage 4..." << endl << endl;
-                return;
+               // return;
         }
 
         Util::startChrono();
@@ -207,7 +207,7 @@ void Brownie::stageFour()
         cout.flush();
         double readLength=libraries.getReadLength();
         if (readLength<=settings.getK() ||readLength>500)
-                readLength=150;
+                readLength=250;
         settings.setReadLenght(readLength);
         DBGraph testgraph(settings);
         testgraph.loadGraphBin(getBinNodeFilename(3),
@@ -223,10 +223,6 @@ void Brownie::stageFour()
         command="rm "+settings.getTempDirectory() + "cov/* && rm "+settings.getTempDirectory() + "cov/*.dat";
         cout<<command<<endl;
         system(command.c_str());
-#ifdef DEBUG
-        testgraph.compareToSolution(getTrueMultFilename(3), true);
-#endif
-
         testgraph.clipTips(0);
         testgraph.mergeSingleNodes(true);
         testgraph.filterCoverage(testgraph.cutOffvalue);
@@ -262,8 +258,7 @@ void Brownie::stageFour()
                 while (simplified ) {// &&
                         //
                         //*******************************************************
-                        if (round==1)
-                                graph.updateCutOffValue(round);
+                        graph.updateCutOffValue(round);
                         bool tips=graph.clipTips(round);
                         if(tips) {
                                 graph.mergeSingleNodes(true);
@@ -281,12 +276,14 @@ void Brownie::stageFour()
                         bubble= graph.bubbleDetection(depth);
                         graph.mergeSingleNodes(true);
                         bool continuEdit=false;
-                        while(depth<500){
+                        size_t maxDepth=(round)*100>1000?1000:(round)*100;
+                        while(depth<maxDepth){
+                                depth=depth+150;
+                                cout<<"bubble depth:"<<depth <<endl;
                                 continuEdit= graph.bubbleDetection(depth);
                                 if (continuEdit)
                                         graph.mergeSingleNodes(true);
-                                depth=depth+150;
-                                cout<<"bubble depth:"<<depth <<endl;
+
                                 bubble=false?continuEdit:bubble;
                         }
                         #ifdef DEBUG
@@ -313,13 +310,13 @@ void Brownie::stageFour()
                         round++;
                 }
                 coverageCutOff++;
-                cout<<"coverage cut off ::"<<coverageCutOff<<endl;
-                cout<<"certainVlueCov   ::"<<graph.certainVlueCov<<endl;;
                 if (coverageCutOff>graph.certainVlueCov)
                         break;
                 graph.updateGraphSize();
+                cout<<"coverage cut off ::"<<coverageCutOff<<endl;
+                cout<<"certainVlueCov   ::"<<graph.certainVlueCov<<endl;;
         }
-        while(graph.sizeOfGraph>settings.getGenomeSize()*.98);
+        while(graph.sizeOfGraph>settings.getGenomeSize());
         #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), false);
         #endif
@@ -368,11 +365,11 @@ void Brownie::stageFive()
         graph.writeCytoscapeGraph(0);
 #endif
         Util::startChrono();
-       // ReadCorrection rc(graph, settings);
-      //  rc.errorCorrection(libraries);
+        ReadCorrection rc(graph, settings);
+        rc.errorCorrection(libraries);
 
-        ReadCorrectionJan rcJan(graph, settings);
-        rcJan.doErrorCorrection(libraries);
+        //ReadCorrectionJan rcJan(graph, settings);
+        //rcJan.doErrorCorrection(libraries);
 
         cout << "Error correction completed in "
         << Util::stopChrono() << "s." << endl;
@@ -409,13 +406,12 @@ int main(int argc, char** args)
                 brownie.stageOne();
                 brownie.stageTwo();
                 brownie.stageThree();
-                brownie.stageFour();
-                brownie.stageFive();
+               /* brownie.stageFour();
+                brownie.stageFive();*/
         } catch (exception &e) {
                 cerr << "Fatal error: " << e.what() << endl;
                 return EXIT_FAILURE;
         }
-
         cout << "Exiting... bye!" << endl << endl;
         return EXIT_SUCCESS;
 }

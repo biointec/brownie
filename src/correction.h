@@ -3,7 +3,7 @@
 
 #include <string>
 #include "graph.h"
-
+#include "dijkstra.h"
 using namespace std;
 
 struct readStructStr
@@ -27,22 +27,27 @@ private:
                 graphIsMissing,
                 anotherKmer
         };
-        double maxTimePerRead;
+
         const float maxErrorRate=.3;
         const size_t avgQualityError=40;
         DBGraph &dbg;
         ReadLibrary *library;
         Settings &settings;
-        int kmerSize;
-        vector<string> references;
-        vector<sparseSA*> saVec;
+        size_t kmerSize;
+
         int numOfReads;
         int numOfAllReads;
         int numOfSupportedReads;
-        int minSimPer;
+        double minSimPer;
+        double maxTimePerRead;
+        vector<string> references;
+        vector<sparseSA*> saVec;
+
 
         ifstream readsFile;
         ofstream outFastq;
+
+        Dijkstra dijk;
 
         void readInputReads(vector<readStructStr> &reads);
         void correctReads(vector<readStructStr> &reads);
@@ -58,25 +63,19 @@ private:
         int lowQualityPos(string quality, int startOfRead,
                           string const &kmer, int round);
         string applyINDchanges(string const &reference, string const &read);
-        bool checkForIndels(string const &ref, string query,
-                            int maxError, string const &qProfile,
-                            string &newRead);
-        bool recursiveCompare(SSNode const &leftNode, string const &nodeContent,
+        bool recursiveCompare(SSNode &leftNode, string const &nodeContent,
                               int startOfNode, int startOfRead, string const &original,
                               string &guess, string const &qProfile,
                               readCorrectionStatus &status);
-        bool expand(SSNode const &node, string const &original, string const &qProfile, string &guess, pair<int, int> bounds, bool forward, readCorrectionStatus &status);
+        bool expand(SSNode &node, string const &original, string const &qProfile, string &guess, pair<int, int> bounds, bool forward, readCorrectionStatus &status);
         bool findBestMatch(vector<string> const &results, string &original,
-                           bool rightDir, string &bestMatch, int readLength);
-
-        int findDifference(string const &guess, string const &original,
-                           string const &qProfile, int start);
+                           bool rightDir, string &bestMatch);
         int findDifference(string const &a, string const &b);
-        vector<string> getAllSolutions(SSNode const &rootNode, string const &readPart, bool forward);
-        bool findRecSolutionsForward(vector<string> &results, SSNode const rootNode,
+        vector<string> getAllSolutions(SSNode  &rootNode, string const &readPart, bool forward);
+        int findRecSolutionsForward(vector<string> &results, SSNode const rootNode,
                                       string const &readPart,
                                       string currentPath,clock_t& start);
-        bool findRecSolutionsBackward(vector<string> &results, SSNode const rootNode,
+        int findRecSolutionsBackward(vector<string> &results, SSNode const rootNode,
                                       string const &readPart,
                                       string currentPath,clock_t& start);
         bool findRecSolutionsRec(vector<string> &results, SSNode const rootNode,
@@ -90,6 +89,9 @@ private:
         bool correctionByMEM(vector<match_t> &matches, string const &reference, readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         int shiftSize(match_t const &m, string const &reference);
         bool seedIsContainedInKmer(match_t const &m, string const &reference, int shift);
+        bool newCorrectRead(readStructStr &readInfo,readCorrectionStatus& status);
+        void findBridge(vector<string> &results  ,SSNode startNode,SSNode &endNode,string& readPart,string currentPath);
+        string checkForIndels(string const &ref, string query);
 public:
         ReadCorrection(DBGraph &g, Settings &s);
         void errorCorrection(LibraryContainer &libraries);
