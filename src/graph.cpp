@@ -41,16 +41,12 @@ DSNode* SSNode::nodes = NULL;
 const DBGraph* DBGraph::graph = NULL;
 
 
-DBGraph::DBGraph(const Settings& settings) : settings(settings), nodes(NULL),
-    arcs(NULL), numNodes(0), numArcs(0), table(NULL),
-    mapType(SHORT_MAP) {
+DBGraph::DBGraph(const Settings& settings) : table(NULL), settings(settings),
+        nodes(NULL), arcs(NULL), numNodes(0), numArcs(0), mapType(SHORT_MAP) {
     DBGraph::graph = this;
     //mahdi comment my
     initialize();
 }
-
-
-
 
 void DBGraph::initialize()
 {
@@ -901,8 +897,6 @@ void DBGraph::loadGraphBin(const std::string& nodeFilename,
 {
         // auxiliary variables
         string dS, descriptor;
-        int dI, length;
-
 
         // read the metadata
         ifstream metaDataFile(metaDataFilename.c_str());
