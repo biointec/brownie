@@ -41,7 +41,7 @@ void ReadCorrectionJan::revCompl(vector< NodePosPair >& npp)
                 NodeID nodeID = npp[i].getNodeID();
                 size_t pos = npp[i].getOffset();
                 const SSNode node = dbg.getSSNode(nodeID);
-                npp[i] = NodePosPair(-nodeID, node.getMarginalLength() - pos);
+                npp[i] = NodePosPair(-nodeID, node.getMarginalLength() - 1 - pos);
         }
 }
 
