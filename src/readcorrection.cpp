@@ -178,8 +178,18 @@ void ReadCorrectionJan::recSearch(NodeID curr, string& read, vector<NodePosPair>
 
                 int thisScore = alignment.align(readOL, nodeOL);
                 int nextScore = currScore + thisScore;
+                float nextRelScore = (float)thisScore / (float)nextNode.getMarginalLength();
 
-                dfsNode.push_back(DFSNode(nextID, nextReadPos, nextScore));
+                dfsNode.push_back(DFSNode(nextID, nextReadPos, nextScore, nextRelScore));
+
+                // =====================
+                /*string str = nextNode.substr(Kmer::getK()-1, OLSize);
+                string readSubStr = read.substr(currReadPos + Kmer::getK() -1, OLSize);
+
+                for (size_t i = 0; i < currReadPos + Kmer::getK() - 1; i++)
+                        cout << " ";
+                cout << str << " (Node: " << nextID << ", curr: " << nextScore << ", best: " << bestScore << ", rel. score.:" << nextRelScore << ")" << endl;*/
+                // ======================
         }
 
         sort(dfsNode.begin(), dfsNode.end());
@@ -246,7 +256,7 @@ void ReadCorrectionJan::extendSeed(string& read, vector<NodePosPair>& npp,
 
         // try to find the best right path
         //if (seedLast < getMarginalLength(read))
-        //        cout << read << endl;
+        //      cout << read << endl;
         size_t counter = 0; int bestScore = -(getMarginalLength(read) - seedLast);
         if (seedLast < getMarginalLength(read))
                 recSearch(node.getNodeID(), read, npp, seedLast, counter, 0, bestScore, seedLast);
@@ -378,7 +388,7 @@ void ReadCorrectionJan::correctChunk(vector<ReadRecord>& readChunk)
                 correctRead(it);
 
         /*cout << readChunk.size() << endl;
-        for (size_t i = 5801; i < 5802; i++) {
+        for (size_t i = 2123; i < 2124; i++) {
                 cout << "================== read " << i << endl;
                 correctRead(readChunk[i]);
         }

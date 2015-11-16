@@ -38,13 +38,17 @@ public:
         NodeID nodeID;
         size_t readPos;
         int score;
+        float relScore;
 
-        DFSNode() : nodeID(0), readPos(0), score(0) {}
+        DFSNode() : nodeID(0), readPos(0), score(0), relScore(0.0f) {}
 
-        DFSNode(NodeID nodeID_, size_t readPos_, int score_) : nodeID(nodeID_),
-                readPos(readPos_), score(score_) {}
+        DFSNode(NodeID nodeID_, size_t readPos_, int score_, float relScore_) :
+                nodeID(nodeID_), readPos(readPos_), score(score_),
+                relScore(relScore_) {}
 
         bool operator< (const DFSNode& rhs) {
+                if (rhs.relScore != relScore)
+                        return rhs.relScore < relScore;
                 return rhs.score < score;
         }
 };
