@@ -46,7 +46,7 @@ public:
                 nodeID(nodeID_), readPos(readPos_), score(score_),
                 relScore(relScore_) {}
 
-        bool operator< (const DFSNode& rhs) {
+        bool operator< (const DFSNode& rhs) const {
                 if (rhs.relScore != relScore)
                         return rhs.relScore < relScore;
                 return rhs.score < score;
