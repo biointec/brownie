@@ -74,4 +74,5 @@ else (SPARSEHASH_FOUND)
 endif(SPARSEHASH_FOUND)
 
 add_subdirectory(src)
+add_subdirectory(comparison)
 add_subdirectory(unittest)
