@@ -181,9 +181,6 @@ void Brownie::stageThree()
 #endif
         graph.clear();
         cout << "Stage 3 finished.\n" << endl;
-        if (settings.getSkipStage4()) {
-                writeGraphExplicit(3);
-        }
 }
 
 void Brownie::stageFour()
@@ -376,14 +373,21 @@ void Brownie::stageFive()
         graph.clear();
 }
 
-void Brownie::writeGraphExplicit(int stage)
+void Brownie::writeGraphFasta()
 {
-        // build pre-graph and simplify it
         DBGraph graph(settings);
-        graph.createFromFile(getNodeFilename(stage),
-                             getArcFilename(stage),
-                             getMetaDataFilename(stage));
-        graph.writeGraphExplicit();
+        if (settings.getSkipStage4()) {
+                graph.loadGraphBin(getBinNodeFilename(3),
+                        getBinArcFilename(3),
+                        getMetaDataFilename(3));
+                graph.writeGraphFasta();
+        }
+        if (settings.getSkipStage5()) {
+                graph.createFromFile(getNodeFilename(4),
+                        getArcFilename(4),
+                        getMetaDataFilename(4));
+                graph.writeGraphFasta();
+        }
         graph.clear();
 }
 
@@ -407,6 +411,7 @@ int main(int argc, char** args)
                 brownie.stageThree();
                 brownie.stageFour();
                 brownie.stageFive();
+                brownie.writeGraphFasta();
         } catch (exception &e) {
                 cerr << "Fatal error: " << e.what() << endl;
                 return EXIT_FAILURE;

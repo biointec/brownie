@@ -522,7 +522,7 @@ public:
     /*
      *
      */
-    void writeGraphExplicit() const;
+    void writeGraphFasta() const;
 };
 
 #endif

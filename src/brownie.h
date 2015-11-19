@@ -180,6 +180,8 @@ public:
          * @return True or false
          */
         bool stageFourNecessary() const {
+                if (settings.getSkipStage4())
+                        return false;
                 if (!Util::fileExists(getNodeFilename(4)))
                         return true;
                 if (!Util::fileExists(getArcFilename(4)))
@@ -197,7 +199,7 @@ public:
                 return true;
         }
         void printInFile();
-        void writeGraphExplicit(int stage);
+        void writeGraphFasta();
 };
 
 #endif
