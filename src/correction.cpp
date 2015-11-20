@@ -88,7 +88,7 @@ void ReadCorrection::writeOutputReads(vector<readStructStr> const &reads) {
  */
 void ReadCorrection::correctReads(vector<readStructStr> &reads) {
         int supportedReads = 0;
-        //#pragma omp parallel for reduction(+:supportedReads)
+        #pragma omp parallel for reduction(+:supportedReads)
         for (size_t i = 0; i < reads.size(); ++i) {
 
                 if (correctRead(reads[i]))
@@ -97,7 +97,7 @@ void ReadCorrection::correctReads(vector<readStructStr> &reads) {
 }
 
 bool ReadCorrection::correctRead(readStructStr &readInfo) {
-/*
+
        readCorrectionStatus status = kmerNotfound;
         string original =  readInfo.originalContent;
         string guess = original;
@@ -113,9 +113,9 @@ bool ReadCorrection::correctRead(readStructStr &readInfo) {
         //now write the guessed Read into the file
         //save the correction so we can write it to file later
         readInfo.corrctReadContent = guess;
-        return found;*/
+        return found;
 
-        readCorrectionStatus status = kmerNotfound;
+        /*readCorrectionStatus status = kmerNotfound;
         string original =  readInfo.originalContent;
         string guess = original;
         string qProfile = readInfo.qProfile;
@@ -130,7 +130,7 @@ bool ReadCorrection::correctRead(readStructStr &readInfo) {
         if (status == kmerNotfound) {
                 found = correctionByMEM(status, original, guess, qProfile);
         }
-        return found;
+        return found;*/
 
 }
 

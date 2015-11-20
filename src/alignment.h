@@ -32,22 +32,29 @@ using namespace std;
 
 class NW_Alignment {
 private:
+        double maxGap;
+        char **tracebackArr;
+        int **s;
+        size_t maxSize;
+        double matchScore;
+        double mismatchPenalty;
+        double gapPenalty;
+        double max(double x, double y);
+        double max(double x, double y, double z);
+        void    traceback(string& s1,string& s2,char **traceback );
+        void alocateMemory();
+        void deAlocateMemory();
 
-    double matchScore;
-    double mismatchPenalty;
-    double gapPenalty;
-    double maxGap=3;
-    double max(double x, double y);
-    double max(double x, double y, double z);
-    void    traceback(string& s1,string& s2,char **traceback );
-    void init();
 public:
-    NW_Alignment();
-    double alignment(string &s1, string &s2);
-    double enhancedAlignment(string &s1, string &s2);
-    double get_similarity_per(string s1,string s2);
-    double get_similarity_perEnhanced(string s1,string s2);
-    int findDirectSim(string const &a, string const &b);
+        NW_Alignment();
+        ~NW_Alignment();
+        string getaligned(string a,string b,string c);
+        bool isEqual(string a, string b);
+        int findQualityDistance(string a, string b,string q) ;
+        double get_similarity_per(string s1,string s2);
+        double enhancedAlignment(string &s1, string &s2);
+        int findDirectSim(string const &a, string const &b) ;
+        double get_similarity_perEnhanced(string s1,string s2);
 };
 
 // ============================================================================
@@ -62,11 +69,10 @@ private:
         int match;              // match score
         int mismatch;           // mismatch penalty
         int gap;                // gap score
-
         int *M;                 // alignment matrix
 
-       // void traceback(string& s1,string& s2,char **traceback );
-       // void init();
+        // void traceback(string& s1,string& s2,char **traceback );
+        // void init();
 
 public:
         /**

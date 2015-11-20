@@ -87,8 +87,8 @@ void Brownie::stageOne()
         cout << "Writing kmer file...";
         cout.flush();
         Util::startChrono();
-        readParser->writeAllKmers(getKmerFilename());
-        //readParser->writeKmersWithCovGTOne(getKmerFilename());
+        //readParser->writeAllKmers(getKmerFilename());
+        readParser->writeKmersWithCovGTOne(getKmerFilename());
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
         delete readParser;
@@ -364,12 +364,12 @@ void Brownie::stageFive()
         graph.writeCytoscapeGraph(0);
 #endif
         Util::startChrono();
-        //ReadCorrection rc(graph, settings);
+        ReadCorrection rc(graph, settings);
         //rc.errorCorrection(libraries);
 
-        ReadCorrectionHandler rcHandler(graph, settings);
+        /*ReadCorrectionHandler rcHandler(graph, settings);
         rcHandler.doErrorCorrection(libraries);
-
+*/
         cout << "Error correction completed in "
         << Util::stopChrono() << "s." << endl;
         cout << "Stage 5 finished.\n" << endl;
