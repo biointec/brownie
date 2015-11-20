@@ -237,14 +237,14 @@ void ReadCorrectionJan::recSearch(NodeID curr, string& read, vector<NodePosPair>
 void ReadCorrectionJan::extendSeed(string& read, vector<NodePosPair>& npp,
                                    size_t& seedFirst, size_t& seedLast)
 {
-        // delete unreliable right nodes: FIXME generalize !!
-//         while (seedLast > seedFirst + 1) {
-//                 if (npp[seedLast - 1].getOffset() == 0 || npp[seedLast - 1].getOffset() == 1 /* || npp[seedLast - 1].getOffset() == 2 || npp[seedLast - 1].getOffset() == 3*/) {
-//                         npp[seedLast - 1] = NodePosPair(0, 0);
-//                         seedLast--;
-//                 } else
-//                         break;
-//         }
+        // remove at most k nucleotides from the seed
+        for (int i = 0; i < Kmer::getK(); i++) {
+                if (seedLast == seedFirst + 1)
+                        break;
+
+                npp[seedLast - 1] = NodePosPair(0, 0);
+                seedLast--;
+        }
 
         // try to extend to the seed to the right within the current node
         const SSNode node = dbg.getSSNode(npp[seedLast-1].getNodeID());
@@ -423,7 +423,7 @@ void ReadCorrectionHandler::doErrorCorrection(LibraryContainer& libraries)
         cout << "Number of threads: " << numThreads << endl;
 
         libraries.startIOThreads(settings.getThreadWorkSize(),
-                                 4 * settings.getThreadWorkSize() * settings.getNumThreads(),
+                                 10 * settings.getThreadWorkSize() * settings.getNumThreads(),
                                  true);
 
         // start worker threads

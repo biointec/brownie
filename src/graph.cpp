@@ -1009,10 +1009,10 @@ double DBGraph::getReadLength() const {
         return readLength;
 }
 
-void DBGraph::writeGraphExplicit() const
+void DBGraph::writeGraphFasta() const
 {
         vector<size_t> nodeLengths;
-        string nodeFileName = settings.getTempDirectory() + "/DBGraph.txt";
+        string nodeFileName = settings.getTempDirectory() + "/DBGraph.fasta";
         ofstream nodeFile(nodeFileName);
 
         size_t numExtractedNodes = 0;
@@ -1024,21 +1024,21 @@ void DBGraph::writeGraphExplicit() const
 
                 numExtractedNodes++;
 
-                nodeFile << "NODE" << "\t" << numExtractedNodes << "\t"
-                         << node.getLength() << "\n"
-                         << node.getSequence() << "\n";
+                nodeFile << ">NODE" << "\t" << numExtractedNodes << "\t"
+                         << node.getLength();
+                
 
                 KmerOverlap ol;
-                nodeFile << "LEFT ARCS" << "\t" << (int)node.getNumLeftArcs();
+                nodeFile << "\t" << (int)node.getNumLeftArcs();
                 for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
                         nodeFile << "\t" << it->getNodeID();
                 }
 
-                nodeFile << "\nRIGHT ARCS" << "\t" << (int)node.getNumRightArcs();
+                nodeFile << "\t" << (int)node.getNumRightArcs();
                 for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++) {
                         nodeFile << "\t" << it->getNodeID();
                 }
-                nodeFile << "\n";
+                nodeFile << "\n" << node.getSequence() << "\n";;
         }
 
         nodeFile.close();
