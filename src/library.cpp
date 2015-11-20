@@ -275,10 +275,10 @@ void LibraryContainer::inputThreadLibrary(ReadLibrary& input)
                         totReadLength += record.getReadLength();
 
                         // if the read is short than k, no need to process it
-                        if (record.getReadLength() < Kmer::getK()) {
+                        /*if (record.getReadLength() < Kmer::getK()) {
                                 numTooShort++;
                                 continue;
-                        }
+                        }*/
 
                         idlReadBuffer->push_back(record);
                         thisBlockSize += record.getReadLength() + 1 - Kmer::getK();
