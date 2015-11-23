@@ -40,7 +40,7 @@ double Dijkstra::shortestPath(SSNode start, SSNode end)
         visited.clear();
         checkedList.clear();
         checkedList.push_back( root);
-        double min=std::numeric_limits<double>::infinity();
+        //double min=std::numeric_limits<double>::infinity();
         while(!checkedList.empty()){
                 element expand=checkedList[0];
                 SSNode expandNode=dbg.getSSNode( expand.second);

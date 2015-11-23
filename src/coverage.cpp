@@ -32,7 +32,7 @@
 #include <sys/types.h>
 #include <sys/sysinfo.h>
 #include <vector>
-#include "sparseSA.hpp"
+#include "essaMEM-master/sparseSA.hpp"
 #include <sstream>
 #include <stack>
 #include <algorithm>

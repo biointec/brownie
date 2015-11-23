@@ -24,6 +24,7 @@
 #include "settings.h"
 #include "graph.h"
 #include "alignment.h"
+#include "essaMEM-master/sparseSA.hpp"
 
 // ============================================================================
 // CLASS PROTOTYPES
@@ -63,6 +64,8 @@ private:
         const DBGraph &dbg;
         const Settings &settings;
         AlignmentJan alignment;
+        const sparseSA& sa;
+        const std::vector<long>& startpos;
 
         /**
          * Get the marginal length of a string
@@ -83,8 +86,17 @@ private:
          * Find the node position pairs for a read
          * @param read Reference to the read
          * @param npp Vector of node position pairs
+         * @return True of at least one kmer hit was found, false otherwise
          */
-        void findNPPFast(std::string& read, std::vector<NodePosPair>& npp);
+        bool findNPPFast(std::string& read, std::vector<NodePosPair>& npp);
+
+        /**
+         * Find the node position pairs for a read using EssaMEM
+         * @param read Reference to the read
+         * @param npp Vector of node position pairs
+         * @return True of at least one kmer hit was found, false otherwise
+         */
+        bool findNPPEssaMEM(std::string& read, std::vector<NodePosPair>& npp);
 
         /**
          * Correct a specific read record
@@ -152,8 +164,10 @@ public:
          * @param dbg_ Reference to the De Bruijn graph
          * @param settings_ Reference to the settings class
          */
-        ReadCorrectionJan(const DBGraph& dbg_, const Settings& settings_) :
-                dbg(dbg_), settings(settings_), alignment(100, 3, 1, -1, -3) {}
+        ReadCorrectionJan(const DBGraph& dbg_, const Settings& settings_,
+                          const sparseSA& sa_, const std::vector<long>& startpos_) :
+                          dbg(dbg_), settings(settings_),
+                          alignment(100, 3, 1, -1, -3), sa(sa_), startpos(startpos_) {}
 
         /**
          * Correct the records in one chunk
@@ -171,6 +185,11 @@ class ReadCorrectionHandler
 private:
         DBGraph &dbg;
         const Settings &settings;
+        sparseSA *sa;
+        std::string reference;
+        std::vector<long> startpos;
+
+        void initEssaMEM();
 
         /**
          * Entry routine for worker thread
@@ -184,6 +203,11 @@ public:
          * Default constructor
          */
         ReadCorrectionHandler(DBGraph& g, const Settings& s);
+
+        /**
+         * Destructor
+         */
+        ~ReadCorrectionHandler() { delete sa; }
 
         /**
          * Perform error correction in the libaries

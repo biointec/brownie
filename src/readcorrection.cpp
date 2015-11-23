@@ -54,8 +54,10 @@ void ReadCorrectionJan::findNPPSlow(string& read, vector<NodePosPair>& npp)
         }
 }
 
-void ReadCorrectionJan::findNPPFast(string& read, vector<NodePosPair>& nppv)
+bool ReadCorrectionJan::findNPPFast(string& read, vector<NodePosPair>& nppv)
 {
+        bool foundKmer = false;
+
         for (KmerIt it(read); it.isValid(); it++) {
                 Kmer kmer = it.getKmer();
                 NodePosPair npp = dbg.getNodePosPair(kmer);
@@ -63,6 +65,8 @@ void ReadCorrectionJan::findNPPFast(string& read, vector<NodePosPair>& nppv)
 
                 if (!npp.isValid())
                         continue;
+
+                foundKmer = true;
 
                 NodeID nodeID = npp.getNodeID();
                 const SSNode node = dbg.getSSNode(nodeID);
@@ -81,6 +85,44 @@ void ReadCorrectionJan::findNPPFast(string& read, vector<NodePosPair>& nppv)
 
                 }
         }
+
+        return foundKmer;
+}
+
+bool ReadCorrectionJan::findNPPEssaMEM(string& read, vector< NodePosPair >& npp)
+{
+        vector<match_t> matches;
+        sa.findMEM(0l, read, matches, Kmer::getK() - 6, false);
+
+        //cout << "Number of matches: " << matches.size() << endl;
+
+        for (auto it : matches) {
+
+                vector<long>::const_iterator e = upper_bound(startpos.begin(), startpos.end(), it.ref);
+                e--;
+                NodeID nodeID = distance(startpos.begin(), e) + 1;
+                size_t offset = it.ref - *e;
+
+                SSNode node = dbg.getSSNode(nodeID);
+                if (offset > node.getLength()) {
+                        nodeID = -nodeID;
+                        offset = offset - node.getLength() - 1;
+                }
+
+                if ((size_t)it.query < npp.size())
+                        npp[it.query] = NodePosPair(nodeID, offset);
+
+                /*cout << nodeID << " " << offset << " " << it.query << " " << it.len << endl;
+
+                node = dbg.getSSNode(nodeID);
+                string nodeStr = node.substr(offset, it.len);
+                string readStr = read.substr(it.query, it.len);
+
+                cout << nodeStr << endl;
+                cout << readStr << endl;*/
+        }
+
+        return true;
 }
 
 void ReadCorrectionJan::checkConsistency(vector<NodePosPair>& nppv,
@@ -238,7 +280,7 @@ void ReadCorrectionJan::extendSeed(string& read, vector<NodePosPair>& npp,
                                    size_t& seedFirst, size_t& seedLast)
 {
         // remove at most k nucleotides from the seed
-        for (int i = 0; i < Kmer::getK(); i++) {
+        for (size_t i = 0; i < Kmer::getK(); i++) {
                 if (seedLast == seedFirst + 1)
                         break;
 
@@ -316,7 +358,10 @@ bool ReadCorrectionJan::correctRead(ReadRecord& record)
         /////////////// INITAL RUN
 
         vector<NodePosPair> npp(read.length() + 1 - Kmer::getK());
-        findNPPFast(read, npp);
+        bool foundKmer = findNPPFast(read, npp);
+
+        if (!foundKmer)
+                findNPPEssaMEM(read, npp);
 
         /*cout << "NPP after initial search" << endl;
         for (size_t i = 0; i < Kmer::getK() - 1; i++)
@@ -374,6 +419,10 @@ bool ReadCorrectionJan::correctRead(ReadRecord& record)
                 }
         }
 
+        /*alignment.align(read, bestCorrectedRead);
+        alignment.printAlignment(read, bestCorrectedRead);
+        cout << "Score: " << bestScore << endl;*/
+
         if (bestScore > ((int)read.size() / 2))
                 read = bestCorrectedRead;
 
@@ -388,7 +437,7 @@ void ReadCorrectionJan::correctChunk(vector<ReadRecord>& readChunk)
                 correctRead(it);
 
         /*cout << readChunk.size() << endl;
-        for (size_t i = 2123; i < 2124; i++) {
+        for (size_t i = 5; i < 6; i++) {
                 cout << "================== read " << i << endl;
                 correctRead(readChunk[i]);
         }
@@ -399,7 +448,7 @@ void ReadCorrectionJan::correctChunk(vector<ReadRecord>& readChunk)
 
 void ReadCorrectionHandler::workerThread(size_t myID, LibraryContainer& libraries)
 {
-        ReadCorrectionJan readCorrection(dbg, settings);
+        ReadCorrectionJan readCorrection(dbg, settings, *sa, startpos);
 
         // local storage of reads
         vector<ReadRecord> myReadBuf;
@@ -417,10 +466,61 @@ void ReadCorrectionHandler::workerThread(size_t myID, LibraryContainer& librarie
         }
 }
 
+void ReadCorrectionHandler::initEssaMEM()
+{
+        size_t length = 0;
+        startpos.clear();
+        startpos.reserve(dbg.getNumNodes());
+        for (NodeID nodeID = 1; nodeID <= dbg.getNumNodes(); nodeID++) {
+                SSNode node = dbg.getSSNode(nodeID);
+                assert(node.isValid());
+                startpos.push_back(length);
+                length += node.getLength() * 2 + 2;
+        }
+
+        reference.clear();
+        reference.reserve(length);
+        for (NodeID nodeID = 1; nodeID < dbg.getNumNodes(); nodeID++) {
+                SSNode node = dbg.getSSNode(nodeID);
+                if (!node.isValid())
+                        continue;
+
+                string thisSequence = node.getSequence();
+                reference.append(thisSequence);
+                reference.append(">");
+
+                Nucleotide::revCompl(thisSequence);
+                reference.append(thisSequence);
+                reference.append(">");
+        }
+
+        std::vector<std::string> refdescr;
+        refdescr.push_back("");
+
+        bool printSubstring = false;
+        bool printRevCompForw = false;
+
+        sa = new sparseSA(reference,             //reference
+                          refdescr,             //
+                          startpos,             //
+                          false,                //4 column format or not
+                          1,                    //sparseness
+                          false,                //suffixlinks
+                          true,                 //child arrays
+                          1,                    //skip parameter
+                          printSubstring,       //
+                          printRevCompForw);
+        sa->construct();
+}
+
 void ReadCorrectionHandler::doErrorCorrection(LibraryContainer& libraries)
 {
         const unsigned int& numThreads = settings.getNumThreads();
         cout << "Number of threads: " << numThreads << endl;
+
+        cout << "Building suffix array..."; cout.flush();
+        initEssaMEM();
+        cout << "done" << endl;
 
         libraries.startIOThreads(settings.getThreadWorkSize(),
                                  10 * settings.getThreadWorkSize() * settings.getNumThreads(),
@@ -439,7 +539,7 @@ void ReadCorrectionHandler::doErrorCorrection(LibraryContainer& libraries)
 }
 
 ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
-        dbg(g), settings(s)
+        dbg(g), settings(s), sa(NULL)
 {
         Util::startChrono();
         cout << "Creating kmer lookup table... "; cout.flush();
