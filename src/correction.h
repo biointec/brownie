@@ -42,7 +42,7 @@ private:
         double maxTimePerRead;
         vector<string> references;
         vector<sparseSA*> saVec;
-
+        NW_Alignment Nw;
 
         ifstream readsFile;
         ofstream outFastq;
@@ -54,6 +54,8 @@ private:
         void writeOutputReads(vector<readStructStr> const &reads);
         void printProgress(clock_t const &begin);
         bool correctRead(readStructStr &readInfo);
+        bool  firstHitErrorCorrection(readStructStr &readInfo);
+        bool  makeBridgeErrorCorrection(readStructStr &readInfo);
         bool checkForAnswer(Kmer const &kmer, int startOfRead,
                             string const &original, string &guess,
                             string const &qProfile,
