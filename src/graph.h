@@ -31,7 +31,7 @@
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_cdf.h>
 #include <gsl/gsl_math.h>
-#include "sparseSA.hpp"
+#include "essaMEM-master/sparseSA.hpp"
 #include <queue>
 
 // ============================================================================

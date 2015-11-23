@@ -24,11 +24,11 @@ struct vec_uchar {
   vector<item_t> M;
   void resize(size_t N) { vec.resize(N); }
   // Vector X[i] notation to get LCP values.
-  int operator[] (size_t idx) {
-    if(vec[idx] == numeric_limits<unsigned char>::max()) 
+  int operator[] (size_t idx) const {
+    if(vec[idx] == numeric_limits<unsigned char>::max())
       return lower_bound(M.begin(), M.end(), item_t(idx,0))->val;
-    else 
-      return vec[idx]; 
+    else
+      return vec[idx];
   }
   // Actually set LCP values, distingushes large and small LCP
   // values.
@@ -41,8 +41,8 @@ struct vec_uchar {
   }
   // Once all the values are set, call init. This will assure the
   // values >= 255 are sorted by index for fast retrieval.
-  void init() { sort(M.begin(), M.end()); cerr << "M.size()=" << M.size() << endl; std::vector<item_t>(M).swap(M); }
-  
+  void init() { sort(M.begin(), M.end()); /*cerr << "M.size()=" << M.size() << endl;*/ std::vector<item_t>(M).swap(M); }
+
   long index_size_in_bytes(){
       long indexSize = 0L;
       indexSize += sizeof(vec) + vec.capacity()*sizeof(unsigned char);
@@ -51,7 +51,7 @@ struct vec_uchar {
   }
 };
 
-// Match find by findMEM. 
+// Match find by findMEM.
 struct match_t {
   match_t() { ref = 0; query = 0, len = 0; }
   match_t(long r, long q, long l) { ref = r; query = q; len = l; }
@@ -60,7 +60,7 @@ struct match_t {
   long len; // length of match
 };
 
-// depth : [start...end] 
+// depth : [start...end]
 struct interval_t {
   interval_t() { start = 1; end = 0; depth = -1; }
   interval_t(long s, long e, long d) { start = s; end = e; depth = d; }
@@ -76,7 +76,7 @@ struct sparseSA {
   bool _4column; // Use 4 column output format.
 
   long N; //!< Length of the sequence.
-  long logN; // ceil(log(N)) 
+  long logN; // ceil(log(N))
   long NKm1; // N/K - 1
   string &S; //!< Reference to sequence data.
   vector<unsigned int> SA;  // Suffix array.
@@ -91,7 +91,7 @@ struct sparseSA {
   bool printSubstring;
   bool printRevCompForw;
   bool forward;
-  
+
   long index_size_in_bytes(){
       long indexSize = 0L;
       indexSize += sizeof(forward);
@@ -107,7 +107,7 @@ struct sparseSA {
       indexSize += sizeof(_4column);
       indexSize += sizeof(maxdescrlen);
       indexSize += sizeof(descr);
-      for(int i = 0; i < descr.size(); i++){
+      for(size_t i = 0; i < descr.size(); i++){
           indexSize += descr[i].capacity();
       }
       indexSize += sizeof(startpos) + startpos.capacity()*sizeof(long);
@@ -120,17 +120,17 @@ struct sparseSA {
   }
 
   // Maps a hit in the concatenated sequence set to a position in that sequence.
-  void from_set(long hit, long &seq, long &seqpos) {
+  void from_set(long hit, long &seq, long &seqpos) const {
     // Use binary search to locate index of sequence and position
     // within sequence.
     vector<long>::iterator it = upper_bound(startpos.begin(), startpos.end(), hit);   // SG: should use vector<long>::const_iterator
     seq = distance(startpos.begin(), it) - 1;
     it--;
     seqpos = hit - *it;
-  } 
+  }
 
-  // Constructor builds sparse suffix array. 
-  sparseSA(string &S_, vector<string> &descr_, vector<long> &startpos_, bool __4column, 
+  // Constructor builds sparse suffix array.
+  sparseSA(string &S_, vector<string> &descr_, vector<long> &startpos_, bool __4column,
   long K_, bool suflink_, bool child_, int sparseMult_, bool printSubstring_, bool printRevCompForw_);
 
   // Modified Kasai et all for LCP computation.
@@ -142,9 +142,9 @@ struct sparseSA {
   void radixStep(int *t_new, int *SA, long &bucketNr, long *BucketBegin, long l, long r, long h);
 
   // Prints match to cout.
-  void print_match(match_t m);
-  void print_match(match_t m, vector<match_t> &buf); // buffered version
-  void print_match(string meta, vector<match_t> &buf, bool rc); // buffered version
+  void print_match(match_t m) const;
+  void print_match(match_t m, vector<match_t> &buf) const; // buffered version
+  void print_match(string meta, vector<match_t> &buf, bool rc) const; // buffered version
 
   // Binary search for left boundry of interval.
   inline long bsearch_left(char c, long i, long s, long e);
@@ -156,31 +156,31 @@ struct sparseSA {
 
   // Simple top down traversal of a suffix array.
   inline bool top_down(char c, long i, long &start, long &end);
-  inline bool top_down_faster(char c, long i, long &start, long &end);
-  inline bool top_down_child(char c, interval_t &cur);
+  inline bool top_down_faster(char c, long i, long &start, long &end) const;
+  inline bool top_down_child(char c, interval_t &cur) const;
 
   // Traverse pattern P starting from a given prefix and interval
   // until mismatch or min_len characters reached.
-  inline void traverse(string &P, long prefix, interval_t &cur, int min_len);
-  inline void traverse_faster(const string &P,const long prefix, interval_t &cur, int min_len);
+  inline void traverse(string &P, long prefix, interval_t &cur, int min_len) const;
+  inline void traverse_faster(const string &P,const long prefix, interval_t &cur, int min_len) const;
 
   // Simulate a suffix link.
-  inline bool suffixlink(interval_t &m);
+  inline bool suffixlink(interval_t &m) const;
 
   // Expand ISA/LCP interval. Used to simulate suffix links.
-  inline bool expand_link(interval_t &link) {
+  inline bool expand_link(interval_t &link) const {
     long thresh = 2 * link.depth * logN, exp = 0; // Threshold link expansion.
     long start = link.start;
     long end = link.end;
-    while(LCP[start] >= link.depth) { 
-      exp++; 
+    while(LCP[start] >= link.depth) {
+      exp++;
       if(exp >= thresh) return false;
-      start--; 
+      start--;
     }
-    while(end < NKm1 && LCP[end+1] >= link.depth) { 
-      exp++; 
+    while(end < NKm1 && LCP[end+1] >= link.depth) {
+      exp++;
       if(exp >= thresh) return false;
-      end++; 
+      end++;
     }
     link.start = start; link.end = end;
     return true;
@@ -188,14 +188,14 @@ struct sparseSA {
 
   // Given a position i in S, finds a left maximal match of minimum
   // length within K steps.
-  inline void find_Lmaximal(string &P, long prefix, long i, long len, vector<match_t> &matches, int min_len, bool print);
+  inline void find_Lmaximal(string &P, long prefix, long i, long len, vector<match_t> &matches, int min_len, bool print) const;
 
   // Given an interval where the given prefix is matched up to a
   // mismatch, find all MEMs up to a minimum match depth.
-  void collectMEMs(string &P, long prefix, interval_t mli, interval_t xmi, vector<match_t> &matches, int min_len, bool print);
+  void collectMEMs(string &P, long prefix, interval_t mli, interval_t xmi, vector<match_t> &matches, int min_len, bool print) const;
 
   // Find all MEMs given a prefix pattern offset k.
-  void findMEM(long k, string &P, vector<match_t> &matches, int min_len, bool print);
+  void findMEM(long k, string &P, vector<match_t> &matches, int min_len, bool print) const;
 
   // NOTE: min_len must be > 1
   void findMAM(string &P, vector<match_t> &matches, int min_len, long& memCount, bool print);
@@ -206,24 +206,24 @@ struct sparseSA {
   // et. al. Note this is a "one-sided" query. It "streams" the query
   // P throught he index.  Consequently, repeats can occur in the
   // pattern P.
-  void MAM(string &P, vector<match_t> &matches, int min_len, long& memCount, bool forward_, bool print) { 
+  void MAM(string &P, vector<match_t> &matches, int min_len, long& memCount, bool forward_, bool print) {
     forward = forward_;
     if(K != 1) return;  // Only valid for full suffix array.
-    findMAM(P, matches, min_len, memCount, print);  
+    findMAM(P, matches, min_len, memCount, print);
   }
 
-  // Find Maximal Exact Matches (MEMs) 
+  // Find Maximal Exact Matches (MEMs)
   void MEM(string &P, vector<match_t> &matches, int min_len, bool print, long& memCount, bool forward_, int num_threads = 1);
 
-  // Maximal Unique Match (MUM) 
-  void MUM(string &P, vector<match_t> &unique, int min_len, long& memCount, bool forward_, bool print);  
-  
+  // Maximal Unique Match (MUM)
+  void MUM(string &P, vector<match_t> &unique, int min_len, long& memCount, bool forward_, bool print);
+
     //save index to files
   void save(const string &prefix);
-  
+
   //load index from file
   bool load(const string &prefix);
-  
+
   //construct
   void construct();
 };
