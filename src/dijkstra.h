@@ -37,7 +37,7 @@ private:
         };
         vector<element> checkedList;
         set<NodeID> visited;
-        DBGraph dbg;
+        const DBGraph& dbg;
         double getDistance(NodeID id );
         void updateChecklist(NodeID nodeID, double newDistance);
 public:

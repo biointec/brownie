@@ -361,12 +361,20 @@ void Brownie::stageFive()
         graph.writeCytoscapeGraph(0);
 #endif
         Util::startChrono();
+<<<<<<< HEAD
+        ReadCorrection rc(graph, settings);
+        rc.errorCorrection(libraries);
+       /* ReadCorrectionHandler rcHandler(graph, settings);
+        rcHandler.doErrorCorrection(libraries);*/
+
+=======
         /*ReadCorrection rc(graph, settings);
         rc.errorCorrection(libraries);*/
 
         ReadCorrectionHandler rcHandler(graph, settings);
         rcHandler.doErrorCorrection(libraries);
 
+>>>>>>> bf592f4b174cf026e52938f0dc11f6277c95abb8
         cout << "Error correction completed in "
         << Util::stopChrono() << "s." << endl;
         cout << "Stage 5 finished.\n" << endl;

@@ -98,13 +98,22 @@ void ReadCorrection::correctReads(vector<readStructStr> &reads) {
 
 bool ReadCorrection::correctRead(readStructStr &readInfo) {
 
-       readCorrectionStatus status = kmerNotfound;
+        return( makeBridgeErrorCorrection(readInfo));
+
+
+}
+bool  ReadCorrection::firstHitErrorCorrection(readStructStr &readInfo){
+        readCorrectionStatus status = kmerNotfound;
         string original =  readInfo.originalContent;
         string guess = original;
         string qProfile = readInfo.qProfile;
         //find in regular way
         bool found = correctionByKmer(status, original, guess, qProfile);
         //find with essaMEM
+
+        if (status == kmerNotfound) {
+                found = findSimilarKmer(status, original, guess, qProfile);
+        }
         if (status == kmerNotfound) {
                 found = correctionByMEM(status, original, guess, qProfile);
         }
@@ -114,8 +123,11 @@ bool ReadCorrection::correctRead(readStructStr &readInfo) {
         //save the correction so we can write it to file later
         readInfo.corrctReadContent = guess;
         return found;
+}
+bool  ReadCorrection::makeBridgeErrorCorrection(readStructStr &readInfo)
+{
 
-        /*readCorrectionStatus status = kmerNotfound;
+        readCorrectionStatus status = kmerNotfound;
         string original =  readInfo.originalContent;
         string guess = original;
         string qProfile = readInfo.qProfile;
@@ -124,16 +136,18 @@ bool ReadCorrection::correctRead(readStructStr &readInfo) {
         if (original.length() >= kmerSize) {
                 found = newCorrectRead(readInfo,status);
         }
-        if (status == kmerNotfound) {
+       /* if (status == kmerNotfound) {
                 found = findSimilarKmer(status, original, guess, qProfile);
+               if (found)
+                        readInfo.corrctReadContent = guess;
         }
         if (status == kmerNotfound) {
                 found = correctionByMEM(status, original, guess, qProfile);
-        }
-        return found;*/
-
+                if (found)
+                        readInfo.corrctReadContent = guess;
+        }*/
+        return found;
 }
-
 
 /**
  * Try to find a kmer from the read in the graph and correct the read
@@ -195,10 +209,6 @@ bool ReadCorrection::correctionByKmer(readCorrectionStatus &status,
         bool found = false;
         if (original.length() >= kmerSize) {
                 found = findKmer(status, original, guess, qProfile);
-
-        }
-        if (status == kmerNotfound) {
-                found = findSimilarKmer(status, original, guess, qProfile);
         }
         return found;
 }
@@ -509,7 +519,7 @@ bool ReadCorrection::recursiveCompare(SSNode &leftNode,
                 string const &qProfile,
                 readCorrectionStatus &status) {
         string initialguess = guess;
-        NW_Alignment Nw;
+        //NW_Alignment Nw;
         int readLength = original.length() < qProfile.length() ? original.length() : qProfile.length();
         int nodeLength = nodeContent.length();
         bool leftFound = startOfNode >= startOfRead;
@@ -551,7 +561,7 @@ bool ReadCorrection::findBestMatch(vector<string> const &results,
                 string &original,
                 bool rightDir, string &bestMatch) {
         bool find = false;
-        NW_Alignment Nw;
+        //NW_Alignment Nw;
         if (!rightDir) {
                 std::reverse(original.begin(), original.end());
         }
@@ -613,7 +623,7 @@ int ReadCorrection::findRecSolutionsForward(vector<string> &results, SSNode cons
                 results.push_back(newStr);
         }
         else{
-                NW_Alignment Nw;
+              //  NW_Alignment Nw;
                 if (currentPath.length()<kmerSize|| Nw.get_similarity_perEnhanced(currentPath,readPart.substr(0,currentPath.length()) )>minSimPer){
                         for (ArcIt it=rootNode.rightBegin();it!=rootNode.rightEnd();it++){
                                 SSNode rNode = dbg.getSSNode(it->getNodeID());
@@ -646,7 +656,7 @@ int ReadCorrection::findRecSolutionsBackward(vector<string> &results, SSNode con
                 results.push_back(newStr);
         }
         else{
-                NW_Alignment Nw;
+               // NW_Alignment Nw;
                 std::reverse(currentPath.begin(), currentPath.end());
                 if (currentPath.length()<kmerSize|| Nw.get_similarity_perEnhanced(currentPath,readPart.substr(0,currentPath.length()))>minSimPer){
                         std::reverse(currentPath.begin(), currentPath.end());
@@ -676,7 +686,7 @@ vector<string> ReadCorrection::getAllSolutions(SSNode &rootNode,
                                                string const &readPart,
                                                bool forward)
 {
-        NW_Alignment Nw;
+        //NW_Alignment Nw;
         vector<string> results;
         if (rootNode.isLoop())
                 return results;
@@ -748,7 +758,7 @@ bool ReadCorrection::newCorrectRead(readStructStr &readInfo,readCorrectionStatus
         int minLeftInRead=readLength;
         int maxRightInRead=0;
         SSNode currNode, prevNode,firstNode,lastNode;
-        NW_Alignment Nw;
+
 
         while (startOfRead<=(readLength-kmerSize)) {
                 Kmer kmer = read.substr(startOfRead, kmerSize);
@@ -852,7 +862,7 @@ void ReadCorrection::findBridge(vector<string> &results  ,SSNode startNode,SSNod
                 }
         }
         else{
-                NW_Alignment Nw;
+                //NW_Alignment Nw;
                 if (currentPath.length()<kmerSize|| Nw.get_similarity_perEnhanced(currentPath,readPart.substr(0,currentPath.length()) )>minSimPer){
                         for (ArcIt it=startNode.rightBegin();it!=startNode.rightEnd();it++){
                                 SSNode rNode = dbg.getSSNode(it->getNodeID());
@@ -873,7 +883,7 @@ void ReadCorrection::findBridge(vector<string> &results  ,SSNode startNode,SSNod
  * @return the modified read if taking into account indels decrease number of errors, otherwise the initial input read
  */
 string  ReadCorrection::checkForIndels(string const &ref, string query){
-        NW_Alignment Nw;
+        //NW_Alignment Nw;
         string refCopy=ref;
         string queryCopy=query;
         size_t initialDiff= findDifference(ref,query);
