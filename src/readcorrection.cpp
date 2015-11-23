@@ -316,7 +316,7 @@ void ReadCorrectionJan::applyReadCorrection(string& read,
                 string str = node.substr(npp[curr].getOffset(), strLen);
 
                 read.replace(curr, strLen, str);
-                curr += strLen;
+                curr += (strLen - Kmer::getK() + 1);
         }
 }
 
