@@ -90,7 +90,6 @@ void ReadCorrection::correctReads(vector<readStructStr> &reads) {
         int supportedReads = 0;
         #pragma omp parallel for reduction(+:supportedReads)
         for (size_t i = 0; i < reads.size(); ++i) {
-
                 if (correctRead(reads[i]))
                         supportedReads++;
         }
@@ -98,9 +97,10 @@ void ReadCorrection::correctReads(vector<readStructStr> &reads) {
 
 bool ReadCorrection::correctRead(readStructStr &readInfo) {
 
+
         return( makeBridgeErrorCorrection(readInfo));
 
-
+        //return( firstHitErrorCorrection(readInfo));
 }
 bool  ReadCorrection::firstHitErrorCorrection(readStructStr &readInfo){
         readCorrectionStatus status = kmerNotfound;
@@ -133,19 +133,12 @@ bool  ReadCorrection::makeBridgeErrorCorrection(readStructStr &readInfo)
         string qProfile = readInfo.qProfile;
 
         bool found = false;
-        if (original.length() >= kmerSize) {
-                found = newCorrectRead(readInfo,status);
-        }
-       /* if (status == kmerNotfound) {
-                found = findSimilarKmer(status, original, guess, qProfile);
-               if (found)
-                        readInfo.corrctReadContent = guess;
-        }
-        if (status == kmerNotfound) {
-                found = correctionByMEM(status, original, guess, qProfile);
-                if (found)
-                        readInfo.corrctReadContent = guess;
-        }*/
+        if (original.length() >= kmerSize)
+                found=correctRead(readInfo,status);
+        if (!found &&status == kmerNotfound)
+                found = findSimilarKmer2(readInfo, status);
+        if (!found)
+                readInfo.corrctReadContent=readInfo.originalContent;
         return found;
 }
 
@@ -200,6 +193,34 @@ bool ReadCorrection::findSimilarKmer(readCorrectionStatus &status,
         return found;
 }
 
+/**
+ * Try to find a kmer from the read that is similar to a kmer in the graph and correct the read
+ * @return true if correction is found
+ */
+bool ReadCorrection::findSimilarKmer2(readStructStr &readInfo,readCorrectionStatus &status)
+{
+        bool kmerfound=false;
+        string read=readInfo.originalContent;
+        size_t readLength = read.length();
+        for (size_t startOfRead = 0; startOfRead + kmerSize < readLength
+                && kmerSize <= readLength; startOfRead += 5)
+        {
+                string tempstr = read.substr(startOfRead, kmerSize);
+                 if (recKmerCorrection(tempstr, readInfo.qProfile, startOfRead, 1)) {
+                        Kmer kmer = tempstr;
+                        NodePosPair result = dbg.getNodePosPair(kmer);
+                        if (result.isValid())
+                        {
+                                kmerfound=newCorrectReadByKmer(readInfo,status,startOfRead , kmer , result) ;;
+                                if (kmerfound)
+                                        break;
+                        }
+
+                 }
+
+        }
+        return kmerfound;
+}
 /**
  * Try to correct read using Kmers
  * @return true if correction is found
@@ -327,7 +348,7 @@ void ReadCorrection::CorrectErrorsInLibrary(ReadLibrary *input) {
                 correctReads(reads);
                 clock_t end=clock();
                 cout<<"correction of these reads took "<< double(end-start)/(double) (CLOCKS_PER_SEC*60)<<" minutes"<<endl;
-                writeOutputReads(reads);
+                //writeOutputReads(reads);
                 printProgress(begin);
         }
         outFastq.close();
@@ -748,18 +769,12 @@ vector<string> ReadCorrection::getAllSolutions(SSNode &rootNode,
  * @return true if it finds any kmer of read in graph.
  */
 
-bool ReadCorrection::newCorrectRead(readStructStr &readInfo,readCorrectionStatus &status) {
+bool ReadCorrection::correctRead(readStructStr &readInfo,readCorrectionStatus &status)
+{
         string read =  readInfo.originalContent;
         int startOfRead = 0;
-        int readLength= readInfo.originalContent.length();
-        string  guess = readInfo.originalContent;
-        size_t numOfHit=0;
-        int curReadLeftExtreme = 0,curReadRightExtreme=0,prevReadRightExtreme=0;
-        int minLeftInRead=readLength;
-        int maxRightInRead=0;
-        SSNode currNode, prevNode,firstNode,lastNode;
-
-
+        int readLength=read.length();
+        bool kmerfound=false;
         while (startOfRead<=(readLength-kmerSize)) {
                 Kmer kmer = read.substr(startOfRead, kmerSize);
                 NodePosPair result = dbg.getNodePosPair(kmer);
@@ -767,56 +782,40 @@ bool ReadCorrection::newCorrectRead(readStructStr &readInfo,readCorrectionStatus
                         startOfRead++;
                         continue;
                 }
-                numOfHit++;
-                int startOfNode = result.getOffset();
-                currNode = dbg.getSSNode(result.getNodeID());
-                int nodeLength = currNode.getSequence().length();
-                size_t nodeRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength - startOfRead + startOfNode : nodeLength;
-                size_t nodeLeftExtreme = startOfNode > startOfRead ? startOfNode - startOfRead : 0;
-                curReadLeftExtreme = startOfRead > startOfNode ? startOfRead - startOfNode : 0;
-                curReadRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength : nodeLength - startOfNode + startOfRead;
-                if(curReadLeftExtreme<prevReadRightExtreme){
-                        nodeLeftExtreme=nodeLeftExtreme+prevReadRightExtreme-curReadLeftExtreme;
-                        curReadLeftExtreme=prevReadRightExtreme;
-                }
-                string commonInNode = currNode.getSequence().substr(nodeLeftExtreme, nodeRightExtreme - nodeLeftExtreme );
-                bool newBiggerMap= curReadRightExtreme-curReadLeftExtreme>maxRightInRead-minLeftInRead && curReadLeftExtreme<minLeftInRead;
-                if (curReadLeftExtreme-prevReadRightExtreme>1 &&prevNode.isValid()){
-                        vector<string> bridges;
-                        string lostPart=read.substr(prevReadRightExtreme, curReadLeftExtreme-prevReadRightExtreme);
-                        findBridge(bridges,prevNode,currNode,lostPart,"");
-                        if (bridges.size() > 0) {
-                                string bestMatch="";
-                                if (findBestMatch(bridges,lostPart, true, bestMatch)) {
-                                        guess.replace(prevReadRightExtreme, bestMatch.length(), bestMatch);
-                                }
-                        }
-                         prevReadRightExtreme=curReadLeftExtreme;
+                status=ReadCorrection::ReadCorrection::kmerfound;
+                return( newCorrectReadByKmer(readInfo,status,startOfRead , kmer , result) );
 
-                }
-                if (((curReadLeftExtreme==prevReadRightExtreme )||(newBiggerMap))
-                        &&(Nw.get_similarity_perEnhanced(read.substr(curReadLeftExtreme, curReadRightExtreme - curReadLeftExtreme),commonInNode )>minSimPer))
-                {
-                        if (newBiggerMap){
-                                guess= readInfo.originalContent;
-                                minLeftInRead=readLength;//to make sure it will be decreased later
-                                maxRightInRead=0;
-                        }
-                        guess.replace(curReadLeftExtreme, curReadRightExtreme - curReadLeftExtreme, commonInNode);
-                        startOfRead=curReadRightExtreme+1;
-                        prevReadRightExtreme=curReadRightExtreme;
-                        minLeftInRead=minLeftInRead>curReadLeftExtreme?curReadLeftExtreme:minLeftInRead;
-                        firstNode=minLeftInRead==curReadLeftExtreme ?currNode:firstNode;
-                        maxRightInRead=curReadRightExtreme;
-                        prevNode=currNode;
-                }
-                else
-                        startOfRead++;
         }
-        if(numOfHit==0){
-                status=ReadCorrection::kmerNotfound;
-                return false;
+
+}
+
+
+bool ReadCorrection::newCorrectReadByKmer(readStructStr &readInfo,readCorrectionStatus &status, int  startOfRead , Kmer& kmer, NodePosPair &result) {
+        string read =  readInfo.originalContent;
+        int readLength= readInfo.originalContent.length();
+        string  guess = readInfo.originalContent;
+        int curReadLeftExtreme = 0,curReadRightExtreme=0,prevReadRightExtreme=0;
+        int minLeftInRead=readLength;
+        int maxRightInRead=0;
+        SSNode currNode, prevNode,firstNode,lastNode;
+        do{
+
+                findMiddlePart(currNode,prevNode,firstNode ,result,
+                               startOfRead,curReadLeftExtreme, curReadRightExtreme , prevReadRightExtreme
+                               ,maxRightInRead,minLeftInRead,readInfo, guess );
+                while (startOfRead<=(readLength-kmerSize)){
+                        kmer = read.substr(startOfRead, kmerSize);
+                        result = dbg.getNodePosPair(kmer);
+                        if (!result.isValid()){
+                                startOfRead++;
+                                continue;
+                        }else
+                                break;
+                }
         }
+        while(startOfRead<=(readLength-kmerSize));
+
+
         if (firstNode.isValid()>0 && minLeftInRead>0)
         {
                 vector<string> leftResult= getAllSolutions(firstNode,read.substr(0, minLeftInRead),false);
@@ -824,6 +823,7 @@ bool ReadCorrection::newCorrectRead(readStructStr &readInfo,readCorrectionStatus
                         string bestMatch,leftPart=read.substr(0, minLeftInRead);
                         if (findBestMatch(leftResult,leftPart, false, bestMatch)) {
                                 guess.replace(0, bestMatch.length(), bestMatch);
+                                minLeftInRead=0;
                         }
                 }
         }
@@ -833,18 +833,78 @@ bool ReadCorrection::newCorrectRead(readStructStr &readInfo,readCorrectionStatus
                         string bestMatch, rightPart=read.substr(maxRightInRead, readLength-maxRightInRead+1);
                         if (findBestMatch(rightResult, rightPart, true, bestMatch)) {
                                 guess.replace(maxRightInRead, bestMatch.length(), bestMatch);
+                                maxRightInRead=readLength;
                         }
                 }
 
         }
 
         guess= checkForIndels(read, guess);
-        if (Nw.get_similarity_perEnhanced(read , guess )>minSimPer){
+        if (Nw.get_similarity_perEnhanced(read , guess )>minSimPer && maxRightInRead-minLeftInRead>kmerSize*2){
                 readInfo.corrctReadContent=guess;
-                status=ReadCorrection::fullHealing;
+                if (maxRightInRead==readLength && minLeftInRead==0)
+                        status=ReadCorrection::fullHealing;
+                else
+                        status=ReadCorrection::parHealing;
                 return true;
         }
+
         return false;
+}
+void ReadCorrection::findMiddlePart(SSNode &currNode, SSNode &prevNode,SSNode firstNode , NodePosPair& result,
+                                    int& startOfRead,int& curReadLeftExtreme, int &curReadRightExtreme , int &prevReadRightExtreme
+                                    ,int &maxRightInRead,int &minLeftInRead, readStructStr &readInfo,string& guess )
+{
+        string read=readInfo.originalContent;
+        int readLength=read.length();
+        int startOfNode = result.getOffset();
+        currNode = dbg.getSSNode(result.getNodeID());
+        int nodeLength = currNode.getSequence().length();
+        size_t nodeRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength - startOfRead + startOfNode : nodeLength;
+        size_t nodeLeftExtreme = startOfNode > startOfRead ? startOfNode - startOfRead : 0;
+        curReadLeftExtreme = startOfRead > startOfNode ? startOfRead - startOfNode : 0;
+        curReadRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength : nodeLength - startOfNode + startOfRead;
+        if(curReadLeftExtreme<=prevReadRightExtreme){
+                nodeLeftExtreme=nodeLeftExtreme+prevReadRightExtreme-curReadLeftExtreme;
+                curReadLeftExtreme=prevReadRightExtreme;
+                prevReadRightExtreme--;
+        }
+        string commonInNode = currNode.getSequence().substr(nodeLeftExtreme, nodeRightExtreme - nodeLeftExtreme );
+        bool newBiggerMap= curReadRightExtreme-curReadLeftExtreme>maxRightInRead-minLeftInRead && curReadLeftExtreme<minLeftInRead;
+        bool lostConnection=false;
+        if (curReadLeftExtreme-prevReadRightExtreme>1 &&prevNode.isValid()){
+                vector<string> bridges;
+                lostConnection=true;
+                string lostPart=read.substr(prevReadRightExtreme, curReadLeftExtreme-prevReadRightExtreme);
+                findBridge(bridges,prevNode,currNode,lostPart,"");
+                if (bridges.size() > 0) {
+                        string bestMatch="";
+                        if (findBestMatch(bridges,lostPart, true, bestMatch)) {
+                                guess.replace(prevReadRightExtreme, bestMatch.length(), bestMatch);
+                        }
+                        prevReadRightExtreme=curReadLeftExtreme-1;
+                        lostConnection=false;
+                }
+        }
+        if ((!lostConnection && (curReadLeftExtreme==prevReadRightExtreme+1 )||(newBiggerMap))
+                &&(Nw.get_similarity_perEnhanced(read.substr(curReadLeftExtreme, commonInNode.length()),commonInNode )>minSimPer))
+        {
+                if (newBiggerMap){
+                        guess= readInfo.originalContent;
+                        minLeftInRead=readLength;//to make sure it will be decreased later
+                        maxRightInRead=0;
+                }
+                guess.replace(curReadLeftExtreme, commonInNode.length(), commonInNode);
+                startOfRead=curReadRightExtreme+1;
+                prevReadRightExtreme=curReadRightExtreme;
+                minLeftInRead=minLeftInRead>curReadLeftExtreme?curReadLeftExtreme:minLeftInRead;
+                firstNode=minLeftInRead==curReadLeftExtreme ?currNode:firstNode;
+                maxRightInRead=curReadRightExtreme;
+                prevNode=currNode;
+        }
+        else
+                startOfRead++;
+
 }
 
 
