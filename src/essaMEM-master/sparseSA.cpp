@@ -388,7 +388,7 @@ bool sparseSA::top_down(char c, long i, long &start, long &end) {
 
 // Top down traversal of the suffix array to match a pattern.  NOTE:
 // NO childtab as in the enhanced suffix array (ESA).
-bool sparseSA::search(string &P, long &start, long &end) {
+bool sparseSA::search(const string &P, long &start, long &end) {
   start = 0; end = N - 1;
   long i = 0;
   while(i < (long)P.length()) {
@@ -403,7 +403,7 @@ bool sparseSA::search(string &P, long &start, long &end) {
 
 // Traverse pattern P starting from a given prefix and interval
 // until mismatch or min_len characters reached.
-void sparseSA::traverse(string &P, long prefix, interval_t &cur, int min_len) const {
+void sparseSA::traverse(const string &P, long prefix, interval_t &cur, int min_len) const {
   if(cur.depth >= min_len) return;
 
   while(prefix+cur.depth < (long)P.length()) {
@@ -568,7 +568,7 @@ bool sparseSA::suffixlink(interval_t &m) const {
 }
 
 // For a given offset in the prefix k, find all MEMs.
-void sparseSA::findMEM(long k, string &P, vector<match_t> &matches, int min_len, bool print) const {
+void sparseSA::findMEM(long k, const string &P, vector<match_t> &matches, int min_len, bool print) const {
   if(k < 0 || k >= K) { cerr << "Invalid k." << endl; return; }
   // Offset all intervals at different start points.
   long prefix = k;
@@ -648,7 +648,7 @@ void sparseSA::findMEM(long k, string &P, vector<match_t> &matches, int min_len,
 
 // Use LCP information to locate right maximal matches. Test each for
 // left maximality.
-void sparseSA::collectMEMs(string &P, long prefix, interval_t mli, interval_t xmi, vector<match_t> &matches, int min_len, bool print) const {
+void sparseSA::collectMEMs(const string &P, long prefix, interval_t mli, interval_t xmi, vector<match_t> &matches, int min_len, bool print) const {
   // All of the suffixes in xmi's interval are right maximal.
   for(long i = xmi.start; i <= xmi.end; i++) find_Lmaximal(P, prefix, SA[i], xmi.depth, matches, min_len, print);
 
@@ -677,7 +677,7 @@ void sparseSA::collectMEMs(string &P, long prefix, interval_t mli, interval_t xm
 
 
 // Finds left maximal matches given a right maximal match at position i.
-void sparseSA::find_Lmaximal(string &P, long prefix, long i, long len, vector<match_t> &matches, int min_len, bool print) const {
+void sparseSA::find_Lmaximal(const string &P, long prefix, long i, long len, vector<match_t> &matches, int min_len, bool print) const {
   long Plength = P.length();
   // Advance to the left up to K steps.
   for(long k = 0; k < sparseMult*K; k++) {
@@ -747,7 +747,7 @@ void sparseSA::print_match(string meta, vector<match_t> &buf, bool rc) const {
 
 // Finds maximal almost-unique matches (MAMs) These can repeat in the
 // given query pattern P, but occur uniquely in the indexed reference S.
-void sparseSA::findMAM(string &P, vector<match_t> &matches, int min_len, long& currentCount, bool print) {
+void sparseSA::findMAM(const string &P, vector<match_t> &matches, int min_len, long& currentCount, bool print) {
   long Plength = P.length();
   memCount = 0;
   interval_t cur(0, N-1, 0);
@@ -781,7 +781,7 @@ void sparseSA::findMAM(string &P, vector<match_t> &matches, int min_len, long& c
 
 // Returns true if the position p1 in the query pattern and p2 in the
 // reference is left maximal.
-bool sparseSA::is_leftmaximal(string &P, long p1, long p2) {
+bool sparseSA::is_leftmaximal(const string &P, long p1, long p2) {
   if(p1 == 0 || p2 == 0) return true;
   else return P[p1-1] != S[p2-1];
 }
@@ -790,7 +790,7 @@ bool sparseSA::is_leftmaximal(string &P, long p1, long p2) {
 struct by_ref { bool operator() (const match_t &a, const match_t &b) const { if(a.ref == b.ref) return a.len > b.len; else return a.ref < b.ref; }  };
 
 // Maximal Unique Match (MUM)
-void sparseSA::MUM(string &P, vector<match_t> &unique, int min_len, long& currentCount, bool forward_, bool print) {
+void sparseSA::MUM(const string &P, vector<match_t> &unique, int min_len, long& currentCount, bool forward_, bool print) {
   forward = forward_;
   // Find unique MEMs.
   vector<match_t> matches;
