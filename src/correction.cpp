@@ -88,7 +88,7 @@ void ReadCorrection::writeOutputReads(vector<readStructStr> const &reads) {
  */
 void ReadCorrection::correctReads(vector<readStructStr> &reads) {
         int supportedReads = 0;
-        //#pragma omp parallel for reduction(+:supportedReads)
+        #pragma omp parallel for reduction(+:supportedReads)
         for (size_t i = 0; i < reads.size(); ++i) {
                 if (correctRead(reads[i]))
                         supportedReads++;
@@ -100,7 +100,7 @@ bool ReadCorrection::correctRead(readStructStr &readInfo) {
 
         return( makeBridgeErrorCorrection(readInfo));
 
-
+        //return( firstHitErrorCorrection(readInfo));
 }
 bool  ReadCorrection::firstHitErrorCorrection(readStructStr &readInfo){
         readCorrectionStatus status = kmerNotfound;
@@ -135,10 +135,10 @@ bool  ReadCorrection::makeBridgeErrorCorrection(readStructStr &readInfo)
         bool found = false;
         if (original.length() >= kmerSize)
                 found=correctRead(readInfo,status);
-
-      /*  if (!found &&status == kmerNotfound)
-                found = findSimilarKmer2(readInfo, status);*/
-
+        if (!found &&status == kmerNotfound)
+                found = findSimilarKmer2(readInfo, status);
+        if (!found)
+                readInfo.corrctReadContent=readInfo.originalContent;
         return found;
 }
 
@@ -348,7 +348,7 @@ void ReadCorrection::CorrectErrorsInLibrary(ReadLibrary *input) {
                 correctReads(reads);
                 clock_t end=clock();
                 cout<<"correction of these reads took "<< double(end-start)/(double) (CLOCKS_PER_SEC*60)<<" minutes"<<endl;
-                writeOutputReads(reads);
+                //writeOutputReads(reads);
                 printProgress(begin);
         }
         outFastq.close();
