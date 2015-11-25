@@ -88,7 +88,7 @@ void ReadCorrection::writeOutputReads(vector<readStructStr> const &reads) {
  */
 void ReadCorrection::correctReads(vector<readStructStr> &reads) {
         int supportedReads = 0;
-        #pragma omp parallel for reduction(+:supportedReads)
+        //#pragma omp parallel for reduction(+:supportedReads)
         for (size_t i = 0; i < reads.size(); ++i) {
                 if (correctRead(reads[i]))
                         supportedReads++;
@@ -100,7 +100,7 @@ bool ReadCorrection::correctRead(readStructStr &readInfo) {
 
         return( makeBridgeErrorCorrection(readInfo));
 
-        //return( firstHitErrorCorrection(readInfo));
+       // return( firstHitErrorCorrection(readInfo));
 }
 bool  ReadCorrection::firstHitErrorCorrection(readStructStr &readInfo){
         readCorrectionStatus status = kmerNotfound;
@@ -111,12 +111,12 @@ bool  ReadCorrection::firstHitErrorCorrection(readStructStr &readInfo){
         bool found = correctionByKmer(status, original, guess, qProfile);
         //find with essaMEM
 
-        if (status == kmerNotfound) {
+       /* if (status == kmerNotfound) {
                 found = findSimilarKmer(status, original, guess, qProfile);
         }
         if (status == kmerNotfound) {
                 found = correctionByMEM(status, original, guess, qProfile);
-        }
+        }*/
         //all attempt for error correction finished
         checkReadSize(guess, readInfo);
         //now write the guessed Read into the file
@@ -135,8 +135,8 @@ bool  ReadCorrection::makeBridgeErrorCorrection(readStructStr &readInfo)
         bool found = false;
         if (original.length() >= kmerSize)
                 found=correctRead(readInfo,status);
-        if (!found &&status == kmerNotfound)
-                found = findSimilarKmer2(readInfo, status);
+       /* if (!found &&status == kmerNotfound)
+                found = findSimilarKmer2(readInfo, status);*/
         if (!found)
                 readInfo.corrctReadContent=readInfo.originalContent;
         return found;
@@ -348,7 +348,7 @@ void ReadCorrection::CorrectErrorsInLibrary(ReadLibrary *input) {
                 correctReads(reads);
                 clock_t end=clock();
                 cout<<"correction of these reads took "<< double(end-start)/(double) (CLOCKS_PER_SEC*60)<<" minutes"<<endl;
-                //writeOutputReads(reads);
+                writeOutputReads(reads);
                 printProgress(begin);
         }
         outFastq.close();
@@ -789,7 +789,6 @@ bool ReadCorrection::correctRead(readStructStr &readInfo,readCorrectionStatus &s
 
 }
 
-
 bool ReadCorrection::newCorrectReadByKmer(readStructStr &readInfo,readCorrectionStatus &status, int  startOfRead , Kmer& kmer, NodePosPair &result) {
         string read =  readInfo.originalContent;
         int readLength= readInfo.originalContent.length();
@@ -886,6 +885,17 @@ void ReadCorrection::findMiddlePart(SSNode &currNode, SSNode &prevNode,SSNode fi
                         lostConnection=false;
                 }
         }
+        if (!newBiggerMap &&prevNode.isValid()&&curReadLeftExtreme==prevReadRightExtreme+1 ){
+                lostConnection=true;
+                for (ArcIt it=prevNode.rightBegin();it!=prevNode.rightEnd();it++)
+                {
+                        SSNode rNode = dbg.getSSNode(it->getNodeID());
+                        if (rNode.getNodeID()==currNode.getNodeID()){
+                                lostConnection=false;
+                                break;
+                        }
+                }
+        }
         if ((!lostConnection && (curReadLeftExtreme==prevReadRightExtreme+1 )||(newBiggerMap))
                 &&(Nw.get_similarity_perEnhanced(read.substr(curReadLeftExtreme, commonInNode.length()),commonInNode )>minSimPer))
         {
@@ -906,12 +916,165 @@ void ReadCorrection::findMiddlePart(SSNode &currNode, SSNode &prevNode,SSNode fi
                 startOfRead++;
 
 }
+/*
+bool ReadCorrection::newCorrectReadByKmer(readStructStr &readInfo,readCorrectionStatus &status, int  startOfRead , Kmer& kmer, NodePosPair &result){
+        string read =  readInfo.originalContent;
+        int readLength= readInfo.originalContent.length();
+        string  guess = readInfo.originalContent;
+        int curReadLeftExtreme = 0,curReadRightExtreme=0,prevReadRightExtreme=0;
+        int minLeftInRead=readLength;
+        int maxRightInRead=0;
+        SSNode currNode=dbg.getSSNode(result.getNodeID()), prevNode,firstNode;
+        size_t partIndex=0;
+        do{
+                updateExtremeValues (readInfo, result, curReadLeftExtreme,curReadRightExtreme , startOfRead );
+                if (findMiddlePart2( result,startOfRead, curReadLeftExtreme, curReadRightExtreme , readInfo, guess )){
+                        partIndex++;
+                        if (partIndex==1){
+                                firstNode= dbg.getSSNode(result.getNodeID());
+                                minLeftInRead=curReadLeftExtreme<minLeftInRead? curReadLeftExtreme:minLeftInRead;
+                        }
+                        prevReadRightExtreme=curReadRightExtreme;
+                        prevNode=currNode;
+                        startOfRead=curReadRightExtreme+1;
+                        maxRightInRead=curReadRightExtreme+1;
 
+                }else
+                        startOfRead++;
+                while (startOfRead<=(readLength-kmerSize)){
+                        kmer = read.substr(startOfRead, kmerSize);
+                        result = dbg.getNodePosPair(kmer);
+                        if (!result.isValid()|| (prevNode.isValid()&& !fillGap(readInfo, result,curReadLeftExtreme,
+                                curReadRightExtreme ,  startOfRead, prevReadRightExtreme, prevNode,currNode,firstNode , guess, maxRightInRead, minLeftInRead) ))
+                        {
+                                startOfRead++;
+                                continue;
+                        }
+                        else
+                                break;
 
+                }
+        }
+        while(startOfRead<=(readLength-kmerSize));
+        if (firstNode.isValid()>0 && minLeftInRead>0)
+        {
+                vector<string> leftResult= getAllSolutions(firstNode,read.substr(0, minLeftInRead),false);
+                if (leftResult.size() > 0) {
+                        string bestMatch,leftPart=read.substr(0, minLeftInRead);
+                        if (findBestMatch(leftResult,leftPart, false, bestMatch)) {
+                                guess.replace(0, bestMatch.length(), bestMatch);
+                                minLeftInRead=0;
+                        }
+                }
+        }
+        if(currNode.isValid() && maxRightInRead<readLength){
+                vector<string> rightResult= getAllSolutions(currNode,read.substr(maxRightInRead, readLength-maxRightInRead+1),true);
+                if (rightResult.size() > 0) {
+                        string bestMatch, rightPart=read.substr(maxRightInRead, readLength-maxRightInRead+1);
+                        if (findBestMatch(rightResult, rightPart, true, bestMatch)) {
+                                guess.replace(maxRightInRead, bestMatch.length(), bestMatch);
+                                maxRightInRead=readLength;
+                        }
+                }
 
+        }
+
+        guess= checkForIndels(read, guess);
+        if (Nw.get_similarity_perEnhanced(read , guess )>minSimPer && maxRightInRead-minLeftInRead>kmerSize*2){
+                readInfo.corrctReadContent=guess;
+                if (maxRightInRead==readLength && minLeftInRead==0)
+                        status=ReadCorrection::fullHealing;
+                else
+                        status=ReadCorrection::parHealing;
+                return true;
+        }
+
+        return false;
+}
+
+bool ReadCorrection::fillGap(readStructStr &readInfo,NodePosPair& result,int& curReadLeftExtreme,
+                             int &curReadRightExtreme , int& startOfRead, int &prevReadRightExtreme,
+                             SSNode &prevNode, SSNode currNode ,SSNode firstNode ,string &guess, int maxRightInRead, int minLeftInRead)
+{
+
+        int temp_curReadLeftExtreme=curReadLeftExtreme;
+        int temp_curReadRightExtreme=curReadRightExtreme;
+        bool find =false;
+        string read=readInfo.originalContent;
+        currNode=dbg.getSSNode(result.getNodeID());
+        updateExtremeValues (readInfo, result, curReadLeftExtreme,curReadRightExtreme , startOfRead );
+        bool newBiggerMap= curReadRightExtreme-curReadLeftExtreme>maxRightInRead-minLeftInRead && curReadLeftExtreme<minLeftInRead;
+        if (newBiggerMap){
+                guess= readInfo.originalContent;
+                minLeftInRead=read.length();//to make sure it will be decreased later
+                maxRightInRead=0;
+                firstNode =currNode;
+                return true;
+        }
+        if (curReadLeftExtreme-prevReadRightExtreme==0 &&prevNode.isValid()){
+                for (ArcIt it=prevNode.rightBegin();it!=prevNode.rightEnd();it++)
+                {
+                        SSNode rNode = dbg.getSSNode(it->getNodeID());
+                        if (rNode.getNodeID()==currNode.getNodeID()){
+                                find=true;
+                                break;
+                        }
+                }
+        }
+        if (curReadLeftExtreme-prevReadRightExtreme>0 &&prevNode.isValid()){
+                vector<string> bridges;
+                string lostPart=read.substr(prevReadRightExtreme, curReadLeftExtreme-prevReadRightExtreme);
+                findBridge(bridges,prevNode,currNode,lostPart,"");
+                if (bridges.size() > 0) {
+                        string bestMatch="";
+                        if (findBestMatch(bridges,lostPart, true, bestMatch)) {
+                                guess.replace(prevReadRightExtreme, bestMatch.length(), bestMatch);
+                        }
+                        find=true;
+                }
+        }
+        //reset values to the previous values if the new seed dosn't match to the earlier one
+        if (!find)
+                curReadLeftExtreme=temp_curReadLeftExtreme;
+        curReadRightExtreme=temp_curReadRightExtreme;
+        return find;
+}
+
+void ReadCorrection::updateExtremeValues (readStructStr &readInfo,NodePosPair& result,int& curReadLeftExtreme,int &curReadRightExtreme , int& startOfRead )
+{
+        string read=readInfo.originalContent;
+        int readLength=read.length();
+        int startOfNode = result.getOffset();
+        SSNode currNode = dbg.getSSNode(result.getNodeID());
+        int nodeLength = currNode.getSequence().length();
+        curReadLeftExtreme = startOfRead > startOfNode ? startOfRead - startOfNode : curReadLeftExtreme;
+        curReadRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength : nodeLength - startOfNode + startOfRead;
+
+}
+
+bool ReadCorrection::findMiddlePart2( NodePosPair& result,int& startOfRead,int& curReadLeftExtreme, int &curReadRightExtreme , readStructStr &readInfo,string& guess )
+{
+        string read=readInfo.originalContent;
+        int readLength=read.length();
+        int startOfNode = result.getOffset();
+        SSNode currNode = dbg.getSSNode(result.getNodeID());
+        int nodeLength = currNode.getSequence().length();
+        int nodeRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength - startOfRead + startOfNode : nodeLength;
+        int nodeLeftExtreme = startOfNode > startOfRead ? startOfNode - startOfRead : 0;
+        string commonInNode = currNode.getSequence().substr(nodeLeftExtreme, nodeRightExtreme - nodeLeftExtreme );
+        string readCommonPart=read.substr(curReadLeftExtreme, commonInNode.length());
+        if(Nw.get_similarity_perEnhanced(readCommonPart,commonInNode )>minSimPer)
+        {
+                guess.replace(curReadLeftExtreme, commonInNode.length(), commonInNode);
+                return true;
+        }
+        return false;
+
+}
+*/
 void ReadCorrection::findBridge(vector<string> &results  ,SSNode startNode,SSNode &endNode,string& readPart,string currentPath){
 
-        if (currentPath.length()>readPart.length()){
+        if (currentPath.length()>=readPart.length()){
                 for (ArcIt it=startNode.rightBegin();it!=startNode.rightEnd();it++){
                         SSNode rNode = dbg.getSSNode(it->getNodeID());
                         if (rNode.getNodeID()==endNode.getNodeID()){

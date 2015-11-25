@@ -87,6 +87,7 @@ private:
         bool findKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         bool findSimilarKmer(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         bool findSimilarKmer2(readStructStr &readInfo,readCorrectionStatus &status);
+        void updateExtremeValues (readStructStr &readInfo,NodePosPair& result,int& curReadLeftExtreme,int &curReadRightExtreme , int& startOfRead );
         void checkReadSize(string &guess,readStructStr &readInfo);
         bool correctionByMEM(readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
         bool correctionByMEM(vector<match_t> &matches, string const &reference, readCorrectionStatus &status, string const &original, string &guess, string const &qProfile);
@@ -94,10 +95,13 @@ private:
         bool seedIsContainedInKmer(match_t const &m, string const &reference, int shift);
         bool correctRead(readStructStr &readInfo,readCorrectionStatus &status);
         bool newCorrectReadByKmer(readStructStr &readInfo,readCorrectionStatus &status, int  startOfRead , Kmer& kmer, NodePosPair &result);
-
+        bool findMiddlePart2( NodePosPair& result,int& startOfRead,int& curReadLeftExtreme, int &curReadRightExtreme , readStructStr &readInfo,string& guess );
         void findMiddlePart(SSNode &currNode, SSNode &prevNode,SSNode firstNode , NodePosPair& result,
                                     int& startOfRead,int& curReadLeftExtreme, int &curReadRightExtreme , int &prevReadRightExtreme
                                     ,int &maxRightInRead,int &minLeftInRead,readStructStr& readInfo, string& guess );
+        bool fillGap(readStructStr &readInfo,NodePosPair& result,int& curReadLeftExtreme,
+                             int &curReadRightExtreme , int& startOfRead, int &prevReadRightExtreme,
+                             SSNode &prevNode, SSNode currNode ,SSNode firstNode ,string &guess, int maxRightInRead, int minLeftInRead);
         void findBridge(vector<string> &results  ,SSNode startNode,SSNode &endNode,string& readPart,string currentPath);
         string checkForIndels(string const &ref, string query);
 public:
