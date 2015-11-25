@@ -295,7 +295,7 @@ void LibraryContainer::inputThreadLibrary(ReadLibrary& input)
                 if (thisChunkSize > 0)
                         thisBlockNumChunks++;
 
-                //cout << "Number of reads processed: " << totNumReads << "\r"; cout.flush();
+                cout << "Number of reads processed: " << totNumReads << "\r"; cout.flush();
 
                 // wait until active buffer is empty
                 std::unique_lock<std::mutex> lock(inputMutex);

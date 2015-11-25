@@ -20,7 +20,7 @@
 
 void usage(string prog);
 
-enum mum_t { MUM, MAM, MEM };
+enum mum_t { MUM, MAM, Seed };
 
 int min_len = 20;
 int sparseMult=1;
@@ -96,7 +96,7 @@ void *query_thread(void *arg_) {
         }
         if(type == MAM) sa->MAM(*P, matches, min_len, memCounter, true, print);
         else if(type == MUM) sa->MUM(*P, matches, min_len, memCounter, true, print);
-        else if(type == MEM) sa->MEM(*P, matches, min_len, print, memCounter, true, num_threads);
+        else if(type == Seed) sa->MEM(*P, matches, min_len, print, memCounter, true, num_threads);
         if(!print) sa->print_match(meta, matches, false);
       }
 	  if(rev_comp) {
@@ -107,7 +107,7 @@ void *query_thread(void *arg_) {
         }
 	    if(type == MAM) sa->MAM(*P, matches, min_len, memCounter, false, print);
         else if(type == MUM) sa->MUM(*P, matches, min_len, memCounter, false, print);
-        else if(type == MEM) sa->MEM(*P, matches, min_len, print, memCounter, false, num_threads);
+        else if(type == Seed) sa->MEM(*P, matches, min_len, print, memCounter, false, num_threads);
 	    if(!print) sa->print_match(meta, matches, true);
 	  }
 	}
@@ -149,7 +149,7 @@ void *query_thread(void *arg_) {
 
         if(type == MAM) sa->MAM(*P, matches, min_len, memCounter, true, print);
         else if(type == MUM) sa->MUM(*P, matches, min_len, memCounter, true, print);
-        else if(type == MEM) sa->MEM(*P, matches, min_len, print, memCounter, true, num_threads);
+        else if(type == Seed) sa->MEM(*P, matches, min_len, print, memCounter, true, num_threads);
         if(!print) sa->print_match(meta, matches, false);
       }
       if(rev_comp) {
@@ -160,7 +160,7 @@ void *query_thread(void *arg_) {
         }
         if(type == MAM) sa->MAM(*P, matches, min_len, memCounter, false, print);
         else if(type == MUM) sa->MUM(*P, matches, min_len, memCounter, false, print);
-        else if(type == MEM) sa->MEM(*P, matches, min_len, print, memCounter, false, num_threads);
+        else if(type == Seed) sa->MEM(*P, matches, min_len, print, memCounter, false, num_threads);
         if(!print) sa->print_match(meta, matches, true);
       }
     }
@@ -215,7 +215,7 @@ int main(int argc, char* argv[]) {
       case 0: min_len = atol(optarg); break;
       case 1: type = MAM; break;
       case 2: setBoth = true;	break;
-      case 3: type = MEM; break;
+      case 3: type = Seed; break;
       case 4: type = MUM; break;
       case 5: type = MAM; break;
       case 6: _4column = true; break;
@@ -236,7 +236,7 @@ int main(int argc, char* argv[]) {
   }
   if (argc - optind < 2 || argc - optind >  MAX_QUERY_FILES + 1) usage(argv[0]);
 
-  if(K != 1 && type != MEM) { cerr << "-k option valid only for -maxmatch" << endl; exit(1); }
+  if(K != 1 && type != Seed) { cerr << "-k option valid only for -maxmatch" << endl; exit(1); }
   if(num_threads <= 0) { cerr << "invalid number of threads specified" << endl; exit(1); }
 
   string ref_fasta = argv[optind];

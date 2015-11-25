@@ -27,6 +27,49 @@
 using namespace std;
 
 // ============================================================================
+// SEED CLASS
+// ============================================================================
+
+void Seed::createNodePosition(const DBGraph& dbg, vector<NodePosPair>& npp) const
+{
+        size_t currReadPos = readFirst;
+        for (vector<NodeID>::const_iterator it = nodeID.begin(); it != nodeID.end(); it++) {
+                SSNode node = dbg.getSSNode(*it);
+                size_t nodeOffset = (it == nodeID.begin()) ? nodeFirst : 0;
+                size_t nodeOL = min(node.getMarginalLength() - nodeOffset, readEnd - currReadPos);
+                for (size_t i = 0; i < nodeOL; i++)
+                        npp[currReadPos+i] = NodePosPair(*it, i + nodeOffset);
+                currReadPos += nodeOL;
+        }
+}
+
+void Seed::mergeSeeds(const vector<Seed>& seeds,
+                      vector<Seed>& mergedSeeds)
+{
+        if (seeds.empty())
+                return;
+
+        mergedSeeds.reserve(seeds.size());
+        mergedSeeds.push_back(seeds.front());
+
+        for (size_t i = 1; i < seeds.size(); i++) {
+                const Seed& left = seeds[i-1];
+                const Seed& right = seeds[i];
+
+                bool consistent = false;
+                if (left.nodeID.size() == 1 && right.nodeID.size() == 1)
+                        if (left.nodeID.front() == right.nodeID.front())
+                                if ((right.nodeFirst - left.nodeFirst) == (right.readFirst - left.readFirst))
+                                        consistent = true;
+
+                if (consistent)
+                        mergedSeeds.back().readEnd = right.readEnd;
+                else
+                        mergedSeeds.push_back(right);
+        }
+}
+
+// ============================================================================
 // READ CORRECTION CLASS
 // ============================================================================
 
@@ -45,7 +88,7 @@ void ReadCorrectionJan::revCompl(vector< NodePosPair >& npp)
         }
 }
 
-void ReadCorrectionJan::findNPPSlow(string& read, vector<NodePosPair>& npp)
+void ReadCorrectionJan::findNPPSlow(const string& read, vector<NodePosPair>& npp)
 {
         for (KmerIt it(read); it.isValid(); it++) {
                 Kmer kmer = it.getKmer();
@@ -54,10 +97,8 @@ void ReadCorrectionJan::findNPPSlow(string& read, vector<NodePosPair>& npp)
         }
 }
 
-bool ReadCorrectionJan::findNPPFast(string& read, vector<NodePosPair>& nppv)
+void ReadCorrectionJan::findNPPFast(const string& read, vector<NodePosPair>& nppv)
 {
-        bool foundKmer = false;
-
         for (KmerIt it(read); it.isValid(); it++) {
                 Kmer kmer = it.getKmer();
                 NodePosPair npp = dbg.getNodePosPair(kmer);
@@ -65,8 +106,6 @@ bool ReadCorrectionJan::findNPPFast(string& read, vector<NodePosPair>& nppv)
 
                 if (!npp.isValid())
                         continue;
-
-                foundKmer = true;
 
                 NodeID nodeID = npp.getNodeID();
                 const SSNode node = dbg.getSSNode(nodeID);
@@ -85,48 +124,10 @@ bool ReadCorrectionJan::findNPPFast(string& read, vector<NodePosPair>& nppv)
 
                 }
         }
-
-        return foundKmer;
 }
 
-bool ReadCorrectionJan::findNPPEssaMEM(string& read, vector< NodePosPair >& npp)
-{
-        vector<match_t> matches;
-        sa.findMEM(0l, read, matches, Kmer::getK() - 6, false);
-
-        //cout << "Number of matches: " << matches.size() << endl;
-
-        for (auto it : matches) {
-
-                vector<long>::const_iterator e = upper_bound(startpos.begin(), startpos.end(), it.ref);
-                e--;
-                NodeID nodeID = distance(startpos.begin(), e) + 1;
-                size_t offset = it.ref - *e;
-
-                SSNode node = dbg.getSSNode(nodeID);
-                if (offset > node.getLength()) {
-                        nodeID = -nodeID;
-                        offset = offset - node.getLength() - 1;
-                }
-
-                if ((size_t)it.query < npp.size())
-                        npp[it.query] = NodePosPair(nodeID, offset);
-
-                /*cout << nodeID << " " << offset << " " << it.query << " " << it.len << endl;
-
-                node = dbg.getSSNode(nodeID);
-                string nodeStr = node.substr(offset, it.len);
-                string readStr = read.substr(it.query, it.len);
-
-                cout << nodeStr << endl;
-                cout << readStr << endl;*/
-        }
-
-        return true;
-}
-
-void ReadCorrectionJan::checkConsistency(vector<NodePosPair>& nppv,
-                                         vector<bool>& consistency)
+void ReadCorrectionJan::extractSeeds(const vector<NodePosPair>& nppv,
+                                     vector<Seed>& seeds)
 {
         size_t prev = nppv.size();
         for (size_t i = 0; i < nppv.size(); i++) {
@@ -136,62 +137,35 @@ void ReadCorrectionJan::checkConsistency(vector<NodePosPair>& nppv,
                 // is it the first time we encounter a valid npp?
                 if (prev == nppv.size()) {
                         prev = i;
+                        seeds.push_back(Seed(nppv[i].getNodeID(), nppv[i].getOffset(), i, i + 1));
                         continue;
                 }
 
+                bool consistent = false;
                 const SSNode thisNode = dbg.getSSNode(nppv[i].getNodeID());
                 const SSNode prevNode = dbg.getSSNode(nppv[prev].getNodeID());
 
                 // no, check for check for consistency
                 if (thisNode.getNodeID() == prevNode.getNodeID()) {
-                        if ((nppv[i].getOffset() - nppv[prev].getOffset()) == (i - prev)) {
-                                for (size_t j = prev; j < i; j++)
-                                        consistency[j] = true;
-                                for (size_t j = prev+1; j < i; j++)
-                                        nppv[j] = NodePosPair(prevNode.getNodeID(), nppv[prev].getOffset()+j-prev);
-                        }
+                        if ((nppv[i].getOffset() - nppv[prev].getOffset()) == (i - prev))
+                                consistent = true;
                 } else {                // we're in different nodes
                         if (prevNode.getRightArc(thisNode.getNodeID()) != NULL) {
                                 size_t thisPos = prevNode.getMarginalLength() + nppv[i].getOffset();
                                 if ((thisPos - nppv[prev].getOffset()) == (i - prev)) {
-                                        for (size_t j = prev; j < i; j++)
-                                                consistency[j] = true;
-                                        int k = 0;
-                                        for (size_t j = prev+1; j < i; j++)
-                                                if (nppv[prev].getOffset()+j-prev < prevNode.getMarginalLength())
-                                                        nppv[j] = NodePosPair(prevNode.getNodeID(), nppv[prev].getOffset()+j-prev);
-                                                else
-                                                        nppv[j] = NodePosPair(thisNode.getNodeID(), k++);
+                                        seeds.back().nodeID.push_back(thisNode.getNodeID());
+                                        consistent = true;
                                 }
                         }
                 }
 
                 prev = i;
-        }
-}
-
-void ReadCorrectionJan::findSeed(const vector<NodePosPair>& nppv,
-                                 const vector< bool >& consistency,
-                                 vector<pair<size_t, size_t> >& seeds)
-{
-        bool intervalOpen = false; size_t thisFirst;
-        for (size_t i = 0; i < nppv.size(); i++) {
-
-                if (!intervalOpen) {
-                        if (nppv[i].isValid()) {        // open event
-                                thisFirst = i;
-                                intervalOpen = true;
-                        }
+                if (!consistent) {
+                        seeds.push_back(Seed(nppv[i].getNodeID(), nppv[i].getOffset(), i, i + 1));
                 } else {
-                        if (!nppv[i].isValid() || !consistency[i-1]) {  // close event
-                                seeds.push_back(pair<size_t, size_t>(thisFirst, i));
-                                intervalOpen = false;
-                        }
+                        seeds.back().readEnd = i + 1;
                 }
         }
-
-        if (intervalOpen)
-                seeds.push_back(pair<size_t, size_t>(thisFirst, nppv.size()));
 }
 
 void ReadCorrectionJan::recSearch(NodeID curr, string& read, vector<NodePosPair>& npp,
@@ -347,62 +321,153 @@ void ReadCorrectionJan::correctRead(string& read, vector<NodePosPair> npp,
         applyReadCorrection(read, npp, first, last);
 }
 
-bool ReadCorrectionJan::correctRead(ReadRecord& record)
+void ReadCorrectionJan::findSeedKmer(const std::string& read,
+                                     vector<Seed>& mergedSeeds)
 {
-        string& read = record.getRead();
+        vector<NodePosPair> nppv(read.length() + 1 - Kmer::getK());
 
-        // if the read is too short, get out
-        if (read.length() < Kmer::getK())
-                return false;
+        // find the node position pairs using the kmer lookup table
+        findNPPFast(read, nppv);
 
-        /////////////// INITAL RUN
+        // transform consistent npps to seeds
+        vector<Seed> seeds;
+        extractSeeds(nppv, seeds);
 
-        vector<NodePosPair> npp(read.length() + 1 - Kmer::getK());
-        bool foundKmer = findNPPFast(read, npp);
+        // sort seeds according to nodeID
+        sort(seeds.begin(), seeds.end());
 
-        if (!foundKmer)
-                findNPPEssaMEM(read, npp);
+        // merge seeds
+        Seed::mergeSeeds(seeds, mergedSeeds);
 
-        /*cout << "NPP after initial search" << endl;
+        // ----------- OUTPUT ------------
+        /*cout << "NPP after kmer lookup search" << endl;
+        cout << read << endl;
         for (size_t i = 0; i < Kmer::getK() - 1; i++)
                 cout << " ";
-        for (size_t i = 0; i < npp.size(); i++) {
-                if (npp[i].isValid())
-                        cout << i << ":" << npp[i].getNodeID() << ":" << npp[i].getOffset() << " ";
-                        //cout << "|";
+        for (size_t i = 0; i < nppv.size(); i++) {
+                if (nppv[i].isValid())
+                        //cout << i << ":" << npp[i].getNodeID() << ":" << npp[i].getOffset() << " ";
+                        cout << "|";
                 else
                         cout << "*";
         }
-        cout << endl;*/
+        cout << endl;
 
-        /////////////// CONSISTENCY
+        for (size_t i = 0; i < mergedSeeds.size(); i++) {
+                for (size_t j = 0; j < mergedSeeds[i].readFirst + Kmer::getK() - 1; j++)
+                        cout << " ";
+                cout << "[";
+                for (size_t j = mergedSeeds[i].readFirst + 1; j < mergedSeeds[i].readEnd; j++)
+                        cout << "-";
+                cout << "[";
+                cout << " (" << mergedSeeds[i].readFirst << " to " << mergedSeeds[i].readEnd << ")\t";
+                for (size_t j = 0; j < mergedSeeds[i].nodeID.size(); j++)
+                        cout << mergedSeeds[i].nodeID[j] << "\t";
+                cout << endl;
+        }*/
+        // ----------- OUTPUT ------------
+}
 
-        vector<bool> consistency(npp.size() - 1, false);
-        checkConsistency(npp, consistency);
+bool sortByLength(const Seed& a, const Seed& b) {
+        return ((a.readEnd-a.readFirst) > (b.readEnd-b.readFirst));
+}
 
-        /*for (size_t i = 0; i < Kmer::getK() - 1; i++)
-                cout << " ";
-        for (auto it : consistency)
-                cout << it;
-        cout << endl;*/
+void ReadCorrectionJan::findSeedMEM(const string& read,
+                                    vector<Seed>& mergedSeeds)
+{
+        vector<match_t> matches;
 
-        /////////////// SEED FINDING
+        int memSize = Kmer::getK() - 1;
+        while (matches.size() < 100) {
+                matches.clear();
+                sa.findMEM(0l, read, matches, memSize, false);
+                //cout << "Number of matches for size " << memSize << ": " << matches.size() << endl;
+                memSize--;
+        }
 
-        vector<pair<size_t, size_t> > seeds;
-        findSeed(npp, consistency, seeds);
 
-        // if no seed is found: try the MEM approach
-        if (seeds.empty())
-                return false;
+        vector<Seed> seeds;
+        seeds.reserve(matches.size());
+        for (auto it : matches) {
 
+                vector<long>::const_iterator e = upper_bound(startpos.begin(), startpos.end(), it.ref);
+                e--;
+                NodeID nodeID = distance(startpos.begin(), e) + 1;
+                size_t nodeFirst = it.ref - *e;
+
+                SSNode node = dbg.getSSNode(nodeID);
+                if (nodeFirst > node.getLength()) {
+                        nodeID = -nodeID;
+                        nodeFirst = nodeFirst - node.getLength() - 1;
+                }
+
+                // don't select MEMs that are closer than k nucleotides to the
+                // right edge of a node as this MEM is also in its right neighbor
+                if (nodeFirst >= node.getMarginalLength())
+                        continue;
+
+                size_t readFirst = it.query;
+
+                // don't select MEMs that are closer than k nucleotides to the
+                // right edge of the read: NECESSARY ?!?
+                if (readFirst >= getMarginalLength(read))
+                        continue;
+
+                size_t readEnd = readFirst + it.len; //(it.len > Kmer::getK() ? it.len +1 - Kmer::getK() : 1);
+
+                seeds.push_back(Seed(nodeID, nodeFirst, readFirst, readEnd));
+        }
+
+        // sort seeds according to nodeID
+        sort(seeds.begin(), seeds.end());
+
+        // merge seeds
+        Seed::mergeSeeds(seeds, mergedSeeds);
+
+        // sort seeds according to length
+        sort(mergedSeeds.begin(), mergedSeeds.end(), sortByLength);
+
+        // retain only 10 largest seeds
+        if (mergedSeeds.size() > 10)
+                mergedSeeds.resize(10);
+
+        for (size_t i = 0; i < mergedSeeds.size(); i++)
+                mergedSeeds[i].readEnd -= min(Kmer::getK() - 1, mergedSeeds[i].readEnd - mergedSeeds[i].readFirst - 1);
+
+
+        // ----------- OUTPUT ------------
+        /*cout << "NPP after kmer lookup search" << endl;
+        cout << read << endl;
+
+        for (size_t i = 0; i < mergedSeeds.size(); i++) {
+                for (size_t j = 0; j < mergedSeeds[i].readFirst; j++)
+                        cout << " ";
+                cout << "[";
+                for (size_t j = mergedSeeds[i].readFirst + 1; j < mergedSeeds[i].readEnd; j++)
+                        cout << "-";
+                cout << "[";
+                cout << " (" << mergedSeeds[i].readFirst << " to " << mergedSeeds[i].readEnd << ")\t";
+                for (size_t j = 0; j < mergedSeeds[i].nodeID.size(); j++)
+                        cout << mergedSeeds[i].nodeID[j] << "\t";
+                cout << endl;
+        }*/
+        // ----------- OUTPUT ------------
+}
+
+int ReadCorrectionJan::correctRead(const string& read,
+                                   string& bestCorrectedRead,
+                                   const vector<Seed>& seeds)
+{
         int bestScore = -read.size();
-        string bestCorrectedRead = read;
 
         for (auto& it : seeds) {
-                size_t first = it.first;
-                size_t last = it.second;
+                size_t first = it.readFirst;
+                size_t last = it.readEnd;
 
-                //cout << "Seed: " << it.first << ", " << it.second << endl;
+                // create a npp vector
+                vector<NodePosPair> npp(read.length() + 1 - Kmer::getK());
+                it.createNodePosition(dbg, npp);
+
                 string correctedRead = read;
                 correctRead(correctedRead, npp, first, last);
 
@@ -410,7 +475,9 @@ bool ReadCorrectionJan::correctRead(ReadRecord& record)
                 size_t uncorrectedLength = read.size() - correctedLength;
 
                 int score = alignment.align(read, correctedRead) - uncorrectedLength;
-                /*alignment.printAlignment(read, correctedRead);
+
+                /*cout << "Seed: " << first << " to " << last << endl;
+                alignment.printAlignment(read, correctedRead);
                 cout << "Score: " << score << endl;*/
 
                 if (score > bestScore) {
@@ -419,16 +486,34 @@ bool ReadCorrectionJan::correctRead(ReadRecord& record)
                 }
         }
 
+        return bestScore;
+}
+
+void ReadCorrectionJan::correctRead(ReadRecord& record)
+{
+        string& read = record.getRead();
+
+        // if the read is too short, get out
+        if (read.length() < Kmer::getK())
+                return;
+
+        vector<Seed> seeds;
+        findSeedKmer(read, seeds);
+
+        string bestCorrectedRead;
+        int bestScore = correctRead(read, bestCorrectedRead, seeds);
+
+        if (bestScore <= ((int)read.size() / 2)) {
+                findSeedMEM(read, seeds);
+                bestScore = correctRead(read, bestCorrectedRead, seeds);
+        }
+
         /*alignment.align(read, bestCorrectedRead);
-        alignment.printAlignment(read, bestCorrectedRead);
-        cout << "Score: " << bestScore << endl;*/
+        cout << "BEST ALIGNMENT: " << bestScore << endl;
+        alignment.printAlignment(read, bestCorrectedRead);*/
 
         if (bestScore > ((int)read.size() / 2))
                 read = bestCorrectedRead;
-
-        //cout << read << endl;
-
-        return true;
 }
 
 void ReadCorrectionJan::correctChunk(vector<ReadRecord>& readChunk)
@@ -437,7 +522,7 @@ void ReadCorrectionJan::correctChunk(vector<ReadRecord>& readChunk)
                 correctRead(it);
 
         /*cout << readChunk.size() << endl;
-        for (size_t i = 5; i < 6; i++) {
+        for (size_t i = 269; i < 270; i++) {
                 cout << "================== read " << i << endl;
                 correctRead(readChunk[i]);
         }

@@ -32,6 +32,45 @@
 
 class NodePosPair;
 
+// ============================================================================
+// SEED CLASS
+// ============================================================================
+
+class Seed
+{
+public:
+        std::vector<NodeID> nodeID;     // chain of node IDs
+        size_t nodeFirst;               // offset within first node
+        size_t readFirst;               // start position in read
+        size_t readEnd;                 // end position in read
+
+        Seed() : nodeID(0), nodeFirst(0), readFirst(0), readEnd(0) {}
+
+        Seed(NodeID nodeID_, size_t nodeFirst_, size_t readFirst_, size_t readEnd_) :
+             nodeFirst(nodeFirst_), readFirst(readFirst_), readEnd(readEnd_) {
+                nodeID.push_back(nodeID_);
+        }
+
+        bool operator< (const Seed& rhs) const {
+                if (nodeID.front() != rhs.nodeID.front())
+                        return nodeID.front() < rhs.nodeID.front();
+                return nodeFirst < rhs.nodeFirst;
+        }
+
+        /**
+         * @param dbg Const-reference to the De Bruijn graph
+         * @param npp Node Position pair vector (output)
+         */
+        void createNodePosition(const DBGraph& dbg,
+                                std::vector<NodePosPair>& npp) const;
+
+        static void mergeSeeds(const std::vector<Seed>& seeds,
+                               std::vector<Seed>& mergedSeeds);
+};
+
+// ============================================================================
+// DFSNode CLASS
+// ============================================================================
 
 class DFSNode
 {
@@ -80,23 +119,14 @@ private:
          * @param read Reference to the read
          * @param npp Vector of node position pairs
          */
-        void findNPPSlow(std::string& read, std::vector<NodePosPair>& npp);
+        void findNPPSlow(const std::string& read, std::vector<NodePosPair>& npp);
 
         /**
          * Find the node position pairs for a read
          * @param read Reference to the read
          * @param npp Vector of node position pairs
-         * @return True of at least one kmer hit was found, false otherwise
          */
-        bool findNPPFast(std::string& read, std::vector<NodePosPair>& npp);
-
-        /**
-         * Find the node position pairs for a read using EssaMEM
-         * @param read Reference to the read
-         * @param npp Vector of node position pairs
-         * @return True of at least one kmer hit was found, false otherwise
-         */
-        bool findNPPEssaMEM(std::string& read, std::vector<NodePosPair>& npp);
+        void findNPPFast(const std::string& read, std::vector<NodePosPair>& npp);
 
         /**
          * Correct a specific read record
@@ -108,27 +138,16 @@ private:
         /**
          * Correct a specific read record
          * @param record Record to correct (input/output)
-         * @return true of the read was corrected, false otherwise
          */
-        bool correctRead(ReadRecord& record);
+        void correctRead(ReadRecord& record);
 
         /**
          * Correct the records in one chunk
          * @param npp Vector of node position pairs
-         * @param consistency Vector containining the consistency (output)
+         * @param seeds Vector containining consistent seeds (output)
          */
-        void checkConsistency(std::vector<NodePosPair>& npp,
-                              vector<bool>& consistency);
-
-        /**
-         * Find the largest consecutive run and use this as seed
-         * @param npp Vector of node position pairs
-         * @param consistency Vector containining the consistency
-         * @param seeds Vector containing start/end positions of seeds
-         */
-        void findSeed(const std::vector<NodePosPair>& npp,
-                      const std::vector<bool>& consistency,
-                      std::vector<std::pair<size_t, size_t> >& seeds);
+        void extractSeeds(const std::vector<NodePosPair>& nppv,
+                              std::vector<Seed>& seeds);
 
         /**
          * Find the largest consecutive run and use this as seed
@@ -158,6 +177,20 @@ private:
 
         void revCompl(vector<NodePosPair>& npp);
 
+        void findSeedKmer(const std::string& read,
+                          std::vector<Seed>& seeds);
+
+        /**
+         * Find the node position pairs for a read using EssaMEM
+         * @param read Reference to the read
+         * @param seeds TODO
+         */
+        void findSeedMEM(const std::string& read, std::vector<Seed>& seeds);
+
+        int correctRead(const std::string& read,
+                        std::string& bestCorrectedRead,
+                        const std::vector<Seed>& seeds);
+
 public:
         /**
          * Default constructor
@@ -167,7 +200,7 @@ public:
         ReadCorrectionJan(const DBGraph& dbg_, const Settings& settings_,
                           const sparseSA& sa_, const std::vector<long>& startpos_) :
                           dbg(dbg_), settings(settings_),
-                          alignment(100, 3, 1, -1, -3), sa(sa_), startpos(startpos_) {}
+                          alignment(100, 2, 1, -1, -3), sa(sa_), startpos(startpos_) {}
 
         /**
          * Correct the records in one chunk
