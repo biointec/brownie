@@ -98,9 +98,9 @@ void ReadCorrection::correctReads(vector<readStructStr> &reads) {
 bool ReadCorrection::correctRead(readStructStr &readInfo) {
 
 
-        return( makeBridgeErrorCorrection(readInfo));
+       //return( makeBridgeErrorCorrection(readInfo));
 
-       // return( firstHitErrorCorrection(readInfo));
+       return( firstHitErrorCorrection(readInfo));
 }
 bool  ReadCorrection::firstHitErrorCorrection(readStructStr &readInfo){
         readCorrectionStatus status = kmerNotfound;
@@ -111,12 +111,12 @@ bool  ReadCorrection::firstHitErrorCorrection(readStructStr &readInfo){
         bool found = correctionByKmer(status, original, guess, qProfile);
         //find with essaMEM
 
-       /* if (status == kmerNotfound) {
+        if (status == kmerNotfound) {
                 found = findSimilarKmer(status, original, guess, qProfile);
         }
         if (status == kmerNotfound) {
                 found = correctionByMEM(status, original, guess, qProfile);
-        }*/
+        }
         //all attempt for error correction finished
         checkReadSize(guess, readInfo);
         //now write the guessed Read into the file
@@ -135,8 +135,8 @@ bool  ReadCorrection::makeBridgeErrorCorrection(readStructStr &readInfo)
         bool found = false;
         if (original.length() >= kmerSize)
                 found=correctRead(readInfo,status);
-       /* if (!found &&status == kmerNotfound)
-                found = findSimilarKmer2(readInfo, status);*/
+        if (!found &&status == kmerNotfound)
+                found = findSimilarKmer2(readInfo, status);
         if (!found)
                 readInfo.corrctReadContent=readInfo.originalContent;
         return found;
@@ -788,7 +788,7 @@ bool ReadCorrection::correctRead(readStructStr &readInfo,readCorrectionStatus &s
         }
 
 }
-
+/*
 bool ReadCorrection::newCorrectReadByKmer(readStructStr &readInfo,readCorrectionStatus &status, int  startOfRead , Kmer& kmer, NodePosPair &result) {
         string read =  readInfo.originalContent;
         int readLength= readInfo.originalContent.length();
@@ -916,7 +916,7 @@ void ReadCorrection::findMiddlePart(SSNode &currNode, SSNode &prevNode,SSNode fi
                 startOfRead++;
 
 }
-/*
+*/
 bool ReadCorrection::newCorrectReadByKmer(readStructStr &readInfo,readCorrectionStatus &status, int  startOfRead , Kmer& kmer, NodePosPair &result){
         string read =  readInfo.originalContent;
         int readLength= readInfo.originalContent.length();
@@ -924,19 +924,22 @@ bool ReadCorrection::newCorrectReadByKmer(readStructStr &readInfo,readCorrection
         int curReadLeftExtreme = 0,curReadRightExtreme=0,prevReadRightExtreme=0;
         int minLeftInRead=readLength;
         int maxRightInRead=0;
+        int nodeRightExtreme=0;
+        int nodeLeftExtreme=0;
         SSNode currNode=dbg.getSSNode(result.getNodeID()), prevNode,firstNode;
         size_t partIndex=0;
+        prevNode=currNode;
+        updateExtremeValues (readInfo, result, curReadLeftExtreme,curReadRightExtreme , startOfRead,nodeLeftExtreme,nodeRightExtreme );
         do{
-                updateExtremeValues (readInfo, result, curReadLeftExtreme,curReadRightExtreme , startOfRead );
-                if (findMiddlePart2( result,startOfRead, curReadLeftExtreme, curReadRightExtreme , readInfo, guess )){
+
+                if (findMiddlePart2( result,startOfRead, curReadLeftExtreme, curReadRightExtreme ,  nodeLeftExtreme,nodeRightExtreme, readInfo, guess )){
                         partIndex++;
                         if (partIndex==1){
                                 firstNode= dbg.getSSNode(result.getNodeID());
                                 minLeftInRead=curReadLeftExtreme<minLeftInRead? curReadLeftExtreme:minLeftInRead;
                         }
                         prevReadRightExtreme=curReadRightExtreme;
-                        prevNode=currNode;
-                        startOfRead=curReadRightExtreme+1;
+                        startOfRead=curReadRightExtreme-kmerSize+1;
                         maxRightInRead=curReadRightExtreme+1;
 
                 }else
@@ -944,8 +947,8 @@ bool ReadCorrection::newCorrectReadByKmer(readStructStr &readInfo,readCorrection
                 while (startOfRead<=(readLength-kmerSize)){
                         kmer = read.substr(startOfRead, kmerSize);
                         result = dbg.getNodePosPair(kmer);
-                        if (!result.isValid()|| (prevNode.isValid()&& !fillGap(readInfo, result,curReadLeftExtreme,
-                                curReadRightExtreme ,  startOfRead, prevReadRightExtreme, prevNode,currNode,firstNode , guess, maxRightInRead, minLeftInRead) ))
+                        if (!result.isValid()||  !fillGap(readInfo, result,curReadLeftExtreme,
+                                curReadRightExtreme ,  startOfRead, prevReadRightExtreme, prevNode,currNode,firstNode , guess, maxRightInRead, minLeftInRead,nodeLeftExtreme,nodeRightExtreme ) )
                         {
                                 startOfRead++;
                                 continue;
@@ -994,15 +997,17 @@ bool ReadCorrection::newCorrectReadByKmer(readStructStr &readInfo,readCorrection
 
 bool ReadCorrection::fillGap(readStructStr &readInfo,NodePosPair& result,int& curReadLeftExtreme,
                              int &curReadRightExtreme , int& startOfRead, int &prevReadRightExtreme,
-                             SSNode &prevNode, SSNode currNode ,SSNode firstNode ,string &guess, int maxRightInRead, int minLeftInRead)
+                             SSNode &prevNode, SSNode &currNode ,SSNode firstNode ,string &guess, int maxRightInRead, int minLeftInRead,
+                             int &nodeLeftExtreme,int &nodeRightExtreme)
 {
 
         int temp_curReadLeftExtreme=curReadLeftExtreme;
         int temp_curReadRightExtreme=curReadRightExtreme;
         bool find =false;
         string read=readInfo.originalContent;
+        prevNode=currNode;
         currNode=dbg.getSSNode(result.getNodeID());
-        updateExtremeValues (readInfo, result, curReadLeftExtreme,curReadRightExtreme , startOfRead );
+        updateExtremeValues (readInfo, result, curReadLeftExtreme,curReadRightExtreme , startOfRead,nodeLeftExtreme,nodeRightExtreme );
         bool newBiggerMap= curReadRightExtreme-curReadLeftExtreme>maxRightInRead-minLeftInRead && curReadLeftExtreme<minLeftInRead;
         if (newBiggerMap){
                 guess= readInfo.originalContent;
@@ -1010,6 +1015,10 @@ bool ReadCorrection::fillGap(readStructStr &readInfo,NodePosPair& result,int& cu
                 maxRightInRead=0;
                 firstNode =currNode;
                 return true;
+        }
+        if (prevNode.isValid()){
+                curReadLeftExtreme=curReadLeftExtreme+kmerSize-1;
+                nodeLeftExtreme=nodeLeftExtreme+kmerSize-1;
         }
         if (curReadLeftExtreme-prevReadRightExtreme==0 &&prevNode.isValid()){
                 for (ArcIt it=prevNode.rightBegin();it!=prevNode.rightEnd();it++)
@@ -1034,35 +1043,51 @@ bool ReadCorrection::fillGap(readStructStr &readInfo,NodePosPair& result,int& cu
                 }
         }
         //reset values to the previous values if the new seed dosn't match to the earlier one
-        if (!find)
+        if (!find){
                 curReadLeftExtreme=temp_curReadLeftExtreme;
-        curReadRightExtreme=temp_curReadRightExtreme;
+                curReadRightExtreme=temp_curReadRightExtreme;
+        }
         return find;
 }
 
-void ReadCorrection::updateExtremeValues (readStructStr &readInfo,NodePosPair& result,int& curReadLeftExtreme,int &curReadRightExtreme , int& startOfRead )
+void ReadCorrection::updateExtremeValues (readStructStr &readInfo,NodePosPair& result,int& curReadLeftExtreme,
+                                          int &curReadRightExtreme , int& startOfRead,  int &nodeLeftExtreme,int &nodeRightExtreme )
 {
         string read=readInfo.originalContent;
         int readLength=read.length();
         int startOfNode = result.getOffset();
         SSNode currNode = dbg.getSSNode(result.getNodeID());
         int nodeLength = currNode.getSequence().length();
-        curReadLeftExtreme = startOfRead > startOfNode ? startOfRead - startOfNode : curReadLeftExtreme;
-        curReadRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength : nodeLength - startOfNode + startOfRead;
-
+        int shiftToLeft=0;
+        if (curReadRightExtreme<startOfRead){
+                shiftToLeft=(startOfRead- curReadRightExtreme)<startOfNode? (startOfRead- curReadRightExtreme):startOfNode;
+        }
+        nodeLeftExtreme=startOfNode-shiftToLeft;
+        curReadLeftExtreme=startOfRead-shiftToLeft;
+        int shiftToright=0;
+        if (nodeLength-startOfNode>readLength-startOfRead){
+                shiftToright=readLength-startOfRead;
+        }else{
+                shiftToright=nodeLength-startOfNode;
+        }
+        nodeRightExtreme=startOfNode+shiftToright;
+        curReadRightExtreme=startOfRead+shiftToright;
+        //curReadLeftExtreme = startOfRead > startOfNode ? startOfRead - startOfNode +curReadRightExtreme : curReadRightExtreme;
+        //curReadRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength : nodeLength - startOfNode + startOfRead;
+        //nodeRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength - startOfRead + startOfNode : nodeLength;
+        //nodeLeftExtreme = startOfNode > startOfRead ? startOfNode - startOfRead : 0;
 }
 
-bool ReadCorrection::findMiddlePart2( NodePosPair& result,int& startOfRead,int& curReadLeftExtreme, int &curReadRightExtreme , readStructStr &readInfo,string& guess )
+bool ReadCorrection::findMiddlePart2( NodePosPair& result,int& startOfRead,int& curReadLeftExtreme, int &curReadRightExtreme , int &nodeLeftExtreme,
+                                      int &nodeRightExtreme, readStructStr &readInfo,string& guess  )
 {
         string read=readInfo.originalContent;
         int readLength=read.length();
         int startOfNode = result.getOffset();
         SSNode currNode = dbg.getSSNode(result.getNodeID());
         int nodeLength = currNode.getSequence().length();
-        int nodeRightExtreme = nodeLength - startOfNode >= readLength - startOfRead ? readLength - startOfRead + startOfNode : nodeLength;
-        int nodeLeftExtreme = startOfNode > startOfRead ? startOfNode - startOfRead : 0;
+        string readCommonPart=read.substr(curReadLeftExtreme, curReadRightExtreme-curReadLeftExtreme);
         string commonInNode = currNode.getSequence().substr(nodeLeftExtreme, nodeRightExtreme - nodeLeftExtreme );
-        string readCommonPart=read.substr(curReadLeftExtreme, commonInNode.length());
         if(Nw.get_similarity_perEnhanced(readCommonPart,commonInNode )>minSimPer)
         {
                 guess.replace(curReadLeftExtreme, commonInNode.length(), commonInNode);
@@ -1071,7 +1096,7 @@ bool ReadCorrection::findMiddlePart2( NodePosPair& result,int& startOfRead,int& 
         return false;
 
 }
-*/
+
 void ReadCorrection::findBridge(vector<string> &results  ,SSNode startNode,SSNode &endNode,string& readPart,string currentPath){
 
         if (currentPath.length()>=readPart.length()){

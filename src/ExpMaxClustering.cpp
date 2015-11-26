@@ -96,7 +96,7 @@ void ExpMaxClustering::findIntersectionPoint(){
         double e=2.718281;
         double c=curErronousClusterMean/curCorrectClusterMean;
         intersectionPoint=(curErronousClusterMean-curCorrectClusterMean)* (log(e)/log(c));
-        cout<<"The intersection of these curves is :"<<intersectionPoint<<endl;
+        //cout<<"The intersection of these curves is :"<<intersectionPoint<<endl;
 }
 double ExpMaxClustering::findIntersectionPoint(double curErronousClusterMean , double curCorrectClusterMean){
         double e=2.718281;
@@ -116,7 +116,7 @@ void ExpMaxClustering::doClassification(){
                 if (i>20)
                         break;
         }
-        cout<<"Mean of nodes in correct nodes cluster   :       "<<curCorrectClusterMean<< endl;
-        cout<<"Mean of nodes in erronous nodes cluster  :       "<<curErronousClusterMean<<endl;
+        //cout<<"Mean of nodes in correct nodes cluster   :       "<<curCorrectClusterMean<< endl;
+        //cout<<"Mean of nodes in erronous nodes cluster  :       "<<curErronousClusterMean<<endl;
         findIntersectionPoint();
 }

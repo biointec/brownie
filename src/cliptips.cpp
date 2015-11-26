@@ -26,7 +26,7 @@ using namespace std;
 
 bool DBGraph::clipTips(int round)
 {
-        cout << " ===== Removing tips =====" << endl;
+        cout <<endl<< " =================== Removing tips ===================" << endl;
 
 #ifdef DEBUG
         size_t tp=0, tn=0, fp=0,fn=0;

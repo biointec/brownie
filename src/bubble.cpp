@@ -669,7 +669,7 @@ vector<pair<vector<NodeID>, vector<NodeID>> >  DBGraph::searchForParallelNodes(S
         return (searchForParallelNodes(node, visited,nodeColor,prevNode, depth));
 }
 bool DBGraph::bubbleDetection(int depth) {
-        cout << " ======== Bubble Detection ======== " << endl;
+
         size_t numOfDel=0;
         size_t TP=0,TN=0,FP=0,FN=0;
         vector<NodeID> prevNode(2*numNodes+1, 0);
@@ -784,12 +784,14 @@ bool DBGraph::bubbleDetection(int depth) {
                         }
                 }
         }
-        //#ifdef DEBUG
+        cout<<endl;
+        #ifdef DEBUG
         cout<<endl<< "TP:     "<<TP<<"        TN:     "<<TN<<"        FP:     "<<FP<<"        FN:     "<<FN<<endl;
         cout << "Sensitivity: ("<<100*((double)TP/(double)(TP+FN))<<"%)"<<endl;
         cout<<"Specificity: ("<<100*((double)TN/(double)(TN+FP))<<"%)"<<endl;
-        //#endif
-        cout<<"number of  deleted nodes based on bubble detection:            "<<numOfDel<<endl;
+        #endif
+        if (numOfDel>0)
+        cout<<"number of  deleted nodes based on bubble detection: "<<numOfDel<<endl;
         if (numOfDel !=0)
                 return true;
         return false;

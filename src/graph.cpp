@@ -177,6 +177,14 @@ bool DBGraph::filterChimeric(int round)
 
 bool DBGraph::updateCutOffValue(int round)
 {
+        cout <<endl<< " ================= CutOff Esitmation =================" << endl;
+        if (updateCutOffValueRound==1){
+                      string command = "mkdir " + settings.getTempDirectory() + "cov";
+        system(command.c_str());
+        command="rm "+settings.getTempDirectory() + "cov/* && rm "+settings.getTempDirectory() + "cov/*.dat";
+        cout<<command<<endl;
+        system(command.c_str());
+        }
         char roundStr[15];
         sprintf(roundStr, "%d", round);
         string strRound =string (roundStr);
@@ -242,12 +250,10 @@ bool DBGraph::updateCutOffValue(int round)
                 ratio=.5;
         this->certainVlueCov=this->cutOffvalue*ratio;
         this->updateCutOffValueRound++;
-        #ifdef DEBUG
+
         cout<<"certainValue: "<<this->certainVlueCov<<endl;
         cout<<"safeValue: "<<this->safeValueCov<<endl;
         cout<<"redLineValue: "<<this->redLineValueCov<<endl;
-        updateGraphSize();
-        #endif
         return true;
 }
 void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > >& frequencyArray){
@@ -292,8 +298,8 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
                 this->erroneousClusterMean=exp.curErronousClusterMean;
                 this->correctClusterMean=exp.curCorrectClusterMean;
                 this->cutOffvalue=exp.findIntersectionPoint(1,estimatedKmerCoverage);
-                cout<<"intersectionPoint based two curves:"<<exp.intersectionPoint<<endl;
-                cout<<"my intersectionPoint:"<<this->cutOffvalue<<endl;
+                cout<<"IntersectionPoint based two curves: "<<exp.intersectionPoint<<endl;
+                cout<<"cutOff value: "<<this->cutOffvalue<<endl;
         }
        /* if (updateCutOffValueRound>1){
                 ExpMaxClustering exp;
@@ -328,8 +334,9 @@ struct readStructStr
 
 bool DBGraph::filterCoverage(float cutOff)
 {
-        cout<<"*********************<<Filter Coverage starts>>......................................... "<<endl;
-        cout<<"cut off value for removing nodes is :"<<cutOff<<endl;
+        cout <<endl<< " ================== Filter Coverage ==================" << endl;
+
+        cout<<"CutOff value for removing nodes is: "<<cutOff<<endl;
         int tp=0;
         int tn=0;
         int fp=0;
@@ -369,7 +376,7 @@ bool DBGraph::filterCoverage(float cutOff)
 #endif
                 }
         }
-        cout << "Number of coverage nodes deleted: " << numFiltered<<endl;
+        cout << "Number nodes deleted base on coverage: " << numFiltered<<endl;
 #ifdef DEBUG
         cout << " Gain value is ("<<100*((double)(tp-fp)/(double)(tp+fn))<< "%)"<<endl;
         cout<< "TP:	"<<tp<<"	TN:	"<<tn<<"	FP:	"<<fp<<"	FN:	"<<fn<<endl;
@@ -964,32 +971,35 @@ size_t DBGraph::updateGraphSize()
     }
 
     numberOfValidNodes=numExtractedNodes;
-
+#ifdef DEBUG
     cout<<"size of graph: "<<sizeOfGraph<<endl;
     cout<<"number of valid Node: "<<numberOfValidNodes<<endl;
-
     cout << "Extracted " << numExtractedNodes << " nodes and "
          << numExtractedArcs << " arcs." << endl;
-
+#endif
     sort(nodeLengths.begin(), nodeLengths.end());
 
     size_t totalLength = 0;
     for (size_t i = 0; i < nodeLengths.size(); i++)
         totalLength += nodeLengths[i];
-
     size_t currLength = 0;
     size_t n50;
     for (size_t i = 0; i < nodeLengths.size(); i++) {
         currLength += nodeLengths[i];
         if (currLength >= 0.5*totalLength) {
+#ifdef DEBUG
             cout << endl << "N50 is " << nodeLengths[i] << " (total length: " << totalLength << ")" << endl;
             cout << "This was found at node " << i << "/" << numNodes << endl;
+#endif
             n50= nodeLengths[i];
+            this->n50=n50;
             break;
         }
     }
+#ifdef DEBUG
     cout << "The largest node contains " << nodeLengths.back() << " basepairs." << endl;
     cout <<"N50:"<<n50<<endl;
+#endif
     return sizeOfGraph;
 
 }
@@ -1026,7 +1036,7 @@ void DBGraph::writeGraphFasta() const
 
                 nodeFile << ">NODE" << "\t" << numExtractedNodes << "\t"
                          << node.getLength();
-                
+
 
                 KmerOverlap ol;
                 nodeFile << "\t" << (int)node.getNumLeftArcs();

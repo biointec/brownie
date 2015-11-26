@@ -221,7 +221,7 @@ void DBGraph::extractStatistic(int round) {
                         }
                         newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
                         denominator=denominator+newProbability;
-                }while(abs(newProbability-currentProb)> .000001&& i>5);
+                }while(abs(newProbability-currentProb)> .000001|| i<5);
                 double confidenceRatio=maxProb/denominator;
 
                 double expectToSee=avg*nodeMultiplicity*node.getMarginalLength();
@@ -231,9 +231,10 @@ void DBGraph::extractStatistic(int round) {
                 else
                         observedprob=gsl_ran_poisson_pdf(expectToSee,expectToSee);
                 double inCorrctnessRatio=gsl_ran_poisson_pdf(expectToSee,expectToSee)/observedprob;
-
+                SSNode reverseNode=getSSNode(-node.getNodeID());
+                reverseNode.setExpMult(nodeMultiplicity);
                 node.setExpMult(nodeMultiplicity);
-                nodesExpMult[node.getNodeID()]=make_pair(nodeMultiplicity,make_pair( confidenceRatio,inCorrctnessRatio));
+                nodesExpMult[abs(node.getNodeID())]=make_pair(nodeMultiplicity,make_pair( confidenceRatio,inCorrctnessRatio));
 
 
         }
@@ -274,16 +275,17 @@ bool DBGraph::checkNodeIsReliable(SSNode node){
         double confidenceRatio=result.second.first;
         double inCorrctnessRatio=result.second.second;
         double nodeMultiplicity=result.first;
+        if (node.getNumRightArcs()<2)
+                return false;
         if (1/confidenceRatio>.001)
                 return false;
         if( 1/inCorrctnessRatio<.001)
                 return false;
-        return false;
+        return true;
 
 
 }
 bool DBGraph::deleteUnreliableNodes(int round){
-        cout<<"Delete Unreliable Nodes starts"<<endl;
         double tp=0, tn=0, fp=0,fn=0;
         size_t numOfDel=0;
         bool change=false;
@@ -300,6 +302,9 @@ bool DBGraph::deleteUnreliableNodes(int round){
                         continue;
                 if (!checkNodeIsReliable(node))
                         continue;
+                if(node.getExpMult()<node.getNumRightArcs())
+                        continue;
+
                 ArcIt it = node.rightBegin();
                 SSNode currNode = getSSNode(it->getNodeID());
                 while(it != node.rightEnd()) {
@@ -365,6 +370,7 @@ bool DBGraph::deleteUnreliableNodes(int round){
                         while(it != node.rightEnd()) {
                                 SSNode victim=getSSNode(it->getNodeID());
                                 if(victim.getNodeID()!=currNode.getNodeID()&&victim.getNodeKmerCov()<threshold&& removeNode(victim)){
+                                        numOfDel++;
 #ifdef DEBUG
                                         if (trueMult[abs(victim.getNodeID())]>0)
                                                 secondFP++;
@@ -382,6 +388,7 @@ bool DBGraph::deleteUnreliableNodes(int round){
                                 if (!victim.isValid())
                                         it++;
                                 if(victim.getNodeID()!=node.getNodeID()&&victim.getNodeKmerCov()<threshold &&removeNode(victim)){
+                                        numOfDel++;
 #ifdef DEBUG
                                         if (trueMult[abs(victim.getNodeID())]>0)
                                                 secondFP++;
@@ -397,14 +404,16 @@ bool DBGraph::deleteUnreliableNodes(int round){
 
 
         }
+        cout<<endl;
+        if (numOfDel>0)
+        cout<<"number of deleted nodes in deleteUnreliableNodes: "<<numOfDel<<endl;
+        #ifdef DEBUG
         cout<<endl<<"second FP        :"<<secondFP<<endl;
         cout<<"second TP        :"<<secondTP<<endl;
-        cout<<"number of deleted nodes in deleteUnreliableNodes :: "<<numOfDel<<endl;
-        //#ifdef DEBUG
         cout<< "TP:     "<<tp<<"        TN:     "<<tn<<"        FP:     "<<fp<<"        FN:     "<<fn<<endl;
         cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
         cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
-        //#endif
+        #endif
         return change;
 }
 /*
@@ -672,6 +681,7 @@ bool DBGraph::mergeSingleNodes(bool force)
                 lID--;
 
         }
+        if (numDeleted>0)
         cout << "Concatenated " << numDeleted << " nodes" << endl;
         #ifdef DEBUG
         cout <<numOfIncorrectConnection<< " of connections are between correct and incorrect node"<<endl;
