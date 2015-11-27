@@ -139,6 +139,16 @@ bool cmssn(const SSNode& first, const SSNode & second ) {
 
 
 }
+/**
+ * this routine do the following things
+ * 1. calculation of avg and std of node kmer coverage
+ * 2. calculation of read start coverage mean
+ * 3. for every node it calculates the MULTIPLICITY
+ * 4. for every node it calculates the certainity of our guess about MULTIPLICITY
+ * 5. for every node it calculates the inCorrctnessRatio of our guess about MULTIPLICITY
+ *
+ */
+
 
 void DBGraph::extractStatistic(int round) {
         vector <SSNode> nodeArray;
@@ -240,10 +250,17 @@ void DBGraph::extractStatistic(int round) {
         }
 
 }
+/**
+ * this routine is used to check if the currNode can be a parallel path to some other nodes
+ * the root node is also given.
+ * this routine is used as a subroutin of deleteUnreliableNodes
+ * @return true if the given nodes is a bubble initiate from rootNode
+ *
+ */
 
-bool DBGraph::nodeIsBubble(SSNode node, SSNode currNode){
-        if(node.getNumRightArcs()>1&& hasLowCovNode(node)){
-                vector<pair<vector<NodeID>, vector<NodeID>> > possibleBubbles=searchForParallelNodes(node, 500);
+bool DBGraph::nodeIsBubble(SSNode rootNode, SSNode currNode){
+        if(rootNode.getNumRightArcs()>1&& hasLowCovNode(rootNode)){
+                vector<pair<vector<NodeID>, vector<NodeID>> > possibleBubbles=searchForParallelNodes(rootNode, 500);
                 for (auto b : possibleBubbles){
                         vector<NodeID> upPath=b.first;
                         vector<NodeID> downPath=b.second;
@@ -254,7 +271,7 @@ bool DBGraph::nodeIsBubble(SSNode node, SSNode currNode){
                         if(up.isValid()&&down.isValid())
                         {
                                 bool upIsBubble=true;
-                                if (whichOneIsbubble(node,upIsBubble,up, down,false,this->estimatedKmerCoverage)){
+                                if (whichOneIsbubble(rootNode,upIsBubble,up, down,false,this->estimatedKmerCoverage)){
                                         if (upIsBubble&& up.getNodeID()==currNode.getNodeID())
                                                 return true;
                                         if(!upIsBubble&&down.getNodeID()==currNode.getNodeID())
@@ -268,6 +285,14 @@ bool DBGraph::nodeIsBubble(SSNode node, SSNode currNode){
         }
         return false;
 }
+/**
+ * check nodes to see wether is reliable or not
+ * a node is reliable if it has a high confidenceRatio and low inCorrctnessRatio
+ * these terms are defined in extractStatistic routine
+ * @return true if the node is reliable
+ */
+
+
 bool DBGraph::checkNodeIsReliable(SSNode node){
         if (node.getMarginalLength()<kmerSize) // smaller nodes might not be correct, these ndoes can never be deleted
                 return false;
@@ -282,11 +307,23 @@ bool DBGraph::checkNodeIsReliable(SSNode node){
         if( 1/inCorrctnessRatio<.001)
                 return false;
         return true;
-
-
 }
-bool DBGraph::deleteUnreliableNodes(int round){
-        double tp=0, tn=0, fp=0,fn=0;
+/**
+ * this routine loops over all nodes, for a reliable node N with MULTIPLICITY(M)
+ * it should have at most M outgoing arcs. Therefore we find extra nodes with low coverage
+ * or extra nodes wich are appeared as tips or bubbles.
+ * @return true if any changes happens
+ * the second part of this routine looks for the adjacent nodes with same MULTIPLICITY
+ * if they have some outgoing or ingoing arcs with low coverage those nodes should be
+ * deleted and these two adjacent reliable nodes should be connected later.
+ */
+bool DBGraph::deleteUnreliableNodes(){
+      bool changeIn1=deleteExtraAttachedNodes();
+      bool changeIn2=connectSameMulNodes();
+      return (changeIn1||changeIn2);
+}
+bool DBGraph::deleteExtraAttachedNodes(){
+          double tp=0, tn=0, fp=0,fn=0;
         size_t numOfDel=0;
         bool change=false;
         double threshold=this->redLineValueCov;// (!tip&& !bubble)? this->redLineValueCov:this->estimatedKmerCoverage;
@@ -338,17 +375,25 @@ bool DBGraph::deleteUnreliableNodes(int round){
                         }
                         it++;
                 }
-
-
         }
+        cout<<endl;
+        if (numOfDel>0)
+                cout<<"number of deleted nodes in deleteExtraAttachedNodes: "<<numOfDel<<endl;
+        #ifdef DEBUG
+        cout<< "TP:     "<<tp<<"        TN:     "<<tn<<"        FP:     "<<fp<<"        FN:     "<<fn<<endl;
+        cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
+        cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
+        #endif
+}
+bool DBGraph::connectSameMulNodes(){
         size_t secondFP=0;
         size_t secondTP=0;
+        size_t numOfDel=0;
+        double threshold=this->redLineValueCov;
         for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
                 if (lID==0)
                         continue;
-
                 SSNode node = getSSNode ( lID );
-
                 if(!node.isValid())
                         continue;
                 if (!checkNodeIsReliable(node))
@@ -371,13 +416,12 @@ bool DBGraph::deleteUnreliableNodes(int round){
                                 SSNode victim=getSSNode(it->getNodeID());
                                 if(victim.getNodeID()!=currNode.getNodeID()&&victim.getNodeKmerCov()<threshold&& removeNode(victim)){
                                         numOfDel++;
-#ifdef DEBUG
+                                        #ifdef DEBUG
                                         if (trueMult[abs(victim.getNodeID())]>0)
                                                 secondFP++;
                                         else
                                                 secondTP++;
-#endif
-                                        change=true;
+                                        #endif
                                         break;
                                 }
                                 it++;
@@ -389,231 +433,37 @@ bool DBGraph::deleteUnreliableNodes(int round){
                                         it++;
                                 if(victim.getNodeID()!=node.getNodeID()&&victim.getNodeKmerCov()<threshold &&removeNode(victim)){
                                         numOfDel++;
-#ifdef DEBUG
+                                        #ifdef DEBUG
                                         if (trueMult[abs(victim.getNodeID())]>0)
                                                 secondFP++;
                                         else
                                                 secondTP++;
-#endif
-                                        change=true;
+                                        #endif
                                         break;
                                 }
                                 it++;
                         }
                 }
 
-
         }
-        cout<<endl;
+
         if (numOfDel>0)
-        cout<<"number of deleted nodes in deleteUnreliableNodes: "<<numOfDel<<endl;
+                cout<<"number of deleted nodes in connectSameMulNodes: "<<numOfDel<<endl;
         #ifdef DEBUG
-        cout<<endl<<"second FP        :"<<secondFP<<endl;
-        cout<<"second TP        :"<<secondTP<<endl;
-        cout<< "TP:     "<<tp<<"        TN:     "<<tn<<"        FP:     "<<fp<<"        FN:     "<<fn<<endl;
-        cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
-        cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
+        cout<<endl<<"second FP: "<<secondFP<<endl;
+        cout<<"second TP: "<<secondTP<<endl;
         #endif
-        return change;
-}
-/*
-bool DBGraph::deleteUnreliableNodes( int round) {
-        cout<<"*********************<<Delete Unreliable Nodes starts>>......................................... "<<endl;
-        bool modify=false;
-        int numberOfDel=0;
-        vector<double> tempArray1;
-        vector<double> tempArray2;
-        int i=0;
-        for ( NodeID lID =1; lID <= numNodes; lID++ ) {
-                SSNode leftNode = getSSNode ( lID );
-                if(!leftNode.isValid())
-                        continue;
-                i++;
-                pair<int, pair<double,double> > result=nodesExpMult[abs( leftNode.getNodeID())];
-                if (!std::isinf( result.second.first))
-                        tempArray1.push_back(result.second.second/result.second.first);
-                else
-                        tempArray1.push_back(0);
-                tempArray2.push_back(result.second.second);
-        }
-        sort(tempArray1.begin(), tempArray1.end());
-        sort(tempArray2.begin(), tempArray2.end());
-        double max= tempArray1.at(floor(i*.80));
-        double min=tempArray2.at(floor(i*.90));
-        max=max<5?max:5;
-        min=min>100?min:100;
-        for ( NodeID lID =1; lID <= numNodes; lID++ ) {
-                SSNode leftNode = getSSNode ( lID );
-                if(!leftNode.isValid())
-                        continue;
-                pair<int, pair<double,double> > result=nodesExpMult[abs( leftNode.getNodeID())];
-                double confidenceRatio=result.second.first;
-                double inCorrctnessRatio=result.second.second;
-                double nodeMultiplicity=result.first;
-                bool change=false;
-                double ratio=0;
-
-                if (std::isinf(confidenceRatio)) {
-                        ratio=0;
-                }
-                else {
-                        ratio=inCorrctnessRatio/confidenceRatio;
-                }
-                if((inCorrctnessRatio>min&& leftNode.getMarginalLength()<this->maxNodeSizeToDel)) {
-
-                        if (leftNode.getNumLeftArcs()==0)
-                                continue;
-                        if (leftNode.getNodeKmerCov()<this->redLineValueCov)
-                                change=removeNode(leftNode);
-                        if(change) {
-                                modify=true;
-                                numberOfDel++;
-                        }
-
-                } else {
-
-                        if(ratio<.5&& leftNode.getMarginalLength()<this->maxNodeSizeToDel) {
-                                if(leftNode.getNumRightArcs()- nodeMultiplicity>=1) {
-                                        do {
-
-                                                if (leftNode.getNodeKmerCov()<this->redLineValueCov)
-                                                        change=deleteExtraRightLink(leftNode, round);
-
-                                        } while ((change&& leftNode.getNumRightArcs()- nodeMultiplicity>=1 ));
-                                }
-
-                                if(leftNode.getNumLeftArcs()-nodeMultiplicity>=1) {
-                                        do {
-                                                change=deleteExtraLeftLink(leftNode, round);
-
-                                        } while ((change&& (leftNode.getNumLeftArcs()- nodeMultiplicity)>=1 ));
-                                }
-                                if(change) {
-                                        modify=true;
-                                        numberOfDel++;
-                                }
-                        }
-
-                }
-
-        }
-
-        cout<<"number of noeds deleted in guessNodeMultiplicity procedure is:	"<<numberOfDel<<endl;
-        return modify;
+        return numOfDel;
 }
 
-*/
-
-bool DBGraph::deleteExtraRightLink(SSNode rootNode, int round) {
-        bool change=false;
-        ArcIt it = rootNode.rightBegin();
-        SSNode bestLNode = getSSNode(it->getNodeID());
-        SSNode trustedNode=getSSNode(it->getNodeID());
-
-        pair<int, pair<double,double> > bestResult=nodesExpMult[abs( bestLNode.getNodeID())];
-
-        pair<int, pair<double,double> > trustedResult=bestResult;
-        it++;
-        while(it != rootNode.rightEnd()) {
-
-                SSNode currNode = getSSNode(it->getNodeID());
-                pair<int, pair<double,double> > curResult= nodesExpMult[abs( currNode.getNodeID())];
-
-                if (bestResult.second.second<curResult.second.second) {
-                        bestLNode=currNode;
-                        bestResult=curResult;
-                }
-                if(trustedResult.second.second>curResult.second.second) {
-                        trustedNode=currNode;
-                        trustedResult=curResult;
-                }
-                it++;
-        }
-
-        // if (((bestResult.second.second/rootResult.second.second)>10&&(rootResult.second.first/ bestResult.second.first)>10 )) {
-        double ratio=bestResult.second.first/bestResult.second.second;
-        if (ratio<.01) {
-                for ( ArcIt it3 = bestLNode.rightBegin(); it3 != bestLNode.rightEnd(); it3++ ) {
-                        SSNode rrNode = getSSNode ( it3->getNodeID() );
-                        if (rrNode.getNodeID()==-bestLNode.getNodeID())
-                                continue;
-                        bool result = rrNode.deleteLeftArc ( bestLNode.getNodeID() );
-
-                        assert ( result );
-                }
-                for ( ArcIt it2 = bestLNode.leftBegin(); it2 != bestLNode.leftEnd(); it2++ ) {
-                        SSNode llNode = getSSNode ( it2->getNodeID() );
-                        if (llNode.getNodeID()==-bestLNode.getNodeID())
-                                continue;
-                        bool result = llNode.deleteRightArc ( bestLNode.getNodeID() );
-                        assert ( result );
-                }
-
-                bestLNode.deleteAllRightArcs();
-                bestLNode.deleteAllLeftArcs();
-                bestLNode.invalidate();
-                change=true;
-
-        }
-        return change;
-}
-
-bool DBGraph::deleteExtraLeftLink(SSNode rootNode, int round) {
-        bool change=false;
-        try {
 
 
-                ArcIt it = rootNode.leftBegin();
-                SSNode bestLNode = getSSNode(it->getNodeID());
-                pair<int, pair<double,double> > bestResult= nodesExpMult[abs (bestLNode.getNodeID())];
-                it++;
-                while(it != rootNode.leftEnd()) {
-
-                        SSNode currNode = getSSNode(it->getNodeID());
-                        pair<int, pair<double,double> > curResult= nodesExpMult[abs (currNode.getNodeID())];
-
-                        if (bestResult.second.second<curResult.second.second) {
-                                bestLNode=currNode;
-                                bestResult=curResult;
-                        }
-                        it++;
-
-                }
-
-                double ratio=bestResult.second.first/bestResult.second.second;
-                //if ( ((bestResult.second.second/rootResult.second.second)>10&&(rootResult.second.first/ bestResult.second.first>10))) {
-                if (ratio<.01) {
-                        for ( ArcIt it3 = bestLNode.rightBegin(); it3 != bestLNode.rightEnd(); it3++ ) {
-                                SSNode rrNode = getSSNode ( it3->getNodeID() );
-                                if (rrNode.getNodeID()==-bestLNode.getNodeID())
-                                        continue;
-                                bool result = rrNode.deleteLeftArc ( bestLNode.getNodeID() );
-                                assert ( result );
-                        }
-
-                        for ( ArcIt it2 = bestLNode.leftBegin(); it2 != bestLNode.leftEnd(); it2++ ) {
-                                SSNode llNode = getSSNode ( it2->getNodeID() );
-                                if (llNode.getNodeID()==-bestLNode.getNodeID())
-                                        continue;
-                                bool result = llNode.deleteRightArc ( bestLNode.getNodeID() );
-                                assert ( result );
-                        }
-
-
-                        bestLNode.deleteAllRightArcs();
-                        bestLNode.deleteAllLeftArcs();
-                        bestLNode.invalidate();
-                        change=true;
-
-                }
-        }  catch(exception e) {
-                cout<<"Fatal error occured in deleteExtraLeftLink around node: "<<rootNode.getNodeID()<< " error Message:"<<e.what()<<endl;
-
-        }
-
-        return change;
-}
-
+/**
+ * merge single nodes together if they have only one ingoing and only one outgoin Arc
+ * node kmer coverage and start read coverage should be updated after deleting the node
+ * @return true if they merge any nodes.
+ *
+ */
 bool DBGraph::mergeSingleNodes(bool force)
 {
         size_t numDeleted = 0;
@@ -621,7 +471,6 @@ bool DBGraph::mergeSingleNodes(bool force)
         //comment by mahdi
         //the initial was lID=1
         bool change=false;//  deleteSuspiciousNodes();
-
         for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
                 if ( lID == 0 ) {
                         continue;
@@ -688,15 +537,17 @@ bool DBGraph::mergeSingleNodes(bool force)
         #endif
         return (numDeleted > 0||change);
 }
-//comment mahdi creating new procedure for removing diamonds
-//////////////////////
 
 
+/**
+ * this routine is used to before merging nodes, if two adjacent nodes have a very different coverage
+ * they shouldn't be merged together
+ * @return true if they do any delete or modification
+ *
+ * this routine is not used currently
+ */
 bool DBGraph::deleteSuspiciousNodes() {
         bool modify=false;
-
-        if ( !updateCutOffValue(0))
-                return false;
         double TP=0;
         double TN=0;
         double FP=0;
@@ -725,49 +576,49 @@ bool DBGraph::deleteSuspiciousNodes() {
                 if (leftCov < rightCov) {
 
                         if (leftCov<this->safeValueCov) {
-#ifdef DEBUG
+                                #ifdef DEBUG
                                 if (trueMult[abs( leftNode.getNodeID())]>0) {
                                         TP++;
                                 }
                                 else {
                                         FP++;
                                 }
-#endif
+                                #endif
                                 removeNode(leftNode);
                                 modify=true;
                         } else {
-#ifdef DEBUG
+                                #ifdef DEBUG
                                 if (trueMult[abs (leftNode.getNodeID())]>0) {
                                         TN++;
                                 }
                                 else {
                                         FN++;
                                 }
-#endif
+                                #endif
                         }
                 }
                 else {
 
                         if (rightCov< this->safeValueCov) {
-#ifdef DEBUG
+                                #ifdef DEBUG
                                 if (trueMult[abs (rNode.getNodeID())]>0) {
                                         TP++;
                                 }
                                 else {
                                         FP++;
                                 }
-#endif
+                                #endif
                                 removeNode(rNode);
                                 modify=true;
                         } else {
-#ifdef DEBUG
+                                #ifdef DEBUG
                                 if (trueMult[abs(rNode.getNodeID())]>0) {
                                         TN++;
                                 }
                                 else {
                                         FN++;
                                 }
-#endif
+                                #endif
                         }
 
 
@@ -862,4 +713,93 @@ double DBGraph::estimateReadStartCoverage ( const ReadLibrary &input,
         }
 
         return ( double ) nom / ( double ) denom;
+}
+/**
+ * remvoes nodes with coverage lower that input argument
+ * @return true if some nodes will be deleted
+ */
+bool DBGraph::filterCoverage(float cutOff)
+{
+        cout <<endl<< " ================== Filter Coverage ==================" << endl;
+
+        cout<<"CutOff value for removing nodes is: "<<cutOff<<endl;
+        int tp=0;
+        int tn=0;
+        int fp=0;
+        int fn=0;
+        size_t numFiltered = 0;
+        for (NodeID i =1; i <= numNodes; i++) {
+
+                SSNode n = getSSNode(i);
+                if(!n.isValid())
+                        continue;
+                if (n.getNodeKmerCov()>cutOff) {
+                        #ifdef DEBUG
+                        if (trueMult.size()>0&& trueMult[abs(i)] >= 1)
+                                tn++;
+                        else
+                                fn++;
+                        #endif
+                        continue;
+                }
+                bool Del=removeNode(n);
+                if (Del){
+                        numFiltered++;
+                        #ifdef DEBUG
+                        if (trueMult.size()>0&& trueMult[abs(i)] >= 1)
+                                fp++;
+                        else
+                                tp++;
+                        #endif
+                }
+                else
+                {
+                        #ifdef DEBUG
+                        if (trueMult[abs(i)] >= 1)
+                                tn++;
+                        else
+                                fn++;
+                        #endif
+                }
+        }
+        cout << "Number nodes deleted base on coverage: " << numFiltered<<endl;
+        #ifdef DEBUG
+        cout << " Gain value is ("<<100*((double)(tp-fp)/(double)(tp+fn))<< "%)"<<endl;
+        cout<< "TP:     "<<tp<<"        TN:     "<<tn<<"        FP:     "<<fp<<"        FN:     "<<fn<<endl;
+        cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
+        cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
+        #endif
+
+        return numFiltered > 0;
+
+}
+
+/**
+ * all routines call this routine to remove nodes
+ * removes the node if its size be shorter than max_node_size_ToDelete
+ * @return true if node will be deleted,
+ *
+ */
+
+bool DBGraph::removeNode(SSNode & rootNode) {
+        if (rootNode.getMarginalLength()>maxNodeSizeToDel)
+                return false;
+        for ( ArcIt it2 = rootNode.leftBegin(); it2 != rootNode.leftEnd(); it2++ ) {
+                SSNode llNode = getSSNode ( it2->getNodeID() );
+                if (llNode.getNodeID()==-rootNode.getNodeID())
+                        continue;
+                bool result = llNode.deleteRightArc ( rootNode.getNodeID() );
+                assert ( result );
+        }
+        for ( ArcIt it3 = rootNode.rightBegin(); it3 != rootNode.rightEnd(); it3++ ) {
+                SSNode rrNode = getSSNode ( it3->getNodeID() );
+                if (rrNode.getNodeID()==-rootNode.getNodeID())
+                        continue;
+                bool result = rrNode.deleteLeftArc ( rootNode.getNodeID() );
+                assert ( result );
+        }
+        rootNode.deleteAllRightArcs();
+        rootNode.deleteAllLeftArcs();
+        rootNode.invalidate();
+        return true;
 }

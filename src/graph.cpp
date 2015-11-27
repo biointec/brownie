@@ -29,12 +29,9 @@
 #include "alignment.h"
 #include <string>
 #include <fstream>
-
 #include <gsl/gsl_math.h>
 #include "ExpMaxClustering.h"
-
 #include "kmernode.h"
-
 using namespace std;
 
 DSNode* SSNode::nodes = NULL;
@@ -64,118 +61,106 @@ void DBGraph::initialize()
     safeValueCov=minSafeValueCov;
     redLineValueCov=minRedLineValueCov;
     updateCutOffValueRound=1;
-    maxNodeSizeToDel=10000;//readLength*4;
+    maxNodeSizeToDel=readLength*4;
     cutOffvalue=redLineValueCov;
     sizeOfGraph=settings.getGenomeSize();
 }
 
-int DBGraph::parseLine(char* line)
-{
-    int i = strlen(line);
-    while (*line < '0' || *line > '9') line++;
-    line[i-3] = '\0';
-    i = atoi(line);
-    return i;
-}
+/**
+ * this routine manipulate graph to detect erroneous nodes and delete them
+ * the firs routine is filter coverage it removes nodes with coverage 1
+ * then Tips will be deleted
+ * then bubbles will be deleted
+ * some Statistic will be calculated in evey round to find the multiplicity of nodes and our confidence about our guess
+ * then Unreliable nodes will be detected based on our Statistic parameter in pre step
+ * while loop continue until no changes would be possible
+ * cut off value will be inreased by one to delete nodes with low coverage
+ * if the size fo graph is lower than genome size modification stops
+ *
+ *
+ */
 
-double DBGraph::getMemoryUsedByProc()
-{
-    double res = 0;
+void DBGraph::graphPurification(string trueMultFilename){
+        int round=1;
+        updateGraphSize();
+        double coverageCutOff=1;
+        do{
+                filterCoverage(coverageCutOff);
+                bool simplified = true;
+                while (simplified ) {// &&
+                        //
+                        //*******************************************************
+                        updateCutOffValue(round);
+                        bool tips=clipTips(round);
+                        if(tips) {
+                                mergeSingleNodes(true);
+                                #ifdef DEBUG
+                                compareToSolution(trueMultFilename, false);
+                                #endif
+                        }
+                        //*******************************************************
+                        bool bubble=false;
+                        size_t depth=settings.getK()+1;
+                        #ifdef DEBUG
+                        updateCutOffValue(round);
+                        compareToSolution(trueMultFilename, false);
+                        #endif
+                        cout <<endl<< " ================= Bubble Detection ==================" << endl;
+                        bubble= bubbleDetection(depth);
+                        mergeSingleNodes(true);
+                        bool continuEdit=false;
+                        size_t maxDepth=(round)*150>1000?1000:(round)*150;
+                        while(depth<maxDepth){
+                                depth=depth+150;
+                                cout<<"bubble depth: "<<depth <<endl;
+                                continuEdit= bubbleDetection(depth);
+                                if (continuEdit)
+                                        mergeSingleNodes(true);
+                                bubble=false?continuEdit:bubble;
+                        }
+                        #ifdef DEBUG
+                        compareToSolution(trueMultFilename,false);
+                        updateCutOffValue(round);
+                        #endif
+                        extractStatistic(round);
+                        cout <<endl<< " ========== Delete Unreliable Nodes starts ===========" << endl;
 
-
-    FILE* proc_self_status_v = fopen("/proc/self/status", "r");
-    char line[128];
-
-    while (fgets(line, 128, proc_self_status_v) != NULL)
-    {
-        if (strncmp(line, "VmSize:", 7) == 0)
-        {
-            res = parseLine(line);
-            break;
+                        bool deleted=deleteUnreliableNodes();
+                        continuEdit=deleted;
+                        while(continuEdit){
+                                continuEdit=deleteUnreliableNodes();
+                                mergeSingleNodes(false);
+                                extractStatistic(round);
+                        }
+                        while(mergeSingleNodes(true));
+                        #ifdef DEBUG
+                        compareToSolution(trueMultFilename,false);
+                        updateCutOffValue(round);
+                        cout<<"estimated Kmer Coverage Mean: "<<estimatedKmerCoverage<<endl;
+                        cout<<"estimated Kmer Coverage STD: "<<estimatedMKmerCoverageSTD<<endl;
+                        #endif
+                        simplified = tips    || deleted || bubble;
+                        updateGraphSize();
+                        round++;
+                }
+                coverageCutOff++;
+                if (coverageCutOff>certainVlueCov)
+                        break;
+                updateGraphSize();
         }
-    }
-    res = res/1024;
-    fclose(proc_self_status_v);
-    return res;
+        while(sizeOfGraph>settings.getGenomeSize());
 }
 
-
-void DBGraph::canonicalBubble()
-{
-    // sanity check
-    for (NodeID i = -numNodes; i <= numNodes; i++) {
-        if (i == 0)     // skip node 0, doesn't exist
-            continue;
-        SSNode n = getSSNode(i);
-        if(!n.isValid())
-            continue;
-        // cout << (int)n.getFlag() << endl;
-        if (n.getNumRightArcs() != 2)
-            continue;
-        ArcIt it = n.rightBegin();
-        SSNode rn1 = getSSNode(it->getNodeID());
-        it++;
-        SSNode rn2 = getSSNode(it->getNodeID());
-        if (rn1.getNumLeftArcs() != 1)
-            continue;
-        if (rn1.getNumRightArcs() != 1)
-            continue;
-        if (rn2.getNumLeftArcs() != 1)
-            continue;
-        if (rn2.getNumRightArcs() != 1)
-            continue;
-        if (rn1.rightBegin()->getNodeID() != rn2.rightBegin()->getNodeID())
-            continue;
-        // SSNode rr2 = getSSNode(rn1.rightBegin()->getNodeID());
-        //  cout << (int)n.getFlag() << "\t" << (int)rn1.getFlag() << "\t" << (int)rn2.getFlag() << "\t" << (int)rr2.getFlag() << endl;
-        /*if (rn1.getFlag() == 0 || rn2.getFlag() == 0)
-                cout << "OK" << endl;
-        else
-                cout << "Ouch" << endl;*/
-        //   cout << "Canonical node " << i << endl;
-    }
-}
-
-
-bool DBGraph::filterChimeric(int round)
-{
-        cout<<"*********************<<filter Chimeric starts>>......................................... "<<endl;
-        size_t numFiltered = 0;
-        size_t numOfIncorrectlyFiltered=0;
-        // sanity check
-        for (NodeID i = -numNodes; i <= numNodes; i++) {
-                if (i==0)
-                        continue;
-                SSNode n = getSSNode(i);
-                if(!n.isValid())
-                        continue;
-
-                if (n.getNumRightArcs() != 1)
-                        continue;
-                if (n.getNumLeftArcs() != 1)
-                        continue;
-                if (n.getMarginalLength() < settings.getK())  //????
-                        continue;
-                if (n.getNodeKmerCov() > this->redLineValueCov)
-                        continue;
-                SSNode rrNode = getSSNode(n.rightBegin()->getNodeID());
-                if (rrNode.getNodeID()==-n.getNodeID())
-                        continue;
-                removeNode(n);
-                numFiltered++;
-                #ifdef DEBUG
-                if (trueMult[i] >= 1)
-                        numOfIncorrectlyFiltered++;
-
-                #endif
-
-        }
-        cout << "\tIncorrectly deleted chimeric connection, namely node: " << numOfIncorrectlyFiltered << endl;
-        cout << "Number of chimeric nodes deleted: " << numFiltered << endl;
-        return numFiltered > 0;
-}
-
-bool DBGraph::updateCutOffValue(int round)
+/*This routine calculate the value of CutOff-cov in the first call,
+ * based on cutOff value three other values will be updated in each round of calling. they increase in each round
+ * cutOffvalue*.3< certainValue< cutOffvalue*.8 : the most conservative value , used to remove nodes only based on coverage
+ * cutOffvalue*.7< safeValue <cutOffvalue  always lower than cutOff , used for remoing joined tips or isolated nodes.
+ * cutOffvalue <redLineValue< cutOffvalue*1.5, increasing incrementally in while loop
+ *
+ *
+ *
+ */
+void DBGraph::updateCutOffValue(int round)
 {
         cout <<endl<< " ================= CutOff Esitmation =================" << endl;
         if (updateCutOffValueRound==1){
@@ -233,28 +218,31 @@ bool DBGraph::updateCutOffValue(int round)
         }
         if (frequencyArray.size()>0)
                 plotCovDiagram(frequencyArray);
+        /*............read line ...........*/
         double ratio=1;
         if (round<6)
                 ratio=ratio+(double)round/10;
         this->redLineValueCov= this->cutOffvalue*ratio>this->redLineValueCov?this->cutOffvalue*ratio:this->redLineValueCov;
+        /*............safe value ...........*/
         ratio=.7;
         if (round<4)
                 ratio=ratio+(double)round/10;
         else
                 ratio=1;
         this->safeValueCov=this->cutOffvalue*ratio;
+        /*............certainValue ...........*/
         ratio=.3;
         if (round<3)
                 ratio=ratio+(double)round/10;
         else
                 ratio=.5;
         this->certainVlueCov=this->cutOffvalue*ratio;
+
         this->updateCutOffValueRound++;
 
         cout<<"certainValue: "<<this->certainVlueCov<<endl;
         cout<<"safeValue: "<<this->safeValueCov<<endl;
         cout<<"redLineValue: "<<this->redLineValueCov<<endl;
-        return true;
 }
 void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > >& frequencyArray){
 
@@ -301,15 +289,6 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
                 cout<<"IntersectionPoint based two curves: "<<exp.intersectionPoint<<endl;
                 cout<<"cutOff value: "<<this->cutOffvalue<<endl;
         }
-       /* if (updateCutOffValueRound>1){
-                ExpMaxClustering exp;
-                exp.findIntersectionPoint(this->erroneousClusterMean, this->estimatedKmerCoverage);
-                this->erroneousClusterMean=exp.curErronousClusterMean;
-
-                this->correctClusterMean=exp.curCorrectClusterMean;
-                this->cutOffvalue=exp.intersectionPoint;
-        }*/
-
 
         #ifdef DEBUG
         string address =" plot.dem";
@@ -320,100 +299,6 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
 
 }
 
-struct readStructStr
-{
-    int intID;
-    string strID;
-    string corrctReadContent;
-    string erroneousReadContent;
-    string qualityProfile ;
-    string orientation;
-
-};
-
-
-bool DBGraph::filterCoverage(float cutOff)
-{
-        cout <<endl<< " ================== Filter Coverage ==================" << endl;
-
-        cout<<"CutOff value for removing nodes is: "<<cutOff<<endl;
-        int tp=0;
-        int tn=0;
-        int fp=0;
-        int fn=0;
-        size_t numFiltered = 0;
-        for (NodeID i =1; i <= numNodes; i++) {
-
-                SSNode n = getSSNode(i);
-                if(!n.isValid())
-                        continue;
-                if (n.getNodeKmerCov()>cutOff) {
-#ifdef DEBUG
-                        if (trueMult.size()>0&& trueMult[abs(i)] >= 1)
-                                tn++;
-                        else
-                                fn++;
-#endif
-                        continue;
-                }
-                bool Del=removeNode(n);
-                if (Del){
-                        numFiltered++;
-#ifdef DEBUG
-                        if (trueMult.size()>0&& trueMult[abs(i)] >= 1)
-                                fp++;
-                        else
-                                tp++;
-#endif
-                }
-                else
-                {
-#ifdef DEBUG
-                        if (trueMult[abs(i)] >= 1)
-                                tn++;
-                        else
-                                fn++;
-#endif
-                }
-        }
-        cout << "Number nodes deleted base on coverage: " << numFiltered<<endl;
-#ifdef DEBUG
-        cout << " Gain value is ("<<100*((double)(tp-fp)/(double)(tp+fn))<< "%)"<<endl;
-        cout<< "TP:	"<<tp<<"	TN:	"<<tn<<"	FP:	"<<fp<<"	FN:	"<<fn<<endl;
-        cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
-        cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
-#endif
-
-        return numFiltered > 0;
-
-}
-bool DBGraph::removeNode(SSNode & rootNode) {
-       if (rootNode.getMarginalLength()>maxNodeSizeToDel)
-              return false;
-       if (abs (rootNode.getNodeID())==2433815)
-       {
-                cout<<"big mistake what are you doing?"<<endl;
-       }
-
-        for ( ArcIt it2 = rootNode.leftBegin(); it2 != rootNode.leftEnd(); it2++ ) {
-                SSNode llNode = getSSNode ( it2->getNodeID() );
-                if (llNode.getNodeID()==-rootNode.getNodeID())
-                        continue;
-                bool result = llNode.deleteRightArc ( rootNode.getNodeID() );
-                assert ( result );
-        }
-        for ( ArcIt it3 = rootNode.rightBegin(); it3 != rootNode.rightEnd(); it3++ ) {
-                SSNode rrNode = getSSNode ( it3->getNodeID() );
-                if (rrNode.getNodeID()==-rootNode.getNodeID())
-                        continue;
-                bool result = rrNode.deleteLeftArc ( rootNode.getNodeID() );
-                assert ( result );
-        }
-        rootNode.deleteAllRightArcs();
-        rootNode.deleteAllLeftArcs();
-        rootNode.invalidate();
-        return true;
-}
 
 
 void DBGraph::sanityCheck()

@@ -198,6 +198,15 @@ public:
                         return false;
                 return true;
         }
+        /**
+         * estimate kmer NodeKmerCoverageMean and STD with manipulating a test graph.
+         *
+         */
+        void parameterEstimationInStage4(double & estimatedKmerCoverage,double& estimatedMKmerCoverageSTD );
+        /**
+         * redirect the output to file stream
+         *
+         */
         void printInFile();
         void writeGraphFasta();
 };

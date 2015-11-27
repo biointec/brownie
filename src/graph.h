@@ -209,8 +209,8 @@ public:
 
     };
     static const DBGraph* graph;
-    double estimatedKmerCoverage;//=(coverage/readLength)*(readLength-kmerSize+1)/12;
-    double estimatedMKmerCoverageSTD;//=sqrt( estimatedKmerCoverage);
+    double estimatedKmerCoverage;
+    double estimatedMKmerCoverageSTD;
     double minCertainVlueCov;
     double minSafeValueCov;
     double minRedLineValueCov;
@@ -231,10 +231,12 @@ public:
      * Careful concatenation, taking into account the estimated multiplicity
      */
     void initialize();
-    bool mergeSingleNodes(bool force);
-
+/**
+ *fucntion associated to bubble bubbleDetection
+ *
+ *
+ */
     bool bubbleDetection(int round);
-    bool bubbleDetection();
     vector<pair<SSNode, SSNode> >  ExtractBubbles(SSNode rootNode,std::set<NodeID>& visitedNodes , std::set<Arc *>&visitedArc);
     bool removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel);
     void extractPath(NodeID currID, const vector<NodeID>& prevNode) const;
@@ -242,43 +244,30 @@ public:
     bool removeNotSingleBubbles(  SSNode &prevFirstNode ,SSNode& extendFirstNode, size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel);
     bool whichOneIsbubble(SSNode rootNode,bool &first, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle, double threshold);
     bool whichOneIsbubble(SSNode rootNode,bool &first, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle);
-    bool removeNode(SSNode &rootNode);
-    void extractStatistic(int round);
     bool nodeIsBubble(SSNode node, SSNode currNode);
-    bool checkNodeIsReliable(SSNode node);
-    bool deleteUnreliableNodes( int round);
-    bool deleteExtraRightLink(SSNode leftNode, int round);
-    bool deleteExtraLeftLink(SSNode leftNode, int round);
-
-    void canonicalBubble();
-    double getMemoryUsedByProc();
-    int  parseLine(char* line);
-    bool deleteSuspiciousNodes();
-    void adjustKmerReadRelation(SSNode targetNode,SSNode trustedNode);
-    void correctReads();
-    void makeBinaryFile();
-    void updateReadFile(const map<long , string> &cacheTable  );
-    string getReadByLine(long num, string fileName);
-    void WriteReadsToTextFile();
     vector<pair<vector<NodeID>, vector<NodeID>> >  searchForParallelNodes(SSNode node,vector<NodeID> &visited, vector<NodeID> &prevNode,vector<NodeID> &nodeColor, int depth);
     vector<pair<vector<NodeID>, vector<NodeID>> > searchForParallelNodes(SSNode node, int depth);
     bool hasLowCovNode(SSNode root);
-    bool removePath(vector<NodeID> &delPath, vector<NodeID> &correctPath);
-    double getMeanPathCov( vector<NodeID> &path);
-    bool detectFalsePath( vector<NodeID> &upPath, vector<NodeID> &downPath);
-    double findDifference2(string a, string b);
-    bool alignToKmer(string& read,const string& kmer, int readLine, int& startPoint, bool& kmerReverse);
-    bool votingCorrection(vector<pair< pair<double,double>, bool> >  &tempArray,map<long , string > &cacheTable, string kmer);
-    char findMax(int a, int c, int g, int t,int maxNum, int &num);
 
 
-    char getReverseChar(char c);
-    void findAvgCov();
-    bool charDiff(string a, string b, int k);
-
-    bool filterChimeric(int round);
-    bool continueEdit(size_t& bigestN50, string& nodeFileName, string &arcFileName,string &metaDataFilename);
+ /**
+ *fucntion associated to graph graph Purification
+ *
+ *
+ */
+    bool removeNode(SSNode &rootNode);
+    bool mergeSingleNodes(bool force);
+    void extractStatistic(int round);
+    bool checkNodeIsReliable(SSNode node);
+    bool deleteUnreliableNodes();
+    bool deleteExtraAttachedNodes();
+    bool connectSameMulNodes();
+    bool deleteSuspiciousNodes();
     bool clipTips(int round);
+
+
+
+
     // void filterCoverage();
 
     /**
@@ -356,7 +345,7 @@ public:
      * Filter the graph, based on coverage
      */
     bool filterCoverage( float round);
-    bool updateCutOffValue(int round);
+    void updateCutOffValue(int round);
     void plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > >& frequencyArray);
     void makeSampleReadFile(float num);
     size_t getLowestArcMultiplicity(NodeID left, NodeID right);
@@ -523,6 +512,8 @@ public:
      *
      */
     void writeGraphFasta() const;
+
+    void graphPurification(string trueMultFilename);
 };
 
 #endif
