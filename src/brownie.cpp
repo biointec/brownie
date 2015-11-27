@@ -314,8 +314,7 @@ void Brownie::writeGraphFasta()
                         getBinArcFilename(3),
                         getMetaDataFilename(3));
                 graph.writeGraphFasta();
-        }
-        if (settings.getSkipStage5()) {
+        } else if (settings.getSkipStage5()) {
                 graph.createFromFile(getNodeFilename(4),
                         getArcFilename(4),
                         getMetaDataFilename(4));
