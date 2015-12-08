@@ -5,4 +5,4 @@ https://github.com/jfostier/brownie/wiki
 
 To download paper :
 
-cooming soon
+coming soon ...
