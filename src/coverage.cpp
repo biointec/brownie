@@ -156,7 +156,13 @@ void DBGraph::extractStatistic(int round) {
         size_t i=0;
         double sumOfCoverage=0;
         double sumOfMarginalLenght=0;
-        double sizeLimit= ((totalLength*percentage)/100)>settings.getGenomeSize()?settings.getGenomeSize():((totalLength*percentage)/100);
+
+        double sizeLimit=0;
+        sizeLimit= (totalLength*percentage)/100;
+        /*if (settings.getGenomeSize()>0)
+                sizeLimit=((totalLength*percentage)/100)>settings.getGenomeSize()?settings.getGenomeSize():((totalLength*percentage)/100);
+        else
+                sizeLimit= (totalLength*percentage)/100;*/
         while(sumOfMarginalLenght<sizeLimit) {
                 SSNode tempNode=nodeArray[i];
                 sumOfMarginalLenght=sumOfMarginalLenght+tempNode.getMarginalLength();
@@ -369,6 +375,7 @@ bool DBGraph::deleteExtraAttachedNodes(){
         cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
         cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
         #endif
+        return (numOfDel>0);
 }
 bool DBGraph::connectSameMulNodes(){
         size_t secondFP=0;
@@ -438,7 +445,7 @@ bool DBGraph::connectSameMulNodes(){
         cout<<endl<<"second FP: "<<secondFP<<endl;
         cout<<"second TP: "<<secondTP<<endl;
         #endif
-        return numOfDel;
+        return (numOfDel>0);
 }
 
 
