@@ -20,17 +20,9 @@
  ***************************************************************************/
 
 #include "graph.h"
-#include "tkmer.h"
 #include "kmeroverlap.h"
-#include "readfile/sequencefile.h"
-#include "util.h"
 #include "settings.h"
 #include "nodeendstable.h"
-#include "alignment.h"
-#include <string>
-#include <fstream>
-#include <gsl/gsl_math.h>
-#include "ExpMaxClustering.h"
 #include "kmernode.h"
 using namespace std;
 
@@ -66,6 +58,30 @@ void DBGraph::initialize()
     sizeOfGraph=settings.getGenomeSize();
 }
 
+
+/**
+ * estimate the kmer node coverage and std for the nodes in graph
+ * @estimatedKmerCoverage return value for getNodeKmerCov
+ * @estimatedMKmerCoverageSTD return the STD
+ *
+ */
+void DBGraph::parameterEstimation(double & estimatedKmerCoverage,double& estimatedMKmerCoverageSTD ){
+
+        cout <<endl<< " ================ Parameter Estimation ===============" << endl;
+        cout << "Loading test graph for initial parameter estimation" << endl;
+        clipTips(0);
+        mergeSingleNodes(true);
+        filterCoverage(cutOffvalue);
+        mergeSingleNodes(true);
+        extractStatistic(0);
+        cout<<"Estimated Kmer Coverage Mean: "<<estimatedKmerCoverage<<endl;
+        cout<<"Estimated Kmer Coverage STD: "<<estimatedMKmerCoverageSTD<<endl;
+        cout<<"Maximum node size to delete is: "<<maxNodeSizeToDel<<endl;
+        estimatedKmerCoverage=estimatedKmerCoverage;
+        estimatedMKmerCoverageSTD=estimatedMKmerCoverageSTD;
+
+}
+
 /**
  * this routine manipulate graph to detect erroneous nodes and delete them
  * the firs routine is filter coverage it removes nodes with coverage 1
@@ -83,72 +99,64 @@ void DBGraph::initialize()
 void DBGraph::graphPurification(string trueMultFilename){
         int round=1;
         updateGraphSize();
-        double coverageCutOff=1;
-        do{
-                filterCoverage(coverageCutOff);
-                bool simplified = true;
-                while (simplified ) {// &&
-                        //
-                        //*******************************************************
-                        updateCutOffValue(round);
-                        bool tips=clipTips(round);
-                        if(tips) {
-                                mergeSingleNodes(true);
-                                #ifdef DEBUG
-                                compareToSolution(trueMultFilename, false);
-                                #endif
-                        }
-                        //*******************************************************
-                        bool bubble=false;
-                        size_t depth=settings.getK()+1;
+        size_t maxBubbleDepth=maxNodeSizeToDel;
+        size_t increamentDepth=settings.getReadLength();
+        bool simplified = true;
+        while (simplified ) {// &&
+                //
+                //*******************************************************
+                updateCutOffValue(round);
+                bool tips=clipTips(round);
+                if(tips) {
+                        mergeSingleNodes(true);
                         #ifdef DEBUG
-                        updateCutOffValue(round);
                         compareToSolution(trueMultFilename, false);
                         #endif
-                        cout <<endl<< " ================= Bubble Detection ==================" << endl;
-                        bubble= bubbleDetection(depth);
-                        mergeSingleNodes(true);
-                        bool continuEdit=false;
-                        size_t maxDepth=(round)*150>1000?1000:(round)*150;
-                        while(depth<maxDepth){
-                                depth=depth+150;
-                                cout<<"bubble depth: "<<depth <<endl;
-                                continuEdit= bubbleDetection(depth);
-                                if (continuEdit)
-                                        mergeSingleNodes(true);
-                                bubble=false?continuEdit:bubble;
-                        }
-                        #ifdef DEBUG
-                        compareToSolution(trueMultFilename,false);
-                        updateCutOffValue(round);
-                        #endif
-                        extractStatistic(round);
-                        cout <<endl<< " ========== Delete Unreliable Nodes starts ===========" << endl;
-
-                        bool deleted=deleteUnreliableNodes();
-                        continuEdit=deleted;
-                        while(continuEdit){
-                                continuEdit=deleteUnreliableNodes();
-                                mergeSingleNodes(false);
-                                extractStatistic(round);
-                        }
-                        while(mergeSingleNodes(true));
-                        #ifdef DEBUG
-                        compareToSolution(trueMultFilename,false);
-                        updateCutOffValue(round);
-                        cout<<"estimated Kmer Coverage Mean: "<<estimatedKmerCoverage<<endl;
-                        cout<<"estimated Kmer Coverage STD: "<<estimatedMKmerCoverageSTD<<endl;
-                        #endif
-                        simplified = tips    || deleted || bubble;
-                        updateGraphSize();
-                        round++;
                 }
-                coverageCutOff++;
-                if (coverageCutOff>certainVlueCov)
-                        break;
+                //*******************************************************
+                bool bubble=false;
+                size_t depth=settings.getK()+1;
+                #ifdef DEBUG
+                updateCutOffValue(round);
+                compareToSolution(trueMultFilename, false);
+                #endif
+                cout <<endl<< " ================= Bubble Detection ==================" << endl;
+                bubble= bubbleDetection(depth);
+                mergeSingleNodes(true);
+                bool continuEdit=true;
+                size_t maxDepth=(round)*increamentDepth>maxBubbleDepth?maxBubbleDepth:(round)*increamentDepth;
+                while(depth<maxDepth&& continuEdit){
+                        depth=depth+increamentDepth;
+                        cout<<"bubble depth: "<<depth <<endl;
+                        continuEdit= bubbleDetection(depth);
+                        if (continuEdit)
+                                mergeSingleNodes(true);
+                        bubble=false?continuEdit:bubble;
+                }
+                #ifdef DEBUG
+                compareToSolution(trueMultFilename,false);
+                updateCutOffValue(round);
+                #endif
+                extractStatistic(round);
+                cout <<endl<< " ========== Delete Unreliable Nodes starts ===========" << endl;
+                bool deleted=deleteUnreliableNodes();
+                continuEdit=deleted;
+                while(continuEdit){
+                        continuEdit=deleteUnreliableNodes();
+                        mergeSingleNodes(false);
+                        extractStatistic(round);
+                }
+                while(mergeSingleNodes(true));
+                #ifdef DEBUG
+                compareToSolution(trueMultFilename,false);
+                updateCutOffValue(round);
+                cout<<"estimated Kmer Coverage Mean: "<<estimatedKmerCoverage<<endl;
+                cout<<"estimated Kmer Coverage STD: "<<estimatedMKmerCoverageSTD<<endl;
+                #endif
+                simplified = tips    || deleted || bubble;
                 updateGraphSize();
+                round++;
         }
-        while(sizeOfGraph>settings.getGenomeSize());
 }
 
 /*This routine calculate the value of CutOff-cov in the first call,
@@ -162,7 +170,8 @@ void DBGraph::graphPurification(string trueMultFilename){
  */
 void DBGraph::updateCutOffValue(int round)
 {
-        cout <<endl<< " ================= CutOff Esitmation =================" << endl;
+        #ifdef DEBUG
+        //this part are going to make plot
         if (updateCutOffValueRound==1){
                       string command = "mkdir " + settings.getTempDirectory() + "cov";
         system(command.c_str());
@@ -218,6 +227,7 @@ void DBGraph::updateCutOffValue(int round)
         }
         if (frequencyArray.size()>0)
                 plotCovDiagram(frequencyArray);
+        #endif
         /*............read line ...........*/
         double ratio=1;
         if (round<6)
@@ -278,7 +288,7 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
         }
         sexpcovFile.close();
         expcovFile.close();
-        if (updateCutOffValueRound==1){
+      /*  if (updateCutOffValueRound==1){
                 string correctCluster=settings.getTempDirectory()+"correcNodeCluster.dta";
                 string erroneousCluster=settings.getTempDirectory()+"erroneousCluster.dat";
                 ExpMaxClustering exp(sFileName,erroneousCluster,correctCluster,.01,1, estimatedKmerCoverage );
@@ -288,7 +298,7 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
                 this->cutOffvalue=exp.findIntersectionPoint(1,estimatedKmerCoverage);
                 cout<<"IntersectionPoint based two curves: "<<exp.intersectionPoint<<endl;
                 cout<<"cutOff value: "<<this->cutOffvalue<<endl;
-        }
+        }*/
 
         #ifdef DEBUG
         string address =" plot.dem";

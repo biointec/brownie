@@ -1,23 +1,5 @@
-#include "alignment.h"
 #include "graph.h"
-#include "kmernode.h"
-#include "readfile/fastafile.h"
-#include "settings.h"
-#include <gsl/gsl_randist.h>
-#include <fstream>
-#include <list>
 
-#include <iomanip>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/sysinfo.h>
-#include <vector>
-#include "essaMEM-master/sparseSA.hpp"
-#include <sstream>
-#include <stack>
-#include <algorithm>
-#include <ctime>
-#include <cstdio>
 #include "library.h"
 
 

@@ -21,23 +21,8 @@
 
 #include "graph.h"
 #include "kmernode.h"
-#include "readfile/fastafile.h"
 #include "settings.h"
 #include <gsl/gsl_randist.h>
-#include <fstream>
-#include <list>
-#include <queue>
-#include <iomanip>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/sysinfo.h>
-#include <vector>
-#include "essaMEM-master/sparseSA.hpp"
-#include <sstream>
-#include <stack>
-#include <algorithm>
-#include <ctime>
-#include <cstdio>
 #include "library.h"
 
 using namespace std;
@@ -323,7 +308,7 @@ bool DBGraph::deleteUnreliableNodes(){
       return (changeIn1||changeIn2);
 }
 bool DBGraph::deleteExtraAttachedNodes(){
-          double tp=0, tn=0, fp=0,fn=0;
+        double tp=0, tn=0, fp=0,fn=0;
         size_t numOfDel=0;
         bool change=false;
         double threshold=this->redLineValueCov;// (!tip&& !bubble)? this->redLineValueCov:this->estimatedKmerCoverage;

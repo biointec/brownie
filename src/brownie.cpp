@@ -19,18 +19,14 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#include <string>
+
 
 #include "brownie.h"
-
 #include "settings.h"
 #include "kmeroverlap.h"
 #include "kmeroverlaptable.h"
 #include "graph.h"
-
 #include "kmertable.h"
-#include "alignment.h"
-#include "correction.h"
 #include "readcorrection.h"
 
 using namespace std;
@@ -55,9 +51,8 @@ void Brownie::printInFile()
         cout << "Welcome to Brownie\n" << endl;
 }
 
-void Brownie::parameterEstimationInStage4(double & estimatedKmerCoverage,double& estimatedMKmerCoverageSTD ){
+void Brownie::parameterEstimationInStage4(double & estimatedKmerCoverage,double& estimatedMKmerCoverageSTD, double &cutOffvalue ){
         cout <<endl<< " ================ Parameter Estimation ===============" << endl;
-
         double readLength=libraries.getReadLength();
         if (readLength<=settings.getK() ||readLength>500)
                 readLength=250;
@@ -67,7 +62,9 @@ void Brownie::parameterEstimationInStage4(double & estimatedKmerCoverage,double&
         testgraph.loadGraphBin(getBinNodeFilename(3),
                                getBinArcFilename(3),
                                getMetaDataFilename(3));
-
+        #ifdef DEBUG
+        testgraph.compareToSolution(getTrueMultFilename(3), true);
+        #endif
         testgraph.clipTips(0);
         testgraph.mergeSingleNodes(true);
         testgraph.filterCoverage(testgraph.cutOffvalue);
@@ -78,6 +75,12 @@ void Brownie::parameterEstimationInStage4(double & estimatedKmerCoverage,double&
         cout<<"Maximum node size to delete is: "<<testgraph.maxNodeSizeToDel<<endl;
         estimatedKmerCoverage=testgraph.estimatedKmerCoverage;
         estimatedMKmerCoverageSTD=testgraph.estimatedMKmerCoverageSTD;
+        double estimatedErroneousKmerCoverage=1.5;
+        double e=2.718281;
+        double c=estimatedErroneousKmerCoverage/estimatedKmerCoverage;
+        cutOffvalue =(estimatedErroneousKmerCoverage-estimatedKmerCoverage)* (log(e)/log(c));
+        cout<<"cutOffvalue:"<<cutOffvalue<<endl;
+        testgraph.updateGraphSize();
         testgraph.clear();
 }
 
@@ -223,8 +226,8 @@ void Brownie::stageFour()
                 "skipping stage 4..." << endl << endl;
                 return;
         }
-        double  estimatedKmerCoverageMean=0, estimatedMKmerCoverageSTD=0;
-        parameterEstimationInStage4( estimatedKmerCoverageMean,estimatedMKmerCoverageSTD );
+        double  estimatedKmerCoverageMean=0, estimatedMKmerCoverageSTD=0,cutOffvalue=0;
+        parameterEstimationInStage4( estimatedKmerCoverageMean,estimatedMKmerCoverageSTD,cutOffvalue );
         Util::startChrono();
         cout << "Creating graph... ";
         DBGraph graph(settings);
@@ -233,6 +236,7 @@ void Brownie::stageFour()
                            getMetaDataFilename(3));
         graph.estimatedKmerCoverage=estimatedKmerCoverageMean;
         graph.estimatedMKmerCoverageSTD=estimatedMKmerCoverageSTD;
+        graph.cutOffvalue=cutOffvalue;
         cout.flush();
         cout << "done (" << graph.getNumNodes() << " nodes, "
         << graph.getNumArcs() << " arcs)" << endl;
@@ -259,22 +263,21 @@ void Brownie::stageFour()
         string command="pdftk "+settings.getTempDirectory()+ "cov/*.pdf cat output allpdfFiles.pdf";
         system(command.c_str());
         #endif
-
         graph.clear();
         cout << "Stage 4 finished.\n" << endl;
 }
 
 void Brownie::stageFive()
 {
+
+        cout << "Entering stage 5" << endl;
+        cout << "================" << endl;
         if (!stageFiveNecessary()) {
                          cout << "Files produced by this stage appear to be present, "
                          "skipping stage 5..." << endl << endl;
                          return;
         }
-        cout << "Entering stage 5" << endl;
-        cout << "================" << endl;
         DBGraph graph(settings);
-
         Util::startChrono();
         cout << "Creating graph... ";
         cout.flush();
@@ -293,10 +296,6 @@ void Brownie::stageFive()
 #endif
         Util::startChrono();
 
-       /*ReadCorrection rc(graph, settings);
-        rc.errorCorrection(libraries);*/
-
-
         ReadCorrectionHandler rcHandler(graph, settings);
         rcHandler.doErrorCorrection(libraries);
 
@@ -313,6 +312,9 @@ void Brownie::writeGraphFasta()
                 graph.loadGraphBin(getBinNodeFilename(3),
                         getBinArcFilename(3),
                         getMetaDataFilename(3));
+                graph.writeGraph(getNodeFilename(4),
+                                 getArcFilename(4),
+                                 getMetaDataFilename(4));
                 graph.writeGraphFasta();
         } else if (settings.getSkipStage5()) {
                 graph.createFromFile(getNodeFilename(4),
@@ -329,12 +331,11 @@ int main(int argc, char** args)
                 Brownie brownie(argc, args);
 #ifndef DEBUG
                 cout<<"running in Release mode"<<endl;
-              //  brownie.printInFile();
+                //brownie.printInFile();
 #endif
 #ifdef DEBUG
                 cout<<"In DEBUG mode"<<endl;
 #endif
-
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
                 << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL << endl;
                 cout << "Today is " << Util::getTime() << endl;

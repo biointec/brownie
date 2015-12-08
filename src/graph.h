@@ -21,18 +21,12 @@
 
 #ifndef DBGRAPH_H
 #define DBGRAPH_H
-
 #include "global.h"
 #include "ssnode.h"
 #include "dsnode.h"
-#include <cstdlib>
 #include <deque>
-#include <map>
-#include <gsl/gsl_randist.h>
-#include <gsl/gsl_cdf.h>
-#include <gsl/gsl_math.h>
 #include "essaMEM-master/sparseSA.hpp"
-#include <queue>
+
 
 // ============================================================================
 // CLASS PROTOTYPES
@@ -514,6 +508,7 @@ public:
     void writeGraphFasta() const;
 
     void graphPurification(string trueMultFilename);
+    void parameterEstimation(double & estimatedKmerCoverage,double& estimatedMKmerCoverageSTD );
 };
 
 #endif

@@ -378,7 +378,7 @@ void ReadCorrectionJan::findSeedMEM(const string& read,
         vector<match_t> matches;
 
         int memSize = Kmer::getK() - 1;
-        while (matches.size() < 100&& memSize>1) {
+        while (matches.size() < 100&& memSize>5) {
                 matches.clear();
                 sa.findMEM(0l, read, matches, memSize, false);
                 //cout << "Number of matches for size " << memSize << ": " << matches.size() << endl;
