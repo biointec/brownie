@@ -181,6 +181,16 @@ public:
         TString(std::ifstream &ifs);
 
         /**
+         * Delete the copy constructor
+         */
+        TString(const TString&) = delete;
+
+        /**
+         * Delete the assignment operator
+         */
+        void operator=(const TString &rhs) = delete;
+
+        /**
          * Read a tstring from an input file stream
          * @param ifs Opened input file stream
          */
