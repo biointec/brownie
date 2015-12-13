@@ -75,7 +75,7 @@ void Brownie::parameterEstimationInStage4(double & estimatedKmerCoverage,double&
         cout<<"Maximum node size to delete is: "<<testgraph.maxNodeSizeToDel<<endl;
         estimatedKmerCoverage=testgraph.estimatedKmerCoverage;
         estimatedMKmerCoverageSTD=testgraph.estimatedMKmerCoverageSTD;
-        double estimatedErroneousKmerCoverage=1;
+        double estimatedErroneousKmerCoverage=1+estimatedKmerCoverage/100;
         double e=2.718281;
         double c=estimatedErroneousKmerCoverage/estimatedKmerCoverage;
         cutOffvalue =(estimatedErroneousKmerCoverage-estimatedKmerCoverage)* (log(e)/log(c));
@@ -224,7 +224,7 @@ void Brownie::stageFour()
         if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 4..." << endl << endl;
-               // return;
+                 return;
         }
         double  estimatedKmerCoverageMean=0, estimatedMKmerCoverageSTD=0,cutOffvalue=0;
         parameterEstimationInStage4( estimatedKmerCoverageMean,estimatedMKmerCoverageSTD,cutOffvalue );
