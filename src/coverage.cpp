@@ -206,7 +206,7 @@ void DBGraph::extractStatistic(int round) {
                 double denominator=0;
                 double currentProb=maxProb;
 
-                size_t i=1;
+                int i = 1;
                 bool minus=true;
                 do{
                         currentProb=newProbability;

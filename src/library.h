@@ -291,9 +291,9 @@ public:
          */
         void joinIOThreads();
 
-        double getReadLength(){
-                size_t readLengthAvg=0;
-                size_t totalNumOfReads=0;
+        double getReadLength() const {
+                size_t readLengthAvg = 0;
+                size_t totalNumOfReads = 0;
                 for (auto it : container){
                         readLengthAvg=((readLengthAvg *totalNumOfReads)+it.getReadLength()*it.getNumReads())/(totalNumOfReads+it.getNumReads());
                         totalNumOfReads=totalNumOfReads+it.getNumReads();

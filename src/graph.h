@@ -189,8 +189,6 @@ private:
         std::vector<int> trueMult;
 #endif
 
-
-
 public:
     enum readCorrectionStatus {
 
@@ -507,7 +505,9 @@ public:
      */
     void writeGraphFasta() const;
 
-    void graphPurification(string trueMultFilename);
+    void graphPurification(string trueMultFilename,
+                           const LibraryContainer& libraries);
+
     void parameterEstimation(double & estimatedKmerCoverage,double& estimatedMKmerCoverageSTD );
 };
 

@@ -56,7 +56,7 @@ void Brownie::parameterEstimationInStage4(double & estimatedKmerCoverage,double&
         double readLength=libraries.getReadLength();
         if (readLength<=settings.getK() ||readLength>500)
                 readLength=250;
-        settings.setReadLenght(readLength);
+
         cout << "Loading test graph for initial parameter estimation" << endl;
         DBGraph testgraph(settings);
         testgraph.loadGraphBin(getBinNodeFilename(3),
@@ -239,18 +239,18 @@ void Brownie::stageFour()
         graph.cutOffvalue=cutOffvalue;
         cout.flush();
         cout << "done (" << graph.getNumNodes() << " nodes, "
-        << graph.getNumArcs() << " arcs)" << endl;
+             << graph.getNumArcs() << " arcs)" << endl;
         cout << "Created graph in "
-        << Util::stopChrono() << "s." << endl;
+             << Util::stopChrono() << "s." << endl;
 
-        #ifdef DEBUG
+#ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), true);
-        #endif
+#endif
         Util::startChrono();
-        graph.graphPurification(getTrueMultFilename(3));
-        #ifdef DEBUG
+        graph.graphPurification(getTrueMultFilename(3), libraries);
+#ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), false);
-        #endif
+#endif
         cout<<"graph size: "<<graph.sizeOfGraph<<endl;
         graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));
         cout<<"N50 is: "<<graph.n50<<endl;
@@ -258,11 +258,11 @@ void Brownie::stageFour()
         << Util::stopChrono() << "s." << endl;
         Util::startChrono();
 
-        #ifdef DEBUG
+#ifdef DEBUG
         graph.sanityCheck();
         string command="pdftk "+settings.getTempDirectory()+ "cov/*.pdf cat output allpdfFiles.pdf";
         system(command.c_str());
-        #endif
+#endif
         graph.clear();
         cout << "Stage 4 finished.\n" << endl;
 }

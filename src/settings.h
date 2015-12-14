@@ -37,117 +37,103 @@ class LibraryContainer;
 class Settings
 {
 private:
-    /**
-     * Print Brownie program info
-     */
-    void printProgramInfo() const;
+        /**
+         * Print Brownie program info
+         */
+        void printProgramInfo() const;
 
-    /**
-     * Print Brownie usage instructions
-     */
-    void printUsage() const;
+        /**
+         * Print Brownie usage instructions
+         */
+        void printUsage() const;
 
-    unsigned int kmerSize;          // user specified kmer size
-    size_t numThreads;              // number of threads
-    size_t genomeSize;              // genome size
-    //added by mahdi
-    size_t readLenght;		//avarage of read length
-    size_t coverage;		//coverage of data set
-    //end of modification
-    bool doubleStranded;            // double stranded sequences
-    std::string pathtotemp;         // directory specified by user
+        unsigned int kmerSize;          // user specified kmer size
+        size_t numThreads;              // number of threads
+        size_t genomeSize;              // genome size
+        bool doubleStranded;            // double stranded sequences
+        std::string pathtotemp;         // directory specified by user
 
-    bool skip_stage_4;
-    bool skip_stage_5;
+        bool skip_stage_4;
+        bool skip_stage_5;
 
 public:
-    /**
-     * Default constructor
-     */
-    Settings();
+        /**
+         * Default constructor
+         */
+        Settings();
 
-    /**
-     * Parse the command line arguments
-     * @param argc Command line argument count
-     * @param args Command line arguments
-     * @param libCont Library container (output)
-     */
-    void parseCommandLineArguments(int argc, char **args,
-                                   LibraryContainer& libCont);
+        /**
+         * Parse the command line arguments
+         * @param argc Command line argument count
+         * @param args Command line arguments
+         * @param libCont Library container (output)
+         */
+        void parseCommandLineArguments(int argc, char **args,
+                                       LibraryContainer& libCont);
 
-    /**
-     * Get the user-specified kmer hash length
-     * @return The hash length
-     */
-    unsigned int getK() const {
-        return kmerSize;
-    }
+        /**
+         * Get the user-specified kmer hash length
+         * @return The hash length
+         */
+        unsigned int getK() const {
+                return kmerSize;
+        }
 
-    /**
-     * Get the number of threads
-     * @return The number of threads
-     */
-    size_t getNumThreads() const {
-        return numThreads;
-    }
+        /**
+         * Get the number of threads
+         * @return The number of threads
+         */
+        size_t getNumThreads() const {
+                return numThreads;
+        }
 
-    /**
-     * Check of if the reads are double stranded
-     * @return true of false
-     */
-    bool isDoubleStranded() const {
-        return doubleStranded;
-    }
+        /**
+         * Check of if the reads are double stranded
+         * @return true of false
+         */
+        bool isDoubleStranded() const {
+                return doubleStranded;
+        }
 
-    /**
-     * Get the temporary working directory
-     * @return The temporary working directory
-     */
-    std::string getTempDirectory() const {
-        return pathtotemp;
-    }
+        /**
+         * Get the temporary working directory
+         * @return The temporary working directory
+         */
+        std::string getTempDirectory() const {
+                return pathtotemp;
+        }
 
-    /**
-     * Prepend the temporary working directory to a file
-     * @return The expanded directory
-     */
-    std::string addTempDirectory(const std::string filename) const {
-        return pathtotemp + filename;
-    }
+        /**
+         * Prepend the temporary working directory to a file
+         * @return The expanded directory
+         */
+        std::string addTempDirectory(const std::string filename) const {
+                return pathtotemp + filename;
+        }
 
-    /**
-     * Get the IO block size in number of kmers
-     * @return The IO block size in number of kmers
-     */
-    size_t getThreadWorkSize() const {
-        return 100000;
-    }
-    //added by mahdi
-    size_t getCoverage()const {
-        return this->coverage;
-    }
-    size_t getReadLength()const {
-        return this->readLenght;
-    }
-    size_t getGenomeSize() const{
-      return this->genomeSize;
-    }
-    void setReadLenght(size_t readLenght) {
-        this->readLenght=readLenght;
-    }
-    void setCoverage(size_t coverage) {
-        this->coverage=coverage;
-    }
-    void setGenomeSize(){
-       this->genomeSize=genomeSize;
-    }
-    bool getSkipStage4() const {
-       return skip_stage_4;
-    }
-    bool getSkipStage5() const {
-       return skip_stage_5;
-    }
-    //end of modification by mahdi
+        /**
+         * Get the IO block size in number of kmers
+         * @return The IO block size in number of kmers
+         */
+        size_t getThreadWorkSize() const {
+                return 100000;
+        }
+
+        size_t getGenomeSize() const{
+                return this->genomeSize;
+        }
+
+        void setGenomeSize(){
+                this->genomeSize=genomeSize;
+        }
+
+        bool getSkipStage4() const {
+                return skip_stage_4;
+        }
+
+        bool getSkipStage5() const {
+                return skip_stage_5;
+        }
 };
 
 #endif

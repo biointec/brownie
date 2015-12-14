@@ -24,6 +24,8 @@
 #include "settings.h"
 #include "nodeendstable.h"
 #include "kmernode.h"
+#include "library.h"
+
 using namespace std;
 
 DSNode* SSNode::nodes = NULL;
@@ -41,7 +43,7 @@ void DBGraph::initialize()
 {
     //correct it later it should read this information from setting file, but setting dosn't have such infomratin right now
     avgreadLength=1;
-    readLength=settings.getReadLength();
+    readLength=100;//settings.getReadLength();
     coverage=100;//settings.getCoverage();
     minCertainVlueCov=2;
     minSafeValueCov=2.5;
@@ -95,12 +97,13 @@ void DBGraph::parameterEstimation(double & estimatedKmerCoverage,double& estimat
  *
  *
  */
-
-void DBGraph::graphPurification(string trueMultFilename){
+void DBGraph::graphPurification(string trueMultFilename,
+                                const LibraryContainer& libraries)
+{
         int round=1;
         updateGraphSize();
         size_t maxBubbleDepth=maxNodeSizeToDel;
-        size_t increamentDepth=settings.getReadLength();
+        size_t increamentDepth = libraries.getReadLength();
         bool simplified = true;
         while (simplified ) {// &&
                 //
