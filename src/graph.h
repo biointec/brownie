@@ -488,6 +488,10 @@ public:
      */
     void populateTable();
     /**
+     * deletes the table again
+     */
+    void depopulateTable();
+    /**
      * Find Kmer in the Kmernodetable
      */
     NodePosPair getNodePosPair(Kmer const &kmer) const;

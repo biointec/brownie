@@ -482,4 +482,7 @@ void LibraryContainer::joinIOThreads()
                 delete idlOutputBuffer; idlOutputBuffer = NULL;
                 delete actOutputBuffer; actOutputBuffer = NULL;
         }
+
+        // make sure the queue is empty
+        std::queue<BlockID>().swap(blockQueue);
 }
