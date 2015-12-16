@@ -380,6 +380,7 @@ void ReadCorrectionJan::findSeedMEM(const string& read,
         int memSize = Kmer::getK() - 1;
         while (matches.size() < 100&& memSize>5) {
                 matches.clear();
+                cout << "Find MEM: " << memSize << endl;
                 sa.findMEM(0l, read, matches, memSize, false);
                 //cout << "Number of matches for size " << memSize << ": " << matches.size() << endl;
                 memSize--;

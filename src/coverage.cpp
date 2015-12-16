@@ -285,12 +285,11 @@ bool DBGraph::nodeIsBubble(SSNode rootNode, SSNode currNode){
 
 
 bool DBGraph::checkNodeIsReliable(SSNode node){
-        if (node.getMarginalLength()<kmerSize) // smaller nodes might not be correct, these ndoes can never be deleted
+        if (node.getMarginalLength()< Kmer::getK()) // smaller nodes might not be correct, these ndoes can never be deleted
                 return false;
         pair<int, pair<double,double> > result=nodesExpMult[abs( node.getNodeID())];
         double confidenceRatio=result.second.first;
         double inCorrctnessRatio=result.second.second;
-        double nodeMultiplicity=result.first;
         if (node.getNumRightArcs()<2)
                 return false;
         if (1/confidenceRatio>.001)
@@ -316,8 +315,6 @@ bool DBGraph::deleteUnreliableNodes(){
 bool DBGraph::deleteExtraAttachedNodes(){
         double tp=0, tn=0, fp=0,fn=0;
         size_t numOfDel=0;
-        bool change=false;
-        double threshold=this->redLineValueCov;// (!tip&& !bubble)? this->redLineValueCov:this->estimatedKmerCoverage;
         for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
                 if (lID % OUTPUT_FREQUENCY == 0)
                         (cout << "Extracting node -" <<numNodes<< "/ "<<lID<<" /"<<numNodes
@@ -351,7 +348,6 @@ bool DBGraph::deleteExtraAttachedNodes(){
                                 }
                                 #endif
                                 numOfDel++;
-                                change=true;
                                 break;
                         }
                         else{

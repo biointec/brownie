@@ -26,36 +26,8 @@
 #include "global.h"
 #include "tstring.h"
 #include <iostream>
+
 using namespace std;
-
-
-
-class NW_Alignment {
-private:
-        double maxGap;
-        char **tracebackArr;
-        int **s;
-        size_t maxSize;
-        double matchScore;
-        double mismatchPenalty;
-        double gapPenalty;
-        double max(double x, double y);
-        double max(double x, double y, double z);
-        void    traceback(string& s1,string& s2,char **traceback );
-        void alocateMemory();
-        void deAlocateMemory();
-
-public:
-        NW_Alignment();
-        ~NW_Alignment();
-        string getaligned(string a,string b,string c);
-        bool isEqual(string a, string b);
-        int findQualityDistance(string a, string b,string q) ;
-        double get_similarity_per(string s1,string s2);
-        double enhancedAlignment(string &s1, string &s2);
-        int findDirectSim(string const &a, string const &b) ;
-        double get_similarity_perEnhanced(string s1,string s2);
-};
 
 // ============================================================================
 // ALIGNMENT CLASS

@@ -48,8 +48,7 @@ void DBGraph::initialize()
     minCertainVlueCov=2;
     minSafeValueCov=2.5;
     minRedLineValueCov=3;
-    kmerSize= settings.getK();
-    estimatedKmerCoverage=(coverage/readLength)*(readLength-kmerSize+1)/12;
+    estimatedKmerCoverage=(coverage/readLength)*(readLength-Kmer::getK()+1)/12;
     estimatedMKmerCoverageSTD=sqrt( estimatedKmerCoverage);
     certainVlueCov=minCertainVlueCov;
     safeValueCov=minSafeValueCov;
@@ -852,7 +851,7 @@ size_t DBGraph::updateGraphSize()
 
         numExtractedNodes++;
         //check later for adding kmerSize
-        sizeOfGraph=sizeOfGraph +node.getMarginalLength()+kmerSize;
+        sizeOfGraph=sizeOfGraph +node.getMarginalLength()+ Kmer::getK();
         KmerOverlap ol;
         for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
             char c = getSSNode(it->getNodeID()).getRightKmer().peekNucleotideLeft();

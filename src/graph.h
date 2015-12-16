@@ -179,7 +179,6 @@ private:
     MapType mapType;
 
     double coverage;//=100;
-    int kmerSize;//=31;
 
     double totalRAM;
 
