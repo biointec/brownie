@@ -25,7 +25,6 @@
 #include "settings.h"
 #include "kmeroverlap.h"
 #include "kmeroverlaptable.h"
-#include "graph.h"
 #include "kmertable.h"
 #include "readcorrection.h"
 
@@ -51,9 +50,10 @@ void Brownie::printInFile()
         cout << "Welcome to Brownie\n" << endl;
 }
 
-void Brownie::parameterEstimationInStage4(double & estimatedKmerCoverage,double& estimatedMKmerCoverageSTD, double &cutOffvalue ){
+void Brownie::parameterEstimationInStage4( DBGraph & graph ){
         cout <<endl<< " ================ Parameter Estimation ===============" << endl;
-        double readLength=libraries.getReadLength();
+        double  estimatedKmerCoverage=0,estimatedMKmerCoverageSTD=0, cutOffvalue=0, readLength=0;
+        readLength=libraries.getReadLength();
         if (readLength<=settings.getK() ||readLength>500)
                 readLength=250;
 
@@ -62,6 +62,7 @@ void Brownie::parameterEstimationInStage4(double & estimatedKmerCoverage,double&
         testgraph.loadGraphBin(getBinNodeFilename(3),
                                getBinArcFilename(3),
                                getMetaDataFilename(3));
+        testgraph.readLength=readLength;
         #ifdef DEBUG
         testgraph.compareToSolution(getTrueMultFilename(3), true);
         #endif
@@ -82,6 +83,16 @@ void Brownie::parameterEstimationInStage4(double & estimatedKmerCoverage,double&
         cout<<"cutOffvalue:"<<cutOffvalue<<endl;
         testgraph.updateGraphSize();
         testgraph.clear();
+           //initialize values for graph parameter based on test graph.
+        graph.estimatedKmerCoverage=estimatedKmerCoverage;
+        graph.estimatedMKmerCoverageSTD=estimatedMKmerCoverageSTD;
+        graph.cutOffvalue=cutOffvalue;
+        graph.readLength=readLength;
+        graph.maxNodeSizeToDel=readLength*4;
+        graph.redLineValueCov=cutOffvalue;
+        graph.certainVlueCov=cutOffvalue*.3;
+        graph.safeValueCov=cutOffvalue*.7;
+
 }
 
 
@@ -226,17 +237,16 @@ void Brownie::stageFour()
                 "skipping stage 4..." << endl << endl;
                  return;
         }
-        double  estimatedKmerCoverageMean=0, estimatedMKmerCoverageSTD=0,cutOffvalue=0;
-        parameterEstimationInStage4( estimatedKmerCoverageMean,estimatedMKmerCoverageSTD,cutOffvalue );
+        DBGraph graph(settings);
+        double  estimatedKmerCoverageMean=0, estimatedMKmerCoverageSTD=0,cutOffvalue=0, readLength;
+        parameterEstimationInStage4(  graph );
         Util::startChrono();
         cout << "Creating graph... ";
-        DBGraph graph(settings);
         graph.loadGraphBin(getBinNodeFilename(3),
                            getBinArcFilename(3),
                            getMetaDataFilename(3));
-        graph.estimatedKmerCoverage=estimatedKmerCoverageMean;
-        graph.estimatedMKmerCoverageSTD=estimatedMKmerCoverageSTD;
-        graph.cutOffvalue=cutOffvalue;
+
+
         cout.flush();
         cout << "done (" << graph.getNumNodes() << " nodes, "
              << graph.getNumArcs() << " arcs)" << endl;

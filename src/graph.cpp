@@ -42,7 +42,7 @@ DBGraph::DBGraph(const Settings& settings) : table(NULL), settings(settings),
 void DBGraph::initialize()
 {
     //correct it later it should read this information from setting file, but setting dosn't have such infomratin right now
-    avgreadLength=1;
+
     readLength=100;//settings.getReadLength();
     coverage=100;//settings.getCoverage();
     minCertainVlueCov=2;
@@ -56,32 +56,9 @@ void DBGraph::initialize()
     updateCutOffValueRound=1;
     maxNodeSizeToDel=readLength*4;
     cutOffvalue=redLineValueCov;
-    sizeOfGraph=settings.getGenomeSize();
 }
 
 
-/**
- * estimate the kmer node coverage and std for the nodes in graph
- * @estimatedKmerCoverage return value for getNodeKmerCov
- * @estimatedMKmerCoverageSTD return the STD
- *
- */
-void DBGraph::parameterEstimation(double & estimatedKmerCoverage,double& estimatedMKmerCoverageSTD ){
-
-        cout <<endl<< " ================ Parameter Estimation ===============" << endl;
-        cout << "Loading test graph for initial parameter estimation" << endl;
-        clipTips(0);
-        mergeSingleNodes(true);
-        filterCoverage(cutOffvalue);
-        mergeSingleNodes(true);
-        extractStatistic(0);
-        cout<<"Estimated Kmer Coverage Mean: "<<estimatedKmerCoverage<<endl;
-        cout<<"Estimated Kmer Coverage STD: "<<estimatedMKmerCoverageSTD<<endl;
-        cout<<"Maximum node size to delete is: "<<maxNodeSizeToDel<<endl;
-        estimatedKmerCoverage=estimatedKmerCoverage;
-        estimatedMKmerCoverageSTD=estimatedMKmerCoverageSTD;
-
-}
 
 /**
  * this routine manipulate graph to detect erroneous nodes and delete them
@@ -290,18 +267,6 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
         }
         sexpcovFile.close();
         expcovFile.close();
-      /*  if (updateCutOffValueRound==1){
-                string correctCluster=settings.getTempDirectory()+"correcNodeCluster.dta";
-                string erroneousCluster=settings.getTempDirectory()+"erroneousCluster.dat";
-                ExpMaxClustering exp(sFileName,erroneousCluster,correctCluster,.01,1, estimatedKmerCoverage );
-                exp.doClassification();
-                this->erroneousClusterMean=exp.curErronousClusterMean;
-                this->correctClusterMean=exp.curCorrectClusterMean;
-                this->cutOffvalue=exp.findIntersectionPoint(1,estimatedKmerCoverage);
-                cout<<"IntersectionPoint based two curves: "<<exp.intersectionPoint<<endl;
-                cout<<"cutOff value: "<<this->cutOffvalue<<endl;
-        }*/
-
         #ifdef DEBUG
         string address =" plot.dem";
         string command="gnuplot -e  \"filename='"+sFileName+"'\" -e \"outputfile='"+outputFileName+"'\""+address;
@@ -867,10 +832,10 @@ size_t DBGraph::updateGraphSize()
         nodeLengths.push_back(node.getLength());
     }
 
-    numberOfValidNodes=numExtractedNodes;
+
 #ifdef DEBUG
     cout<<"size of graph: "<<sizeOfGraph<<endl;
-    cout<<"number of valid Node: "<<numberOfValidNodes<<endl;
+    cout<<"number of valid Node: "<<numExtractedNodes<<endl;
     cout << "Extracted " << numExtractedNodes << " nodes and "
          << numExtractedArcs << " arcs." << endl;
 #endif

@@ -21,7 +21,7 @@
 
 #ifndef BROWNIE_H
 #define BROWNIE_H
-
+#include "graph.h"
 #include "settings.h"
 #include "library.h"
 #include <vector>
@@ -202,7 +202,7 @@ public:
          * estimate kmer NodeKmerCoverageMean and STD with manipulating a test graph.
          *
          */
-        void parameterEstimationInStage4(double & estimatedKmerCoverage,double& estimatedMKmerCoverageSTD, double &cutOffvalue );
+        void parameterEstimationInStage4( DBGraph & graph );
         /**
          * redirect the output to file stream
          *

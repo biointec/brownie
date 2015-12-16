@@ -189,16 +189,7 @@ private:
 #endif
 
 public:
-    enum readCorrectionStatus {
 
-        kmerfound,
-        fullHealing,
-        parHealing,
-        kmerNotfound,
-        graphIsMissing,
-        anotherKmer
-
-    };
     static const DBGraph* graph;
     double estimatedKmerCoverage;
     double estimatedMKmerCoverageSTD;
@@ -209,15 +200,16 @@ public:
     double safeValueCov;
     double redLineValueCov;
     double cutOffvalue;
+
+    double readLength;
+    //this variable shows the Maximum node size which can be deleted, which is calculated based on the read readLength
     size_t maxNodeSizeToDel;
     int updateCutOffValueRound;
-    size_t avgreadLength;
+
     size_t n50;
-    int numberOfValidNodes;
     size_t sizeOfGraph;
-    double erroneousClusterMean;
-    double correctClusterMean;
-    double readLength;//=100;
+
+
     /**
      * Careful concatenation, taking into account the estimated multiplicity
      */
@@ -511,7 +503,7 @@ public:
     void graphPurification(string trueMultFilename,
                            const LibraryContainer& libraries);
 
-    void parameterEstimation(double & estimatedKmerCoverage,double& estimatedMKmerCoverageSTD );
+
 };
 
 #endif
