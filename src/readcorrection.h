@@ -240,7 +240,7 @@ public:
         /**
          * Destructor
          */
-        ~ReadCorrectionHandler() { delete sa; }
+        ~ReadCorrectionHandler();
 
         /**
          * Perform error correction in the libaries

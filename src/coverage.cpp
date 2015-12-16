@@ -88,8 +88,7 @@ void DBGraph::countNodeandArcFrequency(LibraryContainer &inputs)
 
         cout << "Populating table... ";
         cout.flush();
-        table = new KmerNodeTable(settings, numNodes);
-        table->populateTable (nodes);
+        populateTable();
         cout << "done" << endl;
 
         cout << "Number of threads: " << numThreads << endl;
@@ -108,7 +107,7 @@ void DBGraph::countNodeandArcFrequency(LibraryContainer &inputs)
 
         inputs.joinIOThreads();
 
-        delete table;
+        depopulateTable();
 }
 
 // ============================================================================

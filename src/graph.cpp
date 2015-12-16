@@ -907,6 +907,10 @@ void DBGraph::populateTable() {
         table->populateTable(nodes);
 }
 
+void DBGraph::depopulateTable() {
+        delete table; table = NULL;
+}
+
 bool DBGraph::kmerExistsInGraph(Kmer const &kmer) const {
         return getNodePosPair(kmer).isValid();
 }

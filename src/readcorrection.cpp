@@ -631,3 +631,8 @@ ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
         dbg.populateTable();
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 }
+ReadCorrectionHandler::~ReadCorrectionHandler()
+{
+        delete sa;
+        dbg.depopulateTable();
+}
