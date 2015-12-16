@@ -111,6 +111,13 @@ void sparseSA::computeChild() {
             }
             stapelNL.push(i);
         }
+        /*
+         *	Fix last entry of child array
+         *	Technically this last entry should be empty, since it contains 
+         *	an element from the down array, and down[i] > i. However, by
+         *	setting it to N/K-1, this case requires no special handling.
+         */
+        CHILD[N / K - 1] = N / K - 1;
 }
 
 //TODO: add error handling and messages
