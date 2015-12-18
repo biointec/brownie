@@ -79,8 +79,9 @@ void DBGraph::graphPurification(string trueMultFilename,
         int round=1;
         updateGraphSize();
         size_t maxBubbleDepth=maxNodeSizeToDel;
-        size_t increamentDepth = libraries.getReadLength();
+        size_t increamentDepth = readLength;
         bool simplified = true;
+
         while (simplified ) {// &&
                 //
                 //*******************************************************
@@ -119,6 +120,7 @@ void DBGraph::graphPurification(string trueMultFilename,
                 extractStatistic(round);
                 cout <<endl<< " ========== Delete Unreliable Nodes starts ===========" << endl;
                 bool deleted=deleteUnreliableNodes();
+                mergeSingleNodes(false);
                 continuEdit=deleted;
                 while(continuEdit){
                         continuEdit=deleteUnreliableNodes();
@@ -152,11 +154,13 @@ void DBGraph::updateCutOffValue(int round)
         #ifdef DEBUG
         //this part are going to make plot
         if (updateCutOffValueRound==1){
-                      string command = "mkdir " + settings.getTempDirectory() + "cov";
-        system(command.c_str());
-        command="rm "+settings.getTempDirectory() + "cov/* && rm "+settings.getTempDirectory() + "cov/*.dat";
-        cout<<command<<endl;
-        system(command.c_str());
+
+                string command="rm "+settings.getTempDirectory() + "cov/*";
+                cout<<command<<endl;
+                system(command.c_str());
+                command = "mkdir " + settings.getTempDirectory() + "cov";
+                system(command.c_str());
+                cout<<command<<endl;
         }
         char roundStr[15];
         sprintf(roundStr, "%d", round);
@@ -201,7 +205,7 @@ void DBGraph::updateCutOffValue(int round)
                 if (intervalCount!=0)
                         frequencyArray.push_back(make_pair(make_pair( sumOfMarginalLenght, correctNodeMarginalLength) , make_pair(representative,intervalCount)));
                 St=St+Interval;
-                if (St>graph->estimatedKmerCoverage+graph->estimatedMKmerCoverageSTD*3)
+                if (St>estimatedKmerCoverage+estimatedMKmerCoverageSTD*3)
                         break;
         }
         if (frequencyArray.size()>0)
@@ -267,12 +271,12 @@ void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > 
         }
         sexpcovFile.close();
         expcovFile.close();
-        #ifdef DEBUG
-        string address =" plot.dem";
-        string command="gnuplot -e  \"filename='"+sFileName+"'\" -e \"outputfile='"+outputFileName+"'\""+address;
-        system(command.c_str());
-        cout<<command<<endl;
-        #endif
+        //#ifdef DEBUG
+        //string address =" plot.dem";
+        //string command="gnuplot -e  \"filename='"+sFileName+"'\" -e \"outputfile='"+outputFileName+"'\""+address;
+        //system(command.c_str());
+        //cout<<command<<endl;
+        //#endif
 
 }
 

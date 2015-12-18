@@ -202,7 +202,7 @@ public:
          * estimate kmer NodeKmerCoverageMean and STD with manipulating a test graph.
          *
          */
-        void parameterEstimationInStage4( DBGraph & graph );
+        void parameterEstimationInStage4( DBGraph &graph );
         /**
          * redirect the output to file stream
          *

@@ -50,12 +50,12 @@ void Brownie::printInFile()
         cout << "Welcome to Brownie\n" << endl;
 }
 
-void Brownie::parameterEstimationInStage4( DBGraph & graph ){
+void Brownie::parameterEstimationInStage4(DBGraph &graph){
         cout <<endl<< " ================ Parameter Estimation ===============" << endl;
         double  estimatedKmerCoverage=0,estimatedMKmerCoverageSTD=0, cutOffvalue=0, readLength=0;
         readLength=libraries.getReadLength();
         if (readLength<=settings.getK() ||readLength>500)
-                readLength=250;
+                readLength=150;
 
         cout << "Loading test graph for initial parameter estimation" << endl;
         DBGraph testgraph(settings);
@@ -73,7 +73,7 @@ void Brownie::parameterEstimationInStage4( DBGraph & graph ){
         testgraph.extractStatistic(0);
         cout<<"Estimated Kmer Coverage Mean: "<<testgraph.estimatedKmerCoverage<<endl;
         cout<<"Estimated Kmer Coverage STD: "<<testgraph.estimatedMKmerCoverageSTD<<endl;
-        cout<<"Maximum node size to delete is: "<<testgraph.maxNodeSizeToDel<<endl;
+
         estimatedKmerCoverage=testgraph.estimatedKmerCoverage;
         estimatedMKmerCoverageSTD=testgraph.estimatedMKmerCoverageSTD;
         double estimatedErroneousKmerCoverage=1+estimatedKmerCoverage/100;
@@ -92,6 +92,16 @@ void Brownie::parameterEstimationInStage4( DBGraph & graph ){
         graph.redLineValueCov=cutOffvalue;
         graph.certainVlueCov=cutOffvalue*.3;
         graph.safeValueCov=cutOffvalue*.7;
+
+        cout <<"EstimatedKmerCoverage:          "<<graph.estimatedKmerCoverage<<endl;
+        cout <<"EstimatedMKmerCoverageSTD:      "<<graph.estimatedMKmerCoverageSTD<<endl;
+        cout <<"cutOffvalue:                    "<<graph.cutOffvalue<<endl;
+        cout <<"readLength:                     "<<graph.readLength<<endl;
+        cout <<"maxNodeSizeToDel:               "<<graph.maxNodeSizeToDel<<endl;
+        cout <<"redLineValueCov:                "<<graph.redLineValueCov<<endl;
+        cout <<"certainVlueCov:                 "<<graph.certainVlueCov<<endl;
+        cout <<"safeValueCov:                   "<<graph.safeValueCov<<endl;
+        cout<<"End of parameter estimation ..."<<endl;
 
 }
 
@@ -229,7 +239,6 @@ void Brownie::stageFour()
         // ============================================================
         // STAGE 4 : GRAPH SIMPLIFICATION
         // ============================================================
-
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
         if (!stageFourNecessary()) {
@@ -238,8 +247,8 @@ void Brownie::stageFour()
                  return;
         }
         DBGraph graph(settings);
-        double  estimatedKmerCoverageMean=0, estimatedMKmerCoverageSTD=0,cutOffvalue=0, readLength;
-        parameterEstimationInStage4(  graph );
+        parameterEstimationInStage4( graph );
+
         Util::startChrono();
         cout << "Creating graph... ";
         graph.loadGraphBin(getBinNodeFilename(3),
