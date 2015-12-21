@@ -295,6 +295,7 @@ vector<pair<vector<NodeID>, vector<NodeID> > >  DBGraph::searchForParallelNodes(
         priority_queue<PathInfo, vector<PathInfo>, comparator> heap;
         heap.push(PathInfo(lID, 0));
         vector<pair<vector<NodeID>, vector<NodeID> > > parallelNodes;
+        size_t visitedNodesLimit=1000;
         while(!heap.empty()) {
                 PathInfo currTop = heap.top();
                 heap.pop();
@@ -327,6 +328,8 @@ vector<pair<vector<NodeID>, vector<NodeID> > >  DBGraph::searchForParallelNodes(
 
                                 size_t nextLength = currLength + next.getMarginalLength();
                                 if (nextLength > maxLength)
+                                        continue;
+                                if (visited.size()>visitedNodesLimit)
                                         continue;
                                 PathInfo nextTop(nextID, nextLength);
                                 heap.push(nextTop);

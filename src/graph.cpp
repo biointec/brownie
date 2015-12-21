@@ -81,7 +81,6 @@ void DBGraph::graphPurification(string trueMultFilename,
         size_t maxBubbleDepth=maxNodeSizeToDel;
         size_t increamentDepth = readLength;
         bool simplified = true;
-
         while (simplified ) {// &&
                 //
                 //*******************************************************
@@ -95,7 +94,7 @@ void DBGraph::graphPurification(string trueMultFilename,
                 }
                 //*******************************************************
                 bool bubble=false;
-                size_t depth=settings.getK()+1;
+                size_t depth=settings.getK();
                 #ifdef DEBUG
                 updateCutOffValue(round);
                 compareToSolution(trueMultFilename, false);
@@ -120,11 +119,11 @@ void DBGraph::graphPurification(string trueMultFilename,
                 extractStatistic(round);
                 cout <<endl<< " ========== Delete Unreliable Nodes starts ===========" << endl;
                 bool deleted=deleteUnreliableNodes();
-                mergeSingleNodes(false);
+                mergeSingleNodes(true);
                 continuEdit=deleted;
                 while(continuEdit){
                         continuEdit=deleteUnreliableNodes();
-                        mergeSingleNodes(false);
+                        mergeSingleNodes(true);
                         extractStatistic(round);
                 }
                 while(mergeSingleNodes(true));

@@ -111,13 +111,6 @@ void sparseSA::computeChild() {
             }
             stapelNL.push(i);
         }
-        /*
-         *	Fix last entry of child array
-         *	Technically this last entry should be empty, since it contains 
-         *	an element from the down array, and down[i] > i. However, by
-         *	setting it to N/K-1, this case requires no special handling.
-         */
-        CHILD[N / K - 1] = N / K - 1;
 }
 
 //TODO: add error handling and messages
@@ -333,8 +326,8 @@ void sparseSA::radixStep(int *t_new, int *SA, long &bucketNr, long *BucketBegin,
     else {
       // American flag sort of McIlroy et al. 1993. BucketBegin keeps
       // track of current position where to add to bucket set.
-      int tmp = SA[ BucketBegin[ (int)S[ SA[pos]*K + h ] ] ];
-      SA[ BucketBegin[ (int)S[ SA[pos]*K + h] ]++ ] = SA[pos];  // Move bucket beginning to the right, and replace
+      int tmp = SA[ BucketBegin[ S[ SA[pos]*K + h ] ] ];
+      SA[ BucketBegin[ S[ SA[pos]*K + h] ]++ ] = SA[pos];  // Move bucket beginning to the right, and replace
       SA[ pos ] = tmp; // Save value at bucket beginning.
       if (S[ SA[pos]*K + h ] == currentKey) pos++; // Advance to next position if the right character.
     }
@@ -432,20 +425,19 @@ void sparseSA::traverse(const string &P, long prefix, interval_t &cur, int min_l
 void sparseSA::traverse_faster(const string &P,const long prefix, interval_t &cur, int min_len) const {
         if(cur.depth >= min_len) return;
         int c = prefix + cur.depth;
-        bool intervalFound = c < (int)P.length();
+        bool intervalFound = c < P.length();
         int curLCP;//check if this is correct for root interval (unlikely case)
         if(cur.start < CHILD[cur.end] && CHILD[cur.end] <= cur.end)
             curLCP = LCP[CHILD[cur.end]];
-        else {
+        else
             curLCP = LCP[CHILD[cur.start]];
-        }
         if(intervalFound && cur.size() > 1 && curLCP == cur.depth)
             intervalFound = top_down_child(P[c], cur);
         else if(intervalFound)
             intervalFound = P[c] == S[SA[cur.start]+cur.depth];
         bool mismatchFound = false;
         while(intervalFound && !mismatchFound &&
-                c < (int)P.length() && cur.depth < min_len){
+                c < P.length() && cur.depth < min_len){
             c++;
             cur.depth++;
             if(cur.start != cur.end){
@@ -458,17 +450,17 @@ void sparseSA::traverse_faster(const string &P,const long prefix, interval_t &cu
                     childLCP = LCP[CHILD[cur.start]];
                 int minimum = min(childLCP,min_len);
                 //match along branch
-                while(!mismatchFound && c < (int)P.length() && cur.depth < minimum){
+                while(!mismatchFound && c < P.length() && cur.depth < minimum){
                     mismatchFound = S[SA[cur.start]+cur.depth] != P[c];
                     c++;
                     cur.depth += !mismatchFound;
                 }
-                intervalFound = c < (int)P.length() && !mismatchFound &&
+                intervalFound = c < P.length() && !mismatchFound &&
                         cur.depth < min_len && top_down_child(P[c], cur);
             }
             else{
-                while(!mismatchFound && c < (int)P.length() && cur.depth < min_len){
-                    mismatchFound = SA[cur.start]+cur.depth >= (long int)S.length() ||
+                while(!mismatchFound && c < P.length() && cur.depth < min_len){
+                    mismatchFound = SA[cur.start]+cur.depth >= S.length() ||
                             S[SA[cur.start]+cur.depth] != P[c];
                     c++;
                     cur.depth += !mismatchFound;
