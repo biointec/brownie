@@ -655,6 +655,9 @@ void sparseSA::findMEM(long k, const string &P, vector<match_t> &matches, int mi
 			}
 		}
 	}
+	//checkMatches(P, matches, min_len);
+	//memCount += matches.size();
+	//std::cerr << memCount << "\n";
 	if(print) print_match(match_t(), matches);   // Clear buffered matches.
 }
 
@@ -896,3 +899,21 @@ void sparseSA::MEM(string &P, vector<match_t> &matches, int min_len, bool print,
   }
 }
 
+void sparseSA::checkMatches(std::string const &P,
+	std::vector<match_t> const &matches, int const min_len) const 
+{
+	for ( int i = 0; i < matches.size(); ++i) {
+		match_t m = matches[i];
+		std::string r = "";
+		for (int j = 0; j < m.len; ++j) {
+			r += S[m.ref + j];
+		}
+		std::string q = "";
+		for (int j = 0; j < m.len; ++j) {
+			q += P[m.query + j];
+		}
+		if (r != q || min_len > m.len) {
+			std::cerr << "error in match of size " << min_len << "! " << std::endl << r << std::endl << q << std::endl;
+		}
+	}
+}
