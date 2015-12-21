@@ -273,7 +273,7 @@ void Brownie::stageFour()
         cout<<"graph size: "<<graph.sizeOfGraph<<endl;
         graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));
         cout<<"N50 is: "<<graph.n50<<endl;
-        cout << " Ghraph correction completed in "
+        cout << " Graph correction completed in "
         << Util::stopChrono() << "s." << endl;
         Util::startChrono();
 
