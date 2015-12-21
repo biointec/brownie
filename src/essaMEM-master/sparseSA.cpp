@@ -423,19 +423,17 @@ void sparseSA::traverse(const string &P, long prefix, interval_t &cur, int min_l
 // until mismatch or min_len characters reached.
 // Uses the child table for faster traversal
 void sparseSA::traverse_faster(const string &P,const long prefix, interval_t &cur, int min_len) const {
-	if (cur.depth >= min_len) return;
-	int c = prefix + cur.depth;
-	bool intervalFound = c < (int)P.length();
-	int curLCP;//check if this is correct for root interval (unlikely case)
-	if (cur.start < CHILD[cur.end] && CHILD[cur.end] <= cur.end) {
-		curLCP = LCP[CHILD[cur.end]];
-	} else {
-		curLCP = LCP[CHILD[cur.start]];
-	}
-	if (intervalFound && cur.size() > 1 && curLCP == cur.depth) {
-		intervalFound = top_down_child(P[c], cur);
-	} else if (intervalFound) {
-		intervalFound = P[c] == S[SA[cur.start] + cur.depth];
+	if (cur.depth >= min_len) return; //we reached the min length
+	int c = prefix + cur.depth; //position in string of current char
+	if (c >= (int)P.length()) return; //we reached the end of the prefix
+	bool intervalFound = false; //true if we can extend the match by 1
+	if (cur.start != cur.end) {
+		int curLCP = LCP[get_first_l(cur.start, cur.end)];
+		if (curLCP == cur.depth) {
+			intervalFound = top_down_child(P[c], cur);
+		}
+	} else { //singleton
+		intervalFound = P[c] == S[SA[cur.start]+cur.depth];
 	}
 	bool mismatchFound = false;
 	while (intervalFound && !mismatchFound &&
@@ -444,17 +442,13 @@ void sparseSA::traverse_faster(const string &P,const long prefix, interval_t &cu
 		c++;
 		cur.depth++;
 		if (cur.start != cur.end) {
-			int childLCP;
+			//lcp interval
+			int childLCP = LCP[get_first_l(cur.start, cur.end)];
 			//calculate LCP of child node, which is now cur. the LCP value
 			//of the parent is currently c - prefix
-			if (cur.start < CHILD[cur.end] && CHILD[cur.end] <= cur.end) {
-				childLCP = LCP[CHILD[cur.end]];
-			}
-			else
-				childLCP = LCP[CHILD[cur.start]];
-			int minimum = min(childLCP,min_len);
+			int minimum = min(childLCP, min_len);
 			//match along branch
-			while(!mismatchFound && c < (int)P.length()
+			while (!mismatchFound && c < (int)P.length()
 				&& cur.depth < minimum)
 			{
 				mismatchFound = S[SA[cur.start] + cur.depth] != P[c];
@@ -464,6 +458,7 @@ void sparseSA::traverse_faster(const string &P,const long prefix, interval_t &cu
 			intervalFound = c < (int)P.length() && !mismatchFound &&
 				cur.depth < min_len && top_down_child(P[c], cur);
 		} else {
+			//singleton
 			while (!mismatchFound && c < (int)P.length()
 				&& cur.depth < min_len)
 			{
@@ -476,35 +471,58 @@ void sparseSA::traverse_faster(const string &P,const long prefix, interval_t &cu
 	}
 }
 
+//finds the first l index of the lcp interval
+int sparseSA::get_first_l(int const start, int const end) const {
+	/*
+	 *	if cur.end = N / K - 1 and CHILD[N / K - 1]] = -1, then
+	 *	CHILD[end] < start and the condition is false
+	 */
+	if(/*end != N / K - 1 &&*/ start < CHILD[end]
+		&& CHILD[end] <= end)
+	{
+		return CHILD[end];
+	} else {
+		return CHILD[start];
+	}
+}
+
 //finds the child interval of cur that starts with character c
 //updates left and right bounds of cur to child interval if found, or returns
 //cur if not found (also returns true/false if found or not)
 bool sparseSA::top_down_child(char c, interval_t &cur) const {
 	long left = cur.start;
-	long right = CHILD[cur.end];
-	if (cur.start >= right || right > cur.end) {
-		right = CHILD[cur.start];
-	}
+	long right = get_first_l(cur.start, cur.end);
 	//now left and right point to first child
-	if (S[SA[cur.start] + cur.depth] == c) {
+	if(S[SA[cur.start] + cur.depth] == c){
+		//cur.start = left; //left is cur.start already !
 		cur.end = right - 1;
 		return true;
 	}
 	left = right;
 	//while has next L-index
-	while (CHILD[right] > right && LCP[right] == LCP[CHILD[right]]) {
+	/*
+	 *	if right = N / K - 1 and CHILD[N / K - 1]] = -1, then
+	 *	CHILD[right] < right and the condition is false
+	 */
+	while(/*right != N / K - 1 &&*/ CHILD[right] > right
+		&& LCP[right] == LCP[CHILD[right]])
+	{
 		right = CHILD[right];
-		if (S[SA[left] + cur.depth] == c) {
-			cur.start = left; cur.end = right - 1;
+		if(S[SA[left] + cur.depth] == c){
+			cur.start = left;
+			cur.end = right - 1;
 			return true;
 		}
 		left = right;
 	}
 	//last interval
-	if (S[SA[left] + cur.depth] == c) {
+	//right = cur.end;
+	if(S[SA[left] + cur.depth] == c){
 		cur.start = left;
+		//cur.end = right; //right is cur.end already !
 		return true;
 	}
+	//none of the children start with c
 	return false;
 }
 
