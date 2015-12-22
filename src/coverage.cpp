@@ -317,7 +317,7 @@ bool DBGraph::deleteExtraAttachedNodes(){
         for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
                 if (lID % OUTPUT_FREQUENCY == 0)
                         (cout << "Extracting node -" <<numNodes<< "/ "<<lID<<" /"<<numNodes
-                        << " from graph.\r").flush();
+                        << " from graph        \r").flush();
                 if (lID==0)
                         continue;
                 SSNode node = getSSNode ( lID );
@@ -364,7 +364,7 @@ bool DBGraph::deleteExtraAttachedNodes(){
         }
         cout<<endl;
         if (numOfDel>0)
-                cout<<"number of deleted nodes in deleteExtraAttachedNodes: "<<numOfDel<<endl;
+                cout << "Number of deleted nodes in deleteExtraAttachedNodes: " << numOfDel << endl;
         #ifdef DEBUG
         cout<< "TP:     "<<tp<<"        TN:     "<<tn<<"        FP:     "<<fp<<"        FN:     "<<fn<<endl;
         cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
@@ -435,7 +435,7 @@ bool DBGraph::connectSameMulNodes(){
         }
 
         if (numOfDel>0)
-                cout<<"number of deleted nodes in connectSameMulNodes: "<<numOfDel<<endl;
+                cout << "Number of deleted nodes in connectSameMulNodes: " << numOfDel << endl;
         #ifdef DEBUG
         cout<<endl<<"second FP: "<<secondFP<<endl;
         cout<<"second TP: "<<secondTP<<endl;
@@ -707,9 +707,9 @@ double DBGraph::estimateReadStartCoverage ( const ReadLibrary &input,
  */
 bool DBGraph::filterCoverage(float cutOff)
 {
-        cout <<endl<< " ================== Filter Coverage ==================" << endl;
+        cout << endl << " ================== Coverage Filter ==================" << endl;
 
-        cout<<"CutOff value for removing nodes is: "<<cutOff<<endl;
+        cout << "Cut-off value for removing nodes: " << cutOff << endl;
         int tp=0;
         int tn=0;
         int fp=0;
@@ -749,7 +749,7 @@ bool DBGraph::filterCoverage(float cutOff)
                         #endif
                 }
         }
-        cout << "Number nodes deleted base on coverage: " << numFiltered<<endl;
+        cout << "Number of nodes deleted based on coverage: " << numFiltered<<endl;
         #ifdef DEBUG
         cout << " Gain value is ("<<100*((double)(tp-fp)/(double)(tp+fn))<< "%)"<<endl;
         cout<< "TP:     "<<tp<<"        TN:     "<<tn<<"        FP:     "<<fp<<"        FN:     "<<fn<<endl;
@@ -758,7 +758,6 @@ bool DBGraph::filterCoverage(float cutOff)
         #endif
 
         return numFiltered > 0;
-
 }
 
 /**

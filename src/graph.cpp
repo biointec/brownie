@@ -99,14 +99,14 @@ void DBGraph::graphPurification(string trueMultFilename,
                 updateCutOffValue(round);
                 compareToSolution(trueMultFilename, false);
                 #endif
-                cout <<endl<< " ================= Bubble Detection ==================" << endl;
+                cout << endl << " ================= Bubble Detection ==================" << endl;
                 bubble= bubbleDetection(depth);
                 mergeSingleNodes(true);
                 bool continuEdit=true;
                 size_t maxDepth=(round)*increamentDepth>maxBubbleDepth?maxBubbleDepth:(round)*increamentDepth;
                 while(depth<maxDepth&& continuEdit){
                         depth=depth+increamentDepth;
-                        cout<<"bubble depth: "<<depth <<endl;
+                        cout << "Bubble depth: " << depth << endl;
                         continuEdit= bubbleDetection(depth);
                         if (continuEdit)
                                 mergeSingleNodes(true);
@@ -117,7 +117,7 @@ void DBGraph::graphPurification(string trueMultFilename,
                 updateCutOffValue(round);
                 #endif
                 extractStatistic(round);
-                cout <<endl<< " ========== Delete Unreliable Nodes starts ===========" << endl;
+                cout << endl << " ============= Delete Unreliable Nodes  ==============" << endl;
                 bool deleted=deleteUnreliableNodes();
                 mergeSingleNodes(true);
                 continuEdit=deleted;
@@ -232,9 +232,9 @@ void DBGraph::updateCutOffValue(int round)
 
         this->updateCutOffValueRound++;
 
-        cout<<"certainValue: "<<this->certainVlueCov<<endl;
-        cout<<"safeValue: "<<this->safeValueCov<<endl;
-        cout<<"redLineValue: "<<this->redLineValueCov<<endl;
+        cout << "Certain value: " << this->certainVlueCov << endl;
+        cout << "Safe value: " << this->safeValueCov << endl;
+        cout << "Red line value: " << this->redLineValueCov << endl;
 }
 void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > >& frequencyArray){
 

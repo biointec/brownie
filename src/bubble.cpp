@@ -362,7 +362,7 @@ bool DBGraph::bubbleDetection(int depth) {
         for (NodeID lID = -numNodes; lID <numNodes; lID++) {
                 if (lID % OUTPUT_FREQUENCY == 0)
                         (cout << "Extracting node -" <<numNodes<< "/ "<<lID<<" /"<<numNodes
-                        << " from graph.\r").flush();
+                        << " from graph          \r").flush();
                 if ( lID == 0 )
                         continue;
                 SSNode node = getSSNode(lID);
@@ -474,7 +474,7 @@ bool DBGraph::bubbleDetection(int depth) {
         cout<<"Specificity: ("<<100*((double)TN/(double)(TN+FP))<<"%)"<<endl;
         #endif
         if (numOfDel>0)
-        cout<<"number of  deleted nodes based on bubble detection: "<<numOfDel<<endl;
+        cout << "Number of deleted nodes based on bubble detection: " << numOfDel << endl;
         if (numOfDel !=0)
                 return true;
         return false;

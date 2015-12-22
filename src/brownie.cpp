@@ -71,8 +71,8 @@ void Brownie::parameterEstimationInStage4(DBGraph &graph){
         testgraph.filterCoverage(testgraph.cutOffvalue);
         testgraph.mergeSingleNodes(true);
         testgraph.extractStatistic(0);
-        cout<<"Estimated Kmer Coverage Mean: "<<testgraph.estimatedKmerCoverage<<endl;
-        cout<<"Estimated Kmer Coverage STD: "<<testgraph.estimatedMKmerCoverageSTD<<endl;
+        cout << "Estimated Kmer coverage mean: " << testgraph.estimatedKmerCoverage << endl;
+        cout << "Estimated Kmer coverage std:  " << testgraph.estimatedMKmerCoverageSTD << endl;
 
         estimatedKmerCoverage=testgraph.estimatedKmerCoverage;
         estimatedMKmerCoverageSTD=testgraph.estimatedMKmerCoverageSTD;
@@ -80,7 +80,7 @@ void Brownie::parameterEstimationInStage4(DBGraph &graph){
         double e=2.718281;
         double c=estimatedErroneousKmerCoverage/estimatedKmerCoverage;
         cutOffvalue =(estimatedErroneousKmerCoverage-estimatedKmerCoverage)* (log(e)/log(c));
-        cout<<"cutOffvalue:"<<cutOffvalue<<endl;
+
         testgraph.updateGraphSize();
         testgraph.clear();
            //initialize values for graph parameter based on test graph.
@@ -93,18 +93,16 @@ void Brownie::parameterEstimationInStage4(DBGraph &graph){
         graph.certainVlueCov=cutOffvalue*.3;
         graph.safeValueCov=cutOffvalue*.7;
 
-        cout <<"EstimatedKmerCoverage:          "<<graph.estimatedKmerCoverage<<endl;
-        cout <<"EstimatedMKmerCoverageSTD:      "<<graph.estimatedMKmerCoverageSTD<<endl;
-        cout <<"cutOffvalue:                    "<<graph.cutOffvalue<<endl;
-        cout <<"readLength:                     "<<graph.readLength<<endl;
-        cout <<"maxNodeSizeToDel:               "<<graph.maxNodeSizeToDel<<endl;
-        cout <<"redLineValueCov:                "<<graph.redLineValueCov<<endl;
-        cout <<"certainVlueCov:                 "<<graph.certainVlueCov<<endl;
-        cout <<"safeValueCov:                   "<<graph.safeValueCov<<endl;
-        cout<<"End of parameter estimation ..."<<endl;
-
+        cout << "Estimated Kmer coverage:        " << graph.estimatedKmerCoverage << endl;
+        cout << "Estimated MKmer coverage std:   " << graph.estimatedMKmerCoverageSTD << endl;
+        cout << "Cut-off value:                  " << graph.cutOffvalue << endl;
+        cout << "Read length:                    " << graph.readLength << endl;
+        cout << "Max node size to delete:        " << graph.maxNodeSizeToDel << endl;
+        cout << "Red line value cov:             " << graph.redLineValueCov << endl;
+        cout << "Certain value cov:              " << graph.certainVlueCov << endl;
+        cout << "Safe value cov:                 " << graph.safeValueCov << endl;
+        cout << "End of parameter estimation ... " << endl;
 }
-
 
 void Brownie::stageOne()
 {
@@ -270,11 +268,11 @@ void Brownie::stageFour()
 #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), false);
 #endif
-        cout<<"graph size: "<<graph.sizeOfGraph<<endl;
+        cout << "Graph size: " << graph.sizeOfGraph << " bp" << endl;
         graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));
         cout<<"N50 is: "<<graph.n50<<endl;
-        cout << " Graph correction completed in "
-        << Util::stopChrono() << "s." << endl;
+        cout << "Graph correction completed in "
+             << Util::stopChrono() << "s." << endl;
         Util::startChrono();
 
 #ifdef DEBUG
