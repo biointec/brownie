@@ -423,80 +423,107 @@ void sparseSA::traverse(const string &P, long prefix, interval_t &cur, int min_l
 // until mismatch or min_len characters reached.
 // Uses the child table for faster traversal
 void sparseSA::traverse_faster(const string &P,const long prefix, interval_t &cur, int min_len) const {
-        if(cur.depth >= min_len) return;
-        int c = prefix + cur.depth;
-        bool intervalFound = c < (int)P.length();
-        int curLCP;//check if this is correct for root interval (unlikely case)
-        if(cur.start < CHILD[cur.end] && CHILD[cur.end] <= cur.end)
-            curLCP = LCP[CHILD[cur.end]];
-        else
-            curLCP = LCP[CHILD[cur.start]];
-        if(intervalFound && cur.size() > 1 && curLCP == cur.depth)
-            intervalFound = top_down_child(P[c], cur);
-        else if(intervalFound)
-            intervalFound = P[c] == S[SA[cur.start]+cur.depth];
-        bool mismatchFound = false;
-        while(intervalFound && !mismatchFound &&
-                c < (int)P.length() && cur.depth < min_len){
-            c++;
-            cur.depth++;
-            if(cur.start != cur.end){
-                int childLCP;
-                //calculate LCP of child node, which is now cur. the LCP value
-                //of the parent is currently c - prefix
-                if(cur.start < CHILD[cur.end] && CHILD[cur.end] <= cur.end)
-                    childLCP = LCP[CHILD[cur.end]];
-                else
-                    childLCP = LCP[CHILD[cur.start]];
-                int minimum = min(childLCP,min_len);
-                //match along branch
-                while(!mismatchFound && c < (int)P.length() && cur.depth < minimum){
-                    mismatchFound = S[SA[cur.start]+cur.depth] != P[c];
-                    c++;
-                    cur.depth += !mismatchFound;
-                }
-                intervalFound = c < (int)P.length() && !mismatchFound &&
-                        cur.depth < min_len && top_down_child(P[c], cur);
-            }
-            else{
-                while(!mismatchFound && c < (int)P.length() && cur.depth < min_len){
-                    mismatchFound = SA[cur.start]+cur.depth >= (long int)S.length() ||
-                            S[SA[cur.start]+cur.depth] != P[c];
-                    c++;
-                    cur.depth += !mismatchFound;
-                }
-            }
-        }
+	if (cur.depth >= min_len) return; //we reached the min length
+	int c = prefix + cur.depth; //position in string of current char
+	if (c >= (int)P.length()) return; //we reached the end of the prefix
+	bool intervalFound = false; //true if we can extend the match by 1
+	if (cur.start != cur.end) {
+		int curLCP = LCP[get_first_l(cur.start, cur.end)];
+		if (curLCP == cur.depth) {
+			intervalFound = top_down_child(P[c], cur);
+		}
+	} else { //singleton
+		intervalFound = P[c] == S[SA[cur.start]+cur.depth];
+	}
+	bool mismatchFound = false;
+	while (intervalFound && !mismatchFound &&
+		c < (int)P.length() && cur.depth < min_len)
+	{
+		c++;
+		cur.depth++;
+		if (cur.start != cur.end) {
+			//lcp interval
+			int childLCP = LCP[get_first_l(cur.start, cur.end)];
+			//calculate LCP of child node, which is now cur. the LCP value
+			//of the parent is currently c - prefix
+			int minimum = min(childLCP, min_len);
+			//match along branch
+			while (!mismatchFound && c < (int)P.length()
+				&& cur.depth < minimum)
+			{
+				mismatchFound = S[SA[cur.start] + cur.depth] != P[c];
+				c++;
+				cur.depth += !mismatchFound;
+			}
+			intervalFound = c < (int)P.length() && !mismatchFound &&
+				cur.depth < min_len && top_down_child(P[c], cur);
+		} else {
+			//singleton
+			while (!mismatchFound && c < (int)P.length()
+				&& cur.depth < min_len)
+			{
+				mismatchFound = SA[cur.start] + cur.depth >= (long int)S.length() ||
+					S[SA[cur.start] + cur.depth] != P[c];
+				c++;
+				cur.depth += !mismatchFound;
+			}
+		}
+	}
 }
+
+//finds the first l index of the lcp interval
+int sparseSA::get_first_l(int const start, int const end) const {
+	/*
+	 *	if cur.end = N / K - 1 and CHILD[N / K - 1]] = -1, then
+	 *	CHILD[end] < start and the condition is false
+	 */
+	if(/*end != N / K - 1 &&*/ start < CHILD[end]
+		&& CHILD[end] <= end)
+	{
+		return CHILD[end];
+	} else {
+		return CHILD[start];
+	}
+}
+
 //finds the child interval of cur that starts with character c
 //updates left and right bounds of cur to child interval if found, or returns
 //cur if not found (also returns true/false if found or not)
 bool sparseSA::top_down_child(char c, interval_t &cur) const {
-    long left = cur.start;
-    long right = CHILD[cur.end];
-    if(cur.start >= right || right > cur.end)
-        right = CHILD[cur.start];
-    //now left and right point to first child
-    if(S[SA[cur.start]+cur.depth] == c){
-        cur.end = right-1;
-        return true;
-    }
-    left = right;
-    //while has next L-index
-    while(CHILD[right] > right && LCP[right] == LCP[CHILD[right]]){
-        right = CHILD[right];
-        if(S[SA[left]+cur.depth] == c){
-            cur.start = left; cur.end = right - 1;
-            return true;
-        }
-        left = right;
-    }
-    //last interval
-    if(S[SA[left]+cur.depth] == c){
-            cur.start = left;
-            return true;
-    }
-    return false;
+	long left = cur.start;
+	long right = get_first_l(cur.start, cur.end);
+	//now left and right point to first child
+	if(S[SA[cur.start] + cur.depth] == c){
+		//cur.start = left; //left is cur.start already !
+		cur.end = right - 1;
+		return true;
+	}
+	left = right;
+	//while has next L-index
+	/*
+	 *	if right = N / K - 1 and CHILD[N / K - 1]] = -1, then
+	 *	CHILD[right] < right and the condition is false
+	 */
+	while(/*right != N / K - 1 &&*/ CHILD[right] > right
+		&& LCP[right] == LCP[CHILD[right]])
+	{
+		right = CHILD[right];
+		if(S[SA[left] + cur.depth] == c){
+			cur.start = left;
+			cur.end = right - 1;
+			return true;
+		}
+		left = right;
+	}
+	//last interval
+	//right = cur.end;
+	if(S[SA[left] + cur.depth] == c){
+		cur.start = left;
+		//cur.end = right; //right is cur.end already !
+		return true;
+	}
+	//none of the children start with c
+	return false;
 }
 
 // Given SA interval apply binary search to match character c at
@@ -569,80 +596,87 @@ bool sparseSA::suffixlink(interval_t &m) const {
 
 // For a given offset in the prefix k, find all MEMs.
 void sparseSA::findMEM(long k, const string &P, vector<match_t> &matches, int min_len, bool print) const {
-  if(k < 0 || k >= K) { cerr << "Invalid k." << endl; return; }
-  // Offset all intervals at different start points.
-  long prefix = k;
-  interval_t mli(0,N/K-1,0); // min length interval
-  interval_t xmi(0,N/K-1,0); // max match interval
+	if(k < 0 || k >= K) { cerr << "Invalid k." << endl; return; }
+	// Offset all intervals at different start points.
+	long prefix = k;
+	interval_t mli(0,N/K-1,0); // min length interval
+	interval_t xmi(0,N/K-1,0); // max match interval
 
-  // Right-most match used to terminate search.
-  int min_lenK = min_len - (sparseMult*K-1);
+	// Right-most match used to terminate search.
+	int min_lenK = min_len - (sparseMult*K-1);
 
-  while( prefix <= (long)P.length() - (K-k)) {
+	while( prefix <= (long)P.length() - (K-k)) {
 #ifndef NDEBUG
 //      interval_t mliCopy(mli.start,mli.end,mli.depth);
 //      traverse(P, prefix, mliCopy, min_lenK);    // Traverse until minimum length matched.
 #endif
-    if(hasChild)
-        traverse_faster(P, prefix, mli, min_lenK);    // Traverse until minimum length matched.
-    else
-        traverse(P, prefix, mli, min_lenK);    // Traverse until minimum length matched.
+		if(hasChild)
+			traverse_faster(P, prefix, mli, min_lenK);    // Traverse until minimum length matched.
+		else
+			traverse(P, prefix, mli, min_lenK);    // Traverse until minimum length matched.
 #ifndef NDEBUG
 //      assert(mli.start == mliCopy.start);
 //      assert(mli.end == mliCopy.end);
 //      assert(mli.depth == mliCopy.depth);
 #endif
-    if(mli.depth > xmi.depth) xmi = mli;
-    if(mli.depth <= 1) { mli.reset(N/K-1); xmi.reset(N/K-1); prefix+=sparseMult*K; continue; }
+		if(mli.depth > xmi.depth)
+			xmi = mli;
+		if(mli.depth <= 1) {
+			mli.reset(N/K-1); xmi.reset(N/K-1); prefix+=sparseMult*K; continue;
+		}
 
-    if(mli.depth >= min_lenK) {
+		if(mli.depth >= min_lenK) {	// we can find MEMs, collect and continue to next prefix
 #ifndef NDEBUG
 //      interval_t xmiCopy(xmi.start,xmi.end,xmi.depth);
 //      traverse(P, prefix, xmiCopy, P.length());    // Traverse until mismatch.
 #endif
-      if(hasChild)
-        traverse_faster(P, prefix, xmi, P.length()); // Traverse until mismatch.
-      else
-        traverse(P, prefix, xmi, P.length()); // Traverse until mismatch.
+			if(hasChild)
+				traverse_faster(P, prefix, xmi, P.length()); // Traverse until mismatch.
+			else
+				traverse(P, prefix, xmi, P.length()); // Traverse until mismatch.
 #ifndef NDEBUG
 //      assert(xmi.start == xmiCopy.start);
 //      assert(xmi.end == xmiCopy.end);
 //      assert(xmi.depth == xmiCopy.depth);
 #endif
-      collectMEMs(P, prefix, mli, xmi, matches, min_len, print); // Using LCP info to find MEM length.
-      // When using ISA/LCP trick, depth = depth - K. prefix += K.
-      prefix+=sparseMult*K;
-      if( !hasSufLink ){ mli.reset(N/K-1); xmi.reset(N/K-1); continue; }
-      else{
-          int i = 0;
-          bool succes  = true;
-          while(i < sparseMult && (succes = suffixlink(mli))){
-              suffixlink(xmi);
-              i++;
-          }
-          if(!succes){
-              mli.reset(N/K-1); xmi.reset(N/K-1); continue;
-          }
-      }
-    }
-    else {
-      // When using ISA/LCP trick, depth = depth - K. prefix += K.
-      prefix+=sparseMult*K;
-      if( !hasSufLink) { mli.reset(N/K-1); xmi.reset(N/K-1); continue; }
-      else{
-          int i = 0;
-          bool succes  = true;
-          while(i < sparseMult && (succes = suffixlink(mli))){
-              i++;
-          }
-          if(!succes){
-              mli.reset(N/K-1); xmi.reset(N/K-1); continue;
-          }
-          xmi = mli;
-      }
-    }
-  }
-  if(print) print_match(match_t(), matches);   // Clear buffered matches.
+			collectMEMs(P, prefix, mli, xmi, matches, min_len, print); // Using LCP info to find MEM length.
+			// When using ISA/LCP trick, depth = depth - K. prefix += K.
+			prefix+=sparseMult*K;
+			if ( !hasSufLink ) {
+				mli.reset(N/K-1); xmi.reset(N/K-1); continue;
+			} else {
+				int i = 0;
+				bool succes  = true;
+				while(i < sparseMult && (succes = suffixlink(mli))){
+					suffixlink(xmi);
+					i++;
+				}
+				if(!succes){
+					mli.reset(N/K-1); xmi.reset(N/K-1); continue;
+				}
+			}
+		} else {	//no MEMs can be found, continue from the next prefix
+			// When using ISA/LCP trick, depth = depth - K. prefix += K.
+			prefix+=sparseMult*K;
+			if ( !hasSufLink) {
+				mli.reset(N/K-1); xmi.reset(N/K-1); continue;
+			} else {
+				int i = 0;
+				bool succes  = true;
+				while (i < sparseMult && (succes = suffixlink(mli))) {
+					i++;
+				}
+				if(!succes) {
+					mli.reset(N/K-1); xmi.reset(N/K-1); continue;
+				}
+				xmi = mli;
+			}
+		}
+	}
+	//checkMatches(P, matches, min_len);
+	//memCount += matches.size();
+	//std::cerr << memCount << "\n";
+	if(print) print_match(match_t(), matches);   // Clear buffered matches.
 }
 
 
@@ -883,3 +917,21 @@ void sparseSA::MEM(string &P, vector<match_t> &matches, int min_len, bool print,
   }
 }
 
+void sparseSA::checkMatches(std::string const &P,
+	std::vector<match_t> const &matches, int const min_len) const 
+{
+	for ( int i = 0; i < matches.size(); ++i) {
+		match_t m = matches[i];
+		std::string r = "";
+		for (int j = 0; j < m.len; ++j) {
+			r += S[m.ref + j];
+		}
+		std::string q = "";
+		for (int j = 0; j < m.len; ++j) {
+			q += P[m.query + j];
+		}
+		if (r != q || min_len > m.len) {
+			std::cerr << "error in match of size " << min_len << "! " << std::endl << r << std::endl << q << std::endl;
+		}
+	}
+}

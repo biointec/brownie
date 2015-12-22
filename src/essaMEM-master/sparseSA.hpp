@@ -146,6 +146,12 @@ struct sparseSA {
   void print_match(match_t m, vector<match_t> &buf) const; // buffered version
   void print_match(string meta, vector<match_t> &buf, bool rc) const; // buffered version
 
+  //Check if the matches are correct
+  void checkMatches(std::string const &P, std::vector<match_t> const &matches, int const min_len) const;
+
+  //find the first l index of an lcp-interval
+  int get_first_l(int const start, int const end) const;
+
   // Binary search for left boundry of interval.
   inline long bsearch_left(char c, long i, long s, long e);
   // Binary search for right boundry of interval.
