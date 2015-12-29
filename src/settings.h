@@ -53,7 +53,9 @@ private:
         bool doubleStranded;            // double stranded sequences
         std::string pathtotemp;         // directory specified by user
 
-        int essa_factor;
+        int essa_factor;		// sparseness factor for essamem
+        int max_visits;			// maximal number of visited nodes for bubble detection
+        int max_depth;			// maximal search depth for stage 5
         bool skip_stage_4;
         bool skip_stage_5;
 
@@ -130,6 +132,14 @@ public:
 
         int getEssaFactor() const {
                 return essa_factor;
+        }
+
+        int getMaxVisits() const {
+                return max_visits;
+        }
+
+        int getMaxDepth() const {
+                return max_depth;
         }
 
         bool getSkipStage4() const {

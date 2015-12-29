@@ -25,6 +25,7 @@
  ***************************************************************************/
 
 #include "graph.h"
+#include "settings.h"
 
 using namespace std;
 class PathInfo {
@@ -295,7 +296,7 @@ vector<pair<vector<NodeID>, vector<NodeID> > >  DBGraph::searchForParallelNodes(
         priority_queue<PathInfo, vector<PathInfo>, comparator> heap;
         heap.push(PathInfo(lID, 0));
         vector<pair<vector<NodeID>, vector<NodeID> > > parallelNodes;
-        size_t visitedNodesLimit=1000;
+        size_t visitedNodesLimit = settings.getMaxVisits();
         while(!heap.empty()) {
                 PathInfo currTop = heap.top();
                 heap.pop();
