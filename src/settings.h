@@ -53,6 +53,7 @@ private:
         bool doubleStranded;            // double stranded sequences
         std::string pathtotemp;         // directory specified by user
 
+        int essa_factor;
         bool skip_stage_4;
         bool skip_stage_5;
 
@@ -125,6 +126,10 @@ public:
 
         void setGenomeSize(){
                 this->genomeSize=genomeSize;
+        }
+
+        int getEssaFactor() const {
+                return essa_factor;
         }
 
         bool getSkipStage4() const {

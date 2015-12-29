@@ -84,7 +84,7 @@ void Settings::printUsage() const
 // ============================================================================
 
 Settings::Settings() : kmerSize(31), numThreads(std::thread::hardware_concurrency()),
-        genomeSize(0), doubleStranded(true), skip_stage_4(false), skip_stage_5(false) {}
+        genomeSize(0), doubleStranded(true), essa_factor(1), skip_stage_4(false), skip_stage_5(false) {}
 
 void Settings::parseCommandLineArguments(int argc, char** args,
                                          LibraryContainer& libCont)
@@ -115,6 +115,10 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                         i++;
                         if (i < argc)
                                 genomeSize = atoi(args[i]);
+                } else if ((arg == "-e") || (arg == "--essa")) {
+                        i++;
+                        if (i < argc)
+                                essa_factor = atoi(args[i]);
                 } else if ((arg == "-s") || (arg == "--singlestranded")) {
                         doubleStranded = false;
                 } else if ((arg == "-p") || (arg == "--pathtotmp")) {
