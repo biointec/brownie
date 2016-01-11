@@ -175,7 +175,7 @@ void ReadCorrectionJan::recSearch(NodeID curr, string& read, vector<NodePosPair>
         const SSNode node = dbg.getSSNode(curr);
 
         counter++;
-        if (counter > 1000)
+        if (counter > settings.getMaxDepth())
                 return;
 
         vector<DFSNode> dfsNode;
@@ -590,7 +590,7 @@ void ReadCorrectionHandler::initEssaMEM()
                           refdescr,             //
                           startpos,             //
                           false,                //4 column format or not
-                          1,                    //sparseness
+                          settings.getEssaFactor(),                    //sparseness
                           false,                //suffixlinks
                           true,                 //child arrays
                           1,                    //skip parameter
