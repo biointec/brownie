@@ -66,12 +66,15 @@ void Settings::printUsage() const
         cout << "  -k\t--kmersize\t\tkmer size [default = 31]\n";
         cout << "  -t\t--threads\t\tnumber of threads [default = available cores]\n";
         cout << "  -g\t--genomesize\t\tsize of the genome [default = auto]\n";
+        cout << "  -v\t--visits\t\tmaximal number of visited nodes in one bubble detection [default = 1000]\n";
+        cout << "  -d\t--depth\t\t\tmaximal number of visited nodes in one read correction [default = 1000]\n";
+        cout << "  -e\t--essa\t\t\tsparseness factor of the enhanced sparse suffix array [default = 1]\n";
 
         cout << "  -p\t--pathtotmp\t\tpath to directory to store temporary files [default = current directory]\n\n";
 
         cout << " [file_options]\n";
         cout << "  -o\t--output\t\toutput file name [default = inputfile.corr]\n";
-        cout << "  \t--graph\t\tskip read correction\n";
+        cout << "  \t--graph\t\t\tskip read correction\n";
         cout << "  \t--perfectgraph\t\tskip read and graph correction\n\n";
 
         cout << " examples:\n";
