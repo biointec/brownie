@@ -235,7 +235,7 @@ void DBGraph::plotCovDiagram(){
 
         string sFileName=settings.getTempDirectory()+"scov_"+roundstr+".dat";
         sexpcovFile.open(sFileName.c_str());
-        sexpcovFile<<"representative_1,representative_2,sumOfcorrectLength,sumOfIncorrectLength"<<endl;
+        sexpcovFile<<"representative_1,representative_2,sumOfCorrectLength,sumOfIncorrectLength"<<endl;
         i=0;
         double added=(frequencyArray[1].second.first-frequencyArray[0].second.first)/2;
         while(i<frequencyArray.size()) {
@@ -843,7 +843,7 @@ void DBGraph::reportSta()
     set<NodeID> currentSetNodes;
     size_t numberOfcompunents=0;
     ofstream sexpcovFile;
-    string sFileName=settings.getTempDirectory()+"componentSta.txt";
+    string sFileName=settings.getTempDirectory()+"componentStatistics.txt";
     sexpcovFile.open(sFileName.c_str());
     double nkcovAVG=0;
     for (i =srcID ; i <= numNodes; i++){
@@ -901,15 +901,15 @@ void DBGraph::reportSta()
             {
                     numberOfcompunents++;
                     sexpcovFile<<endl<<"*********************** Next Component *****************************"<<endl;
-                    sexpcovFile<<endl<<"Statistical infomratin about component number:\t"<<numberOfcompunents<<endl;
+                    sexpcovFile<<endl<<"component number:\t"<<numberOfcompunents<<endl;
                     getComponentSta(currentSetNodes, sexpcovFile);
             }
                     currentSetNodes.clear();
     }
-    sexpcovFile<<endl<<"*********************** Next Component *****************************"<<endl;
-    sexpcovFile<<"number of all nodes:\t"<<nodesHandled.size()<<endl;
+    sexpcovFile<<endl<<"*********************** Component Overview *****************************"<<endl;
+    sexpcovFile<<endl<<"number of nodes:\t"<<nodesHandled.size()<<endl;
     sexpcovFile<<"mean of node coverage:\t"<<nkcovAVG<<endl;
-    sexpcovFile<<"number of disjoint Components in this graph\t" <<numberOfcompunents<<endl;
+    sexpcovFile<<"number of disjoint components in this graph\t" <<numberOfcompunents<<endl;
 
     sexpcovFile.close();
 }
@@ -944,9 +944,9 @@ void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, ofstream &sexpcovFil
 
 
 
-    sexpcovFile<<"size of this Component:\t"<<sizeOfGraph<<endl;
-    sexpcovFile<<"number of valid Node in this component:\t"<<numExtractedNodes<<endl;
-    sexpcovFile<<"the mean cov of nodes in this component is:\t"<<covAvg<<endl;
+    sexpcovFile<<"sequence size:\t"<<sizeOfGraph<<endl;
+    sexpcovFile<<"valid nodes:\t"<<numExtractedNodes<<endl;
+    sexpcovFile<<"mean node coverage:\t"<<covAvg<<endl;
     sexpcovFile << "Extracted " << numExtractedNodes << " nodes and "
          << numExtractedArcs << " arcs." << endl;
     sort(nodeLengths.begin(), nodeLengths.end());
