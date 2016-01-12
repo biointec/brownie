@@ -246,14 +246,11 @@ void Brownie::stageFour()
         }
         DBGraph graph(settings);
         parameterEstimationInStage4( graph );
-
         Util::startChrono();
         cout << "Creating graph... ";
         graph.loadGraphBin(getBinNodeFilename(3),
                            getBinArcFilename(3),
                            getMetaDataFilename(3));
-
-
         cout.flush();
         cout << "done (" << graph.getNumNodes() << " nodes, "
              << graph.getNumArcs() << " arcs)" << endl;
@@ -263,31 +260,32 @@ void Brownie::stageFour()
 #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), true);
 #endif
+
         //report statistics of original graph
         graph.plotCovDiagram();
 
         Util::startChrono();
         //actual graph correction
         graph.graphPurification(getTrueMultFilename(3), libraries);
+        cout << "Graph size: " << graph.sizeOfGraph << " bp" << endl;
+        cout <<"N50 is: "<<graph.n50<<endl;
+        cout << "Graph correction completed in "
+             << Util::stopChrono() << "s." << endl;
 
         //report statistics of corrected graph
         graph.reportSta();
         graph.plotCovDiagram();
-#ifdef DEBUG
-        graph.compareToSolution(getTrueMultFilename(3), false);
-#endif
-        cout << "Graph size: " << graph.sizeOfGraph << " bp" << endl;
-        graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));
-        cout<<"N50 is: "<<graph.n50<<endl;
-        cout << "Graph correction completed in "
-             << Util::stopChrono() << "s." << endl;
-        Util::startChrono();
 
 #ifdef DEBUG
+        graph.compareToSolution(getTrueMultFilename(3), false);
         graph.sanityCheck();
         string command="pdftk "+settings.getTempDirectory()+ "cov/*.pdf cat output allpdfFiles.pdf";
         system(command.c_str());
 #endif
+
+        //write graph to file
+        cout << "Extracting graph..." << endl;
+        graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));
         graph.clear();
         cout << "Stage 4 finished.\n" << endl;
 }
