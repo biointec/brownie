@@ -920,7 +920,7 @@ void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, ofstream &sexpcovFil
     vector<size_t> nodeLengths;
     sizeOfGraph=0;
     size_t numExtractedNodes = 0, numExtractedArcs = 0;
-    double covAvg=0;
+    double summedCoverage = 0;
     for (auto id :currentSetNodes) {
         SSNode node = getSSNode(id);
         if (!node.isValid())
@@ -939,14 +939,12 @@ void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, ofstream &sexpcovFil
         }
         numExtractedArcs += ol.getNumLeftOverlap() + ol.getNumRightOverlap();
         nodeLengths.push_back(node.getLength());
-        covAvg=((numExtractedNodes-1)*covAvg+node.getNodeKmerCov())/numExtractedNodes;
+        summedCoverage += node.getNodeKmerCov();
     }
-
-
-
     sexpcovFile<<"sequence size:\t"<<sizeOfGraph<<endl;
     sexpcovFile<<"valid nodes:\t"<<numExtractedNodes<<endl;
-    sexpcovFile<<"mean node coverage:\t"<<covAvg<<endl;
+    sexpcovFile << "mean node coverage:\t" << summedCoverage / numExtractedNodes
+                << endl;
     sexpcovFile << "Extracted " << numExtractedNodes << " nodes and "
          << numExtractedArcs << " arcs." << endl;
     sort(nodeLengths.begin(), nodeLengths.end());
