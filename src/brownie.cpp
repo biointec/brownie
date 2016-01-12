@@ -242,7 +242,7 @@ void Brownie::stageFour()
         if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 4..." << endl << endl;
-                 //return;
+                 return;
         }
         DBGraph graph(settings);
         parameterEstimationInStage4( graph );
