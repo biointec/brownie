@@ -263,8 +263,16 @@ void Brownie::stageFour()
 #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), true);
 #endif
+        //report statistics of original graph
+        graph.plotCovDiagram();
+
         Util::startChrono();
+        //actual graph correction
         graph.graphPurification(getTrueMultFilename(3), libraries);
+
+        //report statistics of corrected graph
+        graph.reportSta();
+        graph.plotCovDiagram();
 #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), false);
 #endif

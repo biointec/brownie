@@ -80,7 +80,6 @@ void DBGraph::graphPurification(string trueMultFilename,
         updateGraphSize();
         size_t maxBubbleDepth=maxNodeSizeToDel;
         size_t increamentDepth = readLength;
-        plotCovDiagram();
         bool simplified = true;
         while (simplified ) {// &&
                 //
@@ -138,9 +137,6 @@ void DBGraph::graphPurification(string trueMultFilename,
                 updateGraphSize();
                 round++;
         }
-        reportSta();
-        plotCovDiagram();
-
 }
 
 /*This routine calculate the value of CutOff-cov in the first call,
