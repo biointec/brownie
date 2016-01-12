@@ -809,7 +809,7 @@ size_t DBGraph::updateGraphSize()
     cout << "Extracted " << numExtractedNodes << " nodes and "
          << numExtractedArcs << " arcs." << endl;
 #endif
-    sort(nodeLengths.begin(), nodeLengths.end());
+    sort(nodeLengths.begin(), nodeLengths.end(), std::greater<int>());
 
     size_t totalLength = 0;
     for (size_t i = 0; i < nodeLengths.size(); i++)
@@ -921,7 +921,7 @@ void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, ofstream &sexpcovFil
     sizeOfGraph=0;
     size_t numExtractedNodes = 0, numExtractedArcs = 0;
     double summedCoverage = 0;
-    for (auto id :currentSetNodes) {
+    for (auto id : currentSetNodes) {
         SSNode node = getSSNode(id);
         if (!node.isValid())
             continue;
@@ -947,57 +947,18 @@ void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, ofstream &sexpcovFil
                 << endl;
     sexpcovFile << "Extracted " << numExtractedNodes << " nodes and "
          << numExtractedArcs << " arcs." << endl;
-    sort(nodeLengths.begin(), nodeLengths.end());
+    sort(nodeLengths.begin(), nodeLengths.end(), std::greater<int>());
 
     size_t totalLength = 0;
     for (size_t i = 0; i < nodeLengths.size(); i++)
         totalLength += nodeLengths[i];
     size_t currLength = 0;
-    size_t currentNum=0;
+    size_t currentNum=1;
     for (size_t i = 0; i < nodeLengths.size(); i++) {
             currLength += nodeLengths[i];
-            if (currentNum<1&& currLength >= 0.1*totalLength ) {
-                    sexpcovFile << "N10 \t" << nodeLengths[i] <<endl;
-
-                    currentNum++;
-            }
-            if (currentNum<2&& currLength >= 0.2*totalLength) {
-                    sexpcovFile << "N20 \t" << nodeLengths[i] <<endl;
-                    currentNum++;
-
-            }
-            if (currentNum<3&& currLength >= 0.3*totalLength) {
-                    sexpcovFile << "N30 \t" << nodeLengths[i] <<endl;
-
-                    currentNum++;
-            }
-            if (currentNum<4&& currLength >= 0.4*totalLength) {
-                     sexpcovFile << "N40 \t" << nodeLengths[i] <<endl;
-
-                    currentNum++;
-            }
-            if (currentNum<5&& currLength >= 0.5*totalLength) {
-                    sexpcovFile << "N50 \t" << nodeLengths[i] <<endl;
-
-                    currentNum++;
-            }
-            if (currentNum<6&& currLength >= 0.6*totalLength) {
-                    sexpcovFile << "N60 \t" << nodeLengths[i] <<endl;
-                    currentNum++;
-            }
-            if (currentNum<7&& currLength >= 0.7*totalLength)
-            {
-                    sexpcovFile << "N70 \t" << nodeLengths[i] <<endl;
-                    currentNum++;
-            }
-            if (currentNum<8&& currLength >= 0.8*totalLength)
-            {
-                    sexpcovFile << "N80 \t" << nodeLengths[i]<<endl;
-                    currentNum++;
-            }
-            if (currentNum<9&& currLength >= 0.9*totalLength)
-            {
-                    sexpcovFile << "N90 \t" << nodeLengths[i] <<endl;
+            while (currLength >= (currentNum * 0.1) * totalLength ) {
+                    sexpcovFile << "N" << (currentNum * 10) << " \t"
+                                << nodeLengths[i] <<endl;
                     currentNum++;
             }
     }
