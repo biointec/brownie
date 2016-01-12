@@ -927,7 +927,7 @@ void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, ofstream &sexpcovFil
             continue;
         numExtractedNodes++;
         //check later for adding kmerSize
-        sizeOfGraph=sizeOfGraph +node.getMarginalLength()+ Kmer::getK();
+        sizeOfGraph = sizeOfGraph + node.getMarginalLength() + (Kmer::getK() - 1);
         KmerOverlap ol;
         for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
             char c = getSSNode(it->getNodeID()).getRightKmer().peekNucleotideLeft();
