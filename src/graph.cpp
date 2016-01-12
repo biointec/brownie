@@ -953,7 +953,6 @@ void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, ofstream &sexpcovFil
     for (size_t i = 0; i < nodeLengths.size(); i++)
         totalLength += nodeLengths[i];
     size_t currLength = 0;
-    size_t n50;
     size_t currentNum=0;
     for (size_t i = 0; i < nodeLengths.size(); i++) {
             currLength += nodeLengths[i];
