@@ -329,7 +329,7 @@ public:
      */
     bool filterCoverage( float round);
     void updateCutOffValue(int round);
-    void plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > >& frequencyArray);
+    void plotCovDiagram();
     void makeSampleReadFile(float num);
     size_t getLowestArcMultiplicity(NodeID left, NodeID right);
 
@@ -478,6 +478,14 @@ public:
     /**
      * Populates the table as required by the ReadCorrection procedure
      */
+    /* find disjoint component in graph and reports sta about them.
+     *
+     *
+     */
+    void reportSta();
+
+
+    void getComponentSta(set<NodeID> &currentSetNodes, ofstream &sexpcovFile);
     void populateTable();
     /**
      * deletes the table again
