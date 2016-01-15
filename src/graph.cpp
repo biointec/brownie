@@ -25,7 +25,7 @@
 #include "nodeendstable.h"
 #include "kmernode.h"
 #include "library.h"
-
+#include <sys/stat.h>
 using namespace std;
 
 DSNode* SSNode::nodes = NULL;
@@ -180,6 +180,8 @@ void DBGraph::updateCutOffValue(int round)
 
 
 void DBGraph::plotCovDiagram(){
+        string dir=settings.getTempDirectory()+"cov";
+        const int dir_err = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
         vector<pair<double,pair<size_t , pair<bool, int> > > > allNodes;
         vector<pair< pair< int , int> , pair<double,int> > > frequencyArray;
@@ -219,7 +221,7 @@ void DBGraph::plotCovDiagram(){
                 if (intervalCount!=0)
                         frequencyArray.push_back(make_pair(make_pair( sumOfMarginalLenght, correctNodeMarginalLength) , make_pair(representative,intervalCount)));
                 St=St+Interval;
-                if (St>estimatedKmerCoverage+estimatedMKmerCoverageSTD*3)
+                if (St>estimatedKmerCoverage+estimatedMKmerCoverageSTD*10)
                         break;
         }
         //wrriting in file
@@ -233,14 +235,14 @@ void DBGraph::plotCovDiagram(){
         else
                 roundstr=std::to_string( updateCutOffValueRound);
 
-        string sFileName=settings.getTempDirectory()+"scov_"+roundstr+".dat";
+        string sFileName=dir+"/scov_"+roundstr+".dat";
         sexpcovFile.open(sFileName.c_str());
-        sexpcovFile<<"representative_1,representative_2,sumOfCorrectLength,sumOfIncorrectLength"<<endl;
+        sexpcovFile<<"representative_1\trepresentative_2\tsumOfCorrectLength\tsumOfIncorrectLength"<<endl;
         i=0;
         double added=(frequencyArray[1].second.first-frequencyArray[0].second.first)/2;
         while(i<frequencyArray.size()) {
                 pair<double,int> pre=frequencyArray[i].second;
-                sexpcovFile<<pre.first<< ","<< pre.first+added<<","<<frequencyArray[i].first.second<<","<< frequencyArray[i].first.first-frequencyArray[i].first.second <<endl;
+                sexpcovFile<<pre.first<< "\t"<< pre.first+added<<"\t"<<frequencyArray[i].first.second<<"\t"<< frequencyArray[i].first.first-frequencyArray[i].first.second <<endl;
                 i++;
         }
         sexpcovFile.close();
@@ -835,136 +837,238 @@ size_t DBGraph::updateGraphSize()
     return sizeOfGraph;
 
 }
+struct greater_than_Component
+{
+    inline bool operator() (const Component& object1, const Component& object2)
+    {
+        return (object1.Size > object2.Size);
+    }
+};
+struct less_than_Component
+{
+    inline bool operator() (const Component& object1, const Component& object2)
+    {
+        return (object1.Size < object2.Size);
+    }
+};
 void DBGraph::reportSta()
 {
-    int srcID=1;
-    int i=0;
-    set<NodeID> nodesHandled;
-    set<NodeID> currentSetNodes;
-    size_t numberOfcompunents=0;
-    ofstream sexpcovFile;
-    string sFileName=settings.getTempDirectory()+"componentStatistics.txt";
-    sexpcovFile.open(sFileName.c_str());
-    double nkcovAVG=0;
-    for (i =srcID ; i <= numNodes; i++){
-            if (!getSSNode(i).isValid())
-                    continue;
-            if (nodesHandled.find(i) != nodesHandled.end())
-                    continue;
-            if (nodesHandled.find(i) != nodesHandled.end())
-                    continue;
-            srcID=i;
+        int srcID=1;
+        int i=0;
+        set<NodeID> nodesHandled;
+        set<NodeID> currentSetNodes;
+        size_t numberOfcompunents=0;
+        ofstream sexpcovFile;
+        string dir=settings.getTempDirectory()+"Statistic";
+        const int dir_err = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
-            multimap<size_t, NodeID> nodeDepth;     // map of all nodes in the local graph and its depth
-            nodeDepth.insert(pair<size_t, NodeID>(0, srcID));
+        string sFileName=dir+"/componentStatistics_" + std::to_string( updateCutOffValueRound)+".txt";
+        sexpcovFile.open(sFileName.c_str());
+        double nkcovAVG=0;
+        vector<Component> components;
+        sexpcovFile<<"#Extracting infomratin about the components in the graph"<<endl;
+        cout       <<"N10"<<'\t'<<"N30"<<'\t'<<"N50"<<'\t'<<"N70"<<'\t'<<"N90"<<'\t'<<"Nodes"<<'\t'<<"Arcs"<<'\t' <<"Size"<<'\t'<<"largest"<<'\t'<<"cov"<<endl;
 
-            // nodes that were already handled
-            while (!nodeDepth.empty()) {
-                    // get and erase the current node
-                    multimap<size_t, NodeID>::iterator
-                    e = nodeDepth.begin();
-                    size_t thisDepth = e->first;
-                    NodeID thisID = e->second;
-                    nodeDepth.erase(e);
-                    // if the node was already handled, skip
-                    if (nodesHandled.find(thisID) != nodesHandled.end())
-                            continue;
-                    if (nodesHandled.find(-thisID) != nodesHandled.end())
-                            continue;
-                    // mark this node as handled
-                    nodesHandled.insert(thisID);
+        for (i =srcID ; i <= numNodes; i++){
+                if (!getSSNode(i).isValid())
+                        continue;
+                if (nodesHandled.find(i) != nodesHandled.end())
+                        continue;
+                if (nodesHandled.find(i) != nodesHandled.end())
+                        continue;
+                srcID=i;
+                multimap<size_t, NodeID> nodeDepth;     // map of all nodes in the local graph and its depth
+                nodeDepth.insert(pair<size_t, NodeID>(0, srcID));
+                // nodes that were already handled
+                while (!nodeDepth.empty()) {
+                        // get and erase the current node
+                        multimap<size_t, NodeID>::iterator
+                        e = nodeDepth.begin();
+                        size_t thisDepth = e->first;
+                        NodeID thisID = e->second;
+                        nodeDepth.erase(e);
+                        // if the node was already handled, skip
+                        if (nodesHandled.find(thisID) != nodesHandled.end())
+                                continue;
+                        if (nodesHandled.find(-thisID) != nodesHandled.end())
+                                continue;
+                        // mark this node as handled
+                        nodesHandled.insert(thisID);
+                        currentSetNodes.insert(thisID);
+                        SSNode thisNode = getSSNode(thisID);
+                        nkcovAVG=(nkcovAVG*(nodesHandled.size()-1)+thisNode.getNodeKmerCov())/nodesHandled.size();
+                        for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
+                                SSNode rNode = getSSNode(it->getNodeID());
+                                if (!rNode.isValid())
+                                        continue;
+                                if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
+                                        continue;
+                                nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
+                        }
+                        for (ArcIt it = thisNode.leftBegin(); it != thisNode.leftEnd(); it++) {
+                                SSNode lNode = getSSNode(it->getNodeID());
+                                if (!lNode.isValid())
+                                        continue;
+                                if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
+                                        continue;
+                                nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
+                        }
+                }
+                if (currentSetNodes.size()>0)
+                {
+                        Component component;
+                        numberOfcompunents++;
+                        getComponentSta(currentSetNodes, component);
+                        components.push_back(component);
+                }
+                currentSetNodes.clear();
+        }
+        sexpcovFile<<endl<<"#number of nodes:\t"<<nodesHandled.size()<<endl;
+        sexpcovFile<<"#mean of node coverage:\t"<<nkcovAVG<<endl;
+        sexpcovFile<<"#number of disjoint components in this graph\t" <<numberOfcompunents<<endl;
+        sexpcovFile<<endl<<"N10"<<'\t'<<"N30"<<'\t'<<"N50"<<'\t'<<"N70"<<'\t'<<"N90"<<'\t'<<"Nodes"<<'\t'<<"Arcs"<<'\t' <<"Size"<<'\t'<<"largest"<<'\t'<<"cov"<<endl;
+        sort( components.begin(), components.end(), greater_than_Component());
+        size_t num=1;
+        for (auto component: components){
+                cout       <<component.N10<<'\t'<<component.N30<<'\t'<<component.N50<<'\t'<<component.N70<<'\t'<<component.N90<<'\t'<<component.numOfNodes<<'\t'<<component.numOfArcs<<'\t'<<component.Size<<'\t' <<component.largestNodeSize<<'\t'<<component.nodeKmerCov <<endl;
+                sexpcovFile<<component.N10<<'\t'<<component.N30<<'\t'<<component.N50<<'\t'<<component.N70<<'\t'<<component.N90<<'\t'<<component.numOfNodes<<'\t'<<component.numOfArcs<<'\t'<<component.Size<<'\t' <<component.largestNodeSize<<'\t'<<component.nodeKmerCov <<endl;
+                if (component.Size>1000){
+                        makeN50Files(num, component);
+                        num++;
+                }
+        }
+        sexpcovFile.close();
+        makeComponentPlotFile(components);
+}
+void DBGraph::makeN50Files(const size_t num,const Component component)
+{
+        string dir=settings.getTempDirectory()+"n50";
+        const int dir_err = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        std::string roundstr="";
+        if (num<10)
+                roundstr="00"+std::to_string( num)+"_"+std::to_string( updateCutOffValueRound);
+        else if (num<100)
+                roundstr="0"+std::to_string( num)+"_"+std::to_string( updateCutOffValueRound);
+        else
+                roundstr=std::to_string( num);
+        string sFileName=dir+"/N50_"+ roundstr+"_.dat";
+        ofstream n50stream;
 
-                    currentSetNodes.insert(thisID);
-                    // if we're too far in the graph, stop
-                    //if (thisDepth > maxDepth)
-                    //    continue;
-                    SSNode thisNode = getSSNode(thisID);
-                    nkcovAVG=(nkcovAVG*(nodesHandled.size()-1)+thisNode.getNodeKmerCov())/nodesHandled.size();
-                    for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
-                            SSNode rNode = getSSNode(it->getNodeID());
-                            if (!rNode.isValid())
-                                    continue;
-                            if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
-                                    continue;
-                            nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
-                    }
-                    for (ArcIt it = thisNode.leftBegin(); it != thisNode.leftEnd(); it++) {
-                            SSNode lNode = getSSNode(it->getNodeID());
-                            if (!lNode.isValid())
-                                    continue;
-                            if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
-                                    continue;
-                            nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
-                    }
-            }
-            if (currentSetNodes.size()>0)
-            {
-                    numberOfcompunents++;
-                    sexpcovFile<<endl<<"*********************** Next Component *****************************"<<endl;
-                    sexpcovFile<<endl<<"component number:\t"<<numberOfcompunents<<endl;
-                    getComponentSta(currentSetNodes, sexpcovFile);
-            }
-                    currentSetNodes.clear();
-    }
-    sexpcovFile<<endl<<"*********************** Component Overview *****************************"<<endl;
-    sexpcovFile<<endl<<"number of nodes:\t"<<nodesHandled.size()<<endl;
-    sexpcovFile<<"mean of node coverage:\t"<<nkcovAVG<<endl;
-    sexpcovFile<<"number of disjoint components in this graph\t" <<numberOfcompunents<<endl;
+        n50stream.open(sFileName.c_str());
+        n50stream<<"# size Of  component\t"<< component.Size<<endl;
+        n50stream<<"# number of nodes\t"<< component.numOfNodes<<endl;
+        n50stream<<"# number of arcs\t"<< component.numOfArcs<<endl;
 
-    sexpcovFile.close();
+        n50stream<<"N10\t" <<component.N10<<"\nN20\t" <<component.N20<<"\nN30\t" <<component.N30<<"\nN40\t" <<component.N40<<"\nN50\t" <<component.N50
+        <<"\nN60\t" <<component.N60<<"\nN70\t" <<component.N70<<"\nN80\t" <<component.N80<<"\nN90\t" <<component.N90;
+        n50stream.close();
 }
 
-void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, ofstream &sexpcovFile)
+void DBGraph::makeComponentPlotFile(vector<Component> components)
 {
-
-    vector<size_t> nodeLengths;
-    sizeOfGraph=0;
-    size_t numExtractedNodes = 0, numExtractedArcs = 0;
-    double summedCoverage = 0;
-    for (auto id : currentSetNodes) {
-        SSNode node = getSSNode(id);
-        if (!node.isValid())
-            continue;
-        numExtractedNodes++;
-        //check later for adding kmerSize
-        sizeOfGraph = sizeOfGraph + node.getMarginalLength() + (Kmer::getK() - 1);
-        KmerOverlap ol;
-        for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
-            char c = getSSNode(it->getNodeID()).getRightKmer().peekNucleotideLeft();
-            ol.markLeftOverlap(c);
+        string dir=settings.getTempDirectory()+"Statistic";
+        const int dir_err = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        ofstream sexpcovFile;
+        string sFileName=dir+"/components_"+std::to_string( updateCutOffValueRound)+".dat";
+        sexpcovFile.open(sFileName.c_str());
+        sexpcovFile<<"#Extracting infomratin about the components in the graph"<<endl;
+        size_t  i=0;
+        size_t Interval=100;
+        sort( components.begin(), components.end(), less_than_Component());
+        size_t  St=components[0].Size;
+        vector<pair< size_t , vector<Component> > > frequencyArray;
+        while (i<components.size()) {
+                double intervalCount=0;
+                int sumOfMarginalLenght=0;
+                vector<Component> componentsInBin;
+                while (i<components.size()&&components[i].Size>=St && components[i].Size<St+Interval) {
+                        componentsInBin.push_back(components[i]);
+                        sumOfMarginalLenght=sumOfMarginalLenght+components[i].Size ;
+                        intervalCount++;
+                        i++;
+                }
+                size_t representative=St+Interval/2;
+                if (intervalCount!=0)
+                        frequencyArray.push_back(make_pair(representative, componentsInBin));
+                St=St+Interval;
         }
-        for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++) {
-            char c = getSSNode(it->getNodeID()).getLeftKmer().peekNucleotideRight();
-            ol.markRightOverlap(c);
+        i=0;
+        sexpcovFile<< "Index" << "\t"<<"Num"<<"\t"<<"avgSize"<<endl ;
+        while(i<frequencyArray.size()) {
+                vector<Component> bin=frequencyArray[i].second;
+                size_t sumOfSize=0;
+                for (auto it:bin){
+                        sumOfSize=sumOfSize+it.Size;
+                }
+                sexpcovFile<<fixed<<frequencyArray[i].first << "\t"<< bin.size()<< "\t"<< sumOfSize/bin.size() <<endl;;
+                i++;
         }
-        numExtractedArcs += ol.getNumLeftOverlap() + ol.getNumRightOverlap();
-        nodeLengths.push_back(node.getLength());
-        summedCoverage += node.getNodeKmerCov();
-    }
-    sexpcovFile<<"sequence size:\t"<<sizeOfGraph<<endl;
-    sexpcovFile<<"valid nodes:\t"<<numExtractedNodes<<endl;
-    sexpcovFile << "mean node coverage:\t" << summedCoverage / numExtractedNodes
-                << endl;
-    sexpcovFile << "Extracted " << numExtractedNodes << " nodes and "
-         << numExtractedArcs << " arcs." << endl;
-    sort(nodeLengths.begin(), nodeLengths.end(), std::greater<int>());
-
-    size_t totalLength = 0;
-    for (size_t i = 0; i < nodeLengths.size(); i++)
-        totalLength += nodeLengths[i];
-    size_t currLength = 0;
-    size_t currentNum=1;
-    for (size_t i = 0; i < nodeLengths.size(); i++) {
-            currLength += nodeLengths[i];
-            while (currLength >= (currentNum * 0.1) * totalLength ) {
-                    sexpcovFile << "N" << (currentNum * 10) << " \t"
-                                << nodeLengths[i] <<endl;
-                    currentNum++;
-            }
-    }
-    sexpcovFile << endl<<"The largest node in this component contains " << nodeLengths.back() << " basepairs." << endl;
+        sexpcovFile.close();
+}
 
 
+void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, Component &component)
+{
+        component.numOfNodes=currentSetNodes.size();
+        vector<size_t> nodeLengths;
+        size_t componentSize =0;
+        size_t numExtractedNodes = 0, numExtractedArcs = 0;
+        double summedCoverage = 0;
+        for (auto id : currentSetNodes) {
+                SSNode node = getSSNode(id);
+                if (!node.isValid())
+                        continue;
+                numExtractedNodes++;
+                //check later for adding kmerSize
+                componentSize = componentSize + node.getMarginalLength() ;
+                KmerOverlap ol;
+                for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
+                        char c = getSSNode(it->getNodeID()).getRightKmer().peekNucleotideLeft();
+                        ol.markLeftOverlap(c);
+                }
+                for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++) {
+                        char c = getSSNode(it->getNodeID()).getLeftKmer().peekNucleotideRight();
+                        ol.markRightOverlap(c);
+                }
+                numExtractedArcs += ol.getNumLeftOverlap() + ol.getNumRightOverlap();
+                nodeLengths.push_back(node.getLength());
+                summedCoverage += node.getNodeKmerCov();
+        }
+        component.Size=componentSize;
+        component.numOfArcs=numExtractedArcs;
+        sort(nodeLengths.begin(), nodeLengths.end(), std::greater<int>());
+        size_t totalLength = 0;
+        for (size_t i = 0; i < nodeLengths.size(); i++)
+                totalLength += nodeLengths[i];
+        size_t currLength = 0;
+        size_t currentNum=1;
+        for (size_t i = 0; i < nodeLengths.size(); i++) {
+                currLength += nodeLengths[i];
+                while (currLength >= (currentNum * 0.1) * totalLength ) {
+                        if (currentNum==1)
+                                component.N10=nodeLengths[i];
+                        if (currentNum==2)
+                                component.N20=nodeLengths[i];
+                        if (currentNum==3)
+                                component.N30=nodeLengths[i];
+                        if (currentNum==4)
+                                component.N40=nodeLengths[i];
+                        if (currentNum==5)
+                                component.N50=nodeLengths[i];
+                        if (currentNum==6)
+                                component.N60=nodeLengths[i];
+                        if (currentNum==7)
+                                component.N70=nodeLengths[i];
+                        if (currentNum==8)
+                                component.N80=nodeLengths[i];
+                        if (currentNum==9)
+                                component.N90=nodeLengths[i];
+
+                        currentNum++;
+                }
+        }
+        component.nodeKmerCov=round( summedCoverage / numExtractedNodes);
+        component.largestNodeSize=nodeLengths[0];
 }
 
 void DBGraph::populateTable() {

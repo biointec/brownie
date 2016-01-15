@@ -242,7 +242,7 @@ void Brownie::stageFour()
         if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 4..." << endl << endl;
-                 return;
+                return;
         }
         DBGraph graph(settings);
         parameterEstimationInStage4( graph );
@@ -260,11 +260,11 @@ void Brownie::stageFour()
 #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), true);
 #endif
-
         //report statistics of original graph
         graph.plotCovDiagram();
 
         Util::startChrono();
+        //graph.reportSta();
         //actual graph correction
         graph.graphPurification(getTrueMultFilename(3), libraries);
         cout << "Graph size: " << graph.sizeOfGraph << " bp" << endl;
