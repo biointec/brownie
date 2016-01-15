@@ -69,6 +69,7 @@ void Settings::printUsage() const
         cout << "  -v\t--visits\t\tmaximal number of visited nodes in one bubble detection [default = 1000]\n";
         cout << "  -d\t--depth\t\t\tmaximal number of visited nodes in one read correction [default = 1000]\n";
         cout << "  -e\t--essa\t\t\tsparseness factor of the enhanced sparse suffix array [default = 1]\n";
+        cout << "  -c\t--cutoff\t\tvalue to separate ture and false nodes based on their coverage [default = calculated based on poisson mixture model ]\n";
 
         cout << "  -p\t--pathtotmp\t\tpath to directory to store temporary files [default = current directory]\n\n";
 
@@ -88,11 +89,12 @@ void Settings::printUsage() const
 
 Settings::Settings() : kmerSize(31), numThreads(std::thread::hardware_concurrency()),
         genomeSize(0), doubleStranded(true), essa_factor(1), max_visits(1000),
-        max_depth(1000), skip_stage_4(false), skip_stage_5(false) {}
+        max_depth(1000),cutoff(0), skip_stage_4(false), skip_stage_5(false) {}
 
 void Settings::parseCommandLineArguments(int argc, char** args,
                                          LibraryContainer& libCont)
 {
+
         // parse all input arguments
         string inputFilename, outputFilename;
         for (int i = 1; i < argc; i++) {
@@ -131,6 +133,10 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                         i++;
                         if (i < argc)
                                 max_depth = atoi(args[i]);
+                } else if ((arg == "-c") || (arg == "--cutoff")) {
+                        i++;
+                        if (i < argc)
+                                cutoff = atoi(args[i]);
                 } else if ((arg == "-s") || (arg == "--singlestranded")) {
                         doubleStranded = false;
                 } else if ((arg == "-p") || (arg == "--pathtotmp")) {

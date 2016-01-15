@@ -56,6 +56,7 @@ private:
         int essa_factor;		// sparseness factor for essamem
         int max_visits;			// maximal number of visited nodes for bubble detection
         int max_depth;			// maximal search depth for stage 5
+        double cutoff;                   //cutoff value to separate true and false nodes based on their node-kmer-coverage
         bool skip_stage_4;
         bool skip_stage_5;
 
@@ -136,6 +137,9 @@ public:
 
         int getMaxVisits() const {
                 return max_visits;
+        }
+        double getCutOffValue(){
+                return cutoff;
         }
 
         int getMaxDepth() const {

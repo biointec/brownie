@@ -79,8 +79,10 @@ void Brownie::parameterEstimationInStage4(DBGraph &graph){
         double estimatedErroneousKmerCoverage=1+estimatedKmerCoverage/100;
         double e=2.718281;
         double c=estimatedErroneousKmerCoverage/estimatedKmerCoverage;
-        cutOffvalue =(estimatedErroneousKmerCoverage-estimatedKmerCoverage)* (log(e)/log(c));
-
+        if (settings.getCutOffValue()==0)
+                cutOffvalue =(estimatedErroneousKmerCoverage-estimatedKmerCoverage)* (log(e)/log(c));
+        else
+                cutOffvalue=settings.getCutOffValue();
         testgraph.updateGraphSize();
         testgraph.clear();
            //initialize values for graph parameter based on test graph.
@@ -242,7 +244,7 @@ void Brownie::stageFour()
         if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 4..." << endl << endl;
-                return;
+                 return;
         }
         DBGraph graph(settings);
         parameterEstimationInStage4( graph );
