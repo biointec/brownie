@@ -867,8 +867,7 @@ void DBGraph::reportSta()
         sexpcovFile.open(sFileName.c_str());
         double nkcovAVG=0;
         vector<Component> components;
-        sexpcovFile<<"#Extracting information about the components in the graph"<<endl;
-        cout       <<"N10"<<'\t'<<"N30"<<'\t'<<"N50"<<'\t'<<"N70"<<'\t'<<"N90"<<'\t'<<"Nodes"<<'\t'<<"Arcs"<<'\t' <<"Size"<<'\t'<<"largest"<<'\t'<<"cov"<<endl;
+        cout<<"#Extracting information about the components in the graph"<<endl;
 
         for (i =srcID ; i <= numNodes; i++){
                 if (!getSSNode(i).isValid())
@@ -931,7 +930,6 @@ void DBGraph::reportSta()
         sort( components.begin(), components.end(), greater_than_Component());
         size_t num=1;
         for (auto component: components){
-                cout       <<component.get_N(10)<<'\t'<<component.get_N(30)<<'\t'<<component.get_N(50)<<'\t'<<component.get_N(70)<<'\t'<<component.get_N(90)<<'\t'<<component.numOfNodes<<'\t'<<component.numOfArcs<<'\t'<<component.Size<<'\t' <<component.largestNodeSize<<'\t'<<component.nodeKmerCov <<endl;
                 sexpcovFile<<component.get_N(10)<<'\t'<<component.get_N(30)<<'\t'<<component.get_N(50)<<'\t'<<component.get_N(70)<<'\t'<<component.get_N(90)<<'\t'<<component.numOfNodes<<'\t'<<component.numOfArcs<<'\t'<<component.Size<<'\t' <<component.largestNodeSize<<'\t'<<component.nodeKmerCov <<endl;
                 if (component.Size>1000){
                         makeN50Files(num, component);
@@ -972,7 +970,6 @@ void DBGraph::makeComponentPlotFile(vector<Component> components)
         ofstream sexpcovFile;
         string sFileName=dir+"/components_"+std::to_string( updateCutOffValueRound)+".dat";
         sexpcovFile.open(sFileName.c_str());
-        sexpcovFile<<"#Extracting information about the components in the graph"<<endl;
         size_t  i=0;
         size_t Interval=100;
         sort( components.begin(), components.end(), less_than_Component());
