@@ -49,29 +49,11 @@ class NodePosPair;
 class NodeEndTable;
 class NodeEndRef;
 class LibraryContainer;
+class Component;
 
 // ============================================================================
 // GRAPH CLASS
 // ============================================================================
-class Component{
-public:
-        size_t N10;
-        size_t N20;
-        size_t N30;
-        size_t N40;
-        size_t N50;
-        size_t N60;
-        size_t N70;
-        size_t N80;
-        size_t N90;
-
-        size_t Size;
-        size_t numOfNodes;
-        size_t numOfArcs;
-        double nodeKmerCov;
-        size_t largestNodeSize;
-        Component() :  N10(0), N30(0), N50(0),N70(0), N90(0), Size(0),numOfNodes(0),numOfArcs(0),nodeKmerCov(0), largestNodeSize(0)  {}
-};
 class DBGraph {
 
 private:
