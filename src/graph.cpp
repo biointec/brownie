@@ -42,7 +42,7 @@ DBGraph::DBGraph(const Settings& settings) : table(NULL), settings(settings),
 
 void DBGraph::initialize()
 {
-    //correct it later it should read this information from setting file, but setting dosn't have such infomratin right now
+    //correct it later it should read this information from setting file, but setting dosn't have such information right now
 
     readLength=100;//settings.getReadLength();
     coverage=100;//settings.getCoverage();
@@ -858,7 +858,7 @@ void DBGraph::reportSta()
         int i=0;
         set<NodeID> nodesHandled;
         set<NodeID> currentSetNodes;
-        size_t numberOfcompunents=0;
+        size_t numberOfcomponents=0;
         ofstream sexpcovFile;
         string dir=settings.getTempDirectory()+"Statistic";
         const int dir_err = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
@@ -867,7 +867,7 @@ void DBGraph::reportSta()
         sexpcovFile.open(sFileName.c_str());
         double nkcovAVG=0;
         vector<Component> components;
-        sexpcovFile<<"#Extracting infomratin about the components in the graph"<<endl;
+        sexpcovFile<<"#Extracting information about the components in the graph"<<endl;
         cout       <<"N10"<<'\t'<<"N30"<<'\t'<<"N50"<<'\t'<<"N70"<<'\t'<<"N90"<<'\t'<<"Nodes"<<'\t'<<"Arcs"<<'\t' <<"Size"<<'\t'<<"largest"<<'\t'<<"cov"<<endl;
 
         for (i =srcID ; i <= numNodes; i++){
@@ -918,7 +918,7 @@ void DBGraph::reportSta()
                 if (currentSetNodes.size()>0)
                 {
                         Component component;
-                        numberOfcompunents++;
+                        numberOfcomponents++;
                         getComponentSta(currentSetNodes, component);
                         components.push_back(component);
                 }
@@ -926,7 +926,7 @@ void DBGraph::reportSta()
         }
         sexpcovFile<<endl<<"#number of nodes:\t"<<nodesHandled.size()<<endl;
         sexpcovFile<<"#mean of node coverage:\t"<<nkcovAVG<<endl;
-        sexpcovFile<<"#number of disjoint components in this graph\t" <<numberOfcompunents<<endl;
+        sexpcovFile<<"#number of disjoint components in this graph\t" <<numberOfcomponents<<endl;
         sexpcovFile<<endl<<"N10"<<'\t'<<"N30"<<'\t'<<"N50"<<'\t'<<"N70"<<'\t'<<"N90"<<'\t'<<"Nodes"<<'\t'<<"Arcs"<<'\t' <<"Size"<<'\t'<<"largest"<<'\t'<<"cov"<<endl;
         sort( components.begin(), components.end(), greater_than_Component());
         size_t num=1;
@@ -972,7 +972,7 @@ void DBGraph::makeComponentPlotFile(vector<Component> components)
         ofstream sexpcovFile;
         string sFileName=dir+"/components_"+std::to_string( updateCutOffValueRound)+".dat";
         sexpcovFile.open(sFileName.c_str());
-        sexpcovFile<<"#Extracting infomratin about the components in the graph"<<endl;
+        sexpcovFile<<"#Extracting information about the components in the graph"<<endl;
         size_t  i=0;
         size_t Interval=100;
         sort( components.begin(), components.end(), less_than_Component());
