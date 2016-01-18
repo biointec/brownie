@@ -54,13 +54,20 @@ void Settings::printProgramInfo() const
 
 void Settings::printUsage() const
 {
-        cout << "Usage: brownie [options] [file_options] file1 [[file_options] file2]...\n";
+        cout << "Usage: brownie command [options] [file_options] file1 [[file_options] file2]...\n";
         cout << "Corrects sequence reads in file(s)\n\n";
 
         cout << " [options]\n";
         cout << "  -h\t--help\t\t\tdisplay help page\n";
         cout << "  -i\t--info\t\t\tdisplay information page\n";
         cout << "  -s\t--singlestranded\tenable single stranded DNA [default = false]\n\n";
+
+        cout << "  command\n";
+        cout << "  Assembly\t\t\tDe novo assembly\n";
+        cout << "  ErrorCorrection\t\tDe novo error correction\n";
+        cout << "  GraphConstruction\t\tBuild de bruijn graph\n";
+        cout << "  GraphCorrection\t\tCorrect constructed de bruijn graph\n\n";
+
 
         cout << " [options arg]\n";
         cout << "  -k\t--kmersize\t\tkmer size [default = 31]\n";
@@ -69,14 +76,12 @@ void Settings::printUsage() const
         cout << "  -v\t--visits\t\tmaximal number of visited nodes in one bubble detection [default = 1000]\n";
         cout << "  -d\t--depth\t\t\tmaximal number of visited nodes in one read correction [default = 1000]\n";
         cout << "  -e\t--essa\t\t\tsparseness factor of the enhanced sparse suffix array [default = 1]\n";
-        cout << "  -c\t--cutoff\t\tvalue to separate ture and false nodes based on their coverage [default = calculated based on poisson mixture model ]\n";
+        cout << "  -c\t--cutoff\t\tvalue to separate ture and false nodes based on their coverage [default = calculated based on poisson mixture model]\n";
 
         cout << "  -p\t--pathtotmp\t\tpath to directory to store temporary files [default = current directory]\n\n";
 
         cout << " [file_options]\n";
         cout << "  -o\t--output\t\toutput file name [default = inputfile.corr]\n";
-        cout << "  \t--graph\t\t\tskip read correction\n";
-        cout << "  \t--perfectgraph\t\tskip read and graph correction\n\n";
 
         cout << " examples:\n";
         cout << "  ./brownie inputA.fastq\n";
@@ -91,25 +96,19 @@ Settings::Settings() : kmerSize(31), numThreads(std::thread::hardware_concurrenc
         genomeSize(0), doubleStranded(true), essa_factor(1), max_visits(1000),
         max_depth(1000),cutoff(0), skip_stage_4(false), skip_stage_5(false) {}
 
-void Settings::parseCommandLineArguments(int argc, char** args,
+void Settings::parseCommandLineArgumentsEC(int argc, char** args,
                                          LibraryContainer& libCont)
 {
 
         // parse all input arguments
         string inputFilename, outputFilename;
-        for (int i = 1; i < argc; i++) {
+        for (int i = 2; i < argc; i++) {
                 string arg(args[i]);
 
                 if (arg.empty())
                         continue;              // this shouldn't happen
 
-                if ((arg == "-h") || (arg == "--help")) {
-                        printUsage();
-                        exit(EXIT_SUCCESS);
-                } else if ((arg == "-i") || (arg == "--info")) {
-                        printProgramInfo();
-                        exit(EXIT_SUCCESS);
-                } else if ((arg == "-k") || (arg == "--kmersize")) {
+                 if ((arg == "-k") || (arg == "--kmersize")) {
                         i++;
                         if (i < argc)
                                 kmerSize = atoi(args[i]);
@@ -143,11 +142,6 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                         i++;
                         if (i < argc)
                                 pathtotemp = args[i];
-                } else if (arg == "--graph") {
-                        skip_stage_5 = true;
-                } else if (arg == "--perfectgraph") {
-                        skip_stage_4 = true;
-                        skip_stage_5 = true;
                 } else if ((arg == "-o") || (arg == "--output")) {
                         i++;
                         if (i < argc)
@@ -159,8 +153,52 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                         outputFilename.clear();
                 }
         }
+         if (!pathtotemp.empty()) {
+                if ((pathtotemp.back() != '/') && (pathtotemp.back() != '\\'))
+                        pathtotemp.push_back('/');
+        }
+           // final check: see if we can write to the temporary directory
+        ofstream ofs(pathtotemp + "log.txt");
+        if (!ofs.good()) {
+                cerr << "brownie: cannot write to directory: " << pathtotemp << "\n";
+                cerr << "Please make sure the path exists" << endl;
+                exit(EXIT_FAILURE);
+        }
+        for (int i = 0; i < argc-1; i++)
+                ofs << argc << " ";
+        ofs << args[argc-1] << endl;
+        ofs.close();
+}
+void Settings::parseCommandLineArgumentsMain(int argc, char** args,
+                                             LibraryContainer& libCont)
+{
+        string arg(args[1]);
 
-        // perform sanity check on input parameters
+        if (arg== "ErrorCorrection"){
+                parseCommandLineArgumentsEC(argc,args,libCont);
+        }else if (arg== "Assembly"){
+
+        }
+        else if (arg== "GraphCorrection") {
+                skip_stage_5 = true;
+                parseCommandLineArgumentsEC(argc,args,libCont);
+        }
+        else if(arg=="GraphConstruction"){
+                skip_stage_4 = true;
+                skip_stage_5 = true;
+                parseCommandLineArgumentsEC(argc,args,libCont);
+        }
+        else if ((arg == "-h") || (arg == "--help")) {
+                printUsage();
+                exit(EXIT_SUCCESS);
+        } else if ((arg == "-i") || (arg == "--info")) {
+                printProgramInfo();
+                exit(EXIT_SUCCESS);
+        }
+        checkInputArguments(libCont);
+}
+void Settings::checkInputArguments(LibraryContainer& libCont){
+                // perform sanity check on input parameters
         if (numThreads == 0)
                 numThreads = 1;
 
@@ -177,7 +215,6 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                 cerr << "The kmer size must be odd" << endl;
                 throw ("Invalid argument");
         }
-
         if (kmerSize > MAXKMERLENGTH) {
                 size_t maxKmerLength = MAXKMERLENGTH;
                 if (maxKmerLength % 2 == 0)
@@ -186,29 +223,9 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                 cerr << "Recompile Brownie with a higher MAXKMERLENGTH if a higher kmer size is desired" << endl;
                 throw ("Invalid argument");
         }
-
-        if (!pathtotemp.empty()) {
-                if ((pathtotemp.back() != '/') && (pathtotemp.back() != '\\'))
-                        pathtotemp.push_back('/');
-        }
-
         if (libCont.getSize() == 0) {
                 cerr << "brownie: missing input read file\n";
                 cerr << "Try 'brownie --help' for more information" << endl;
                 exit(EXIT_FAILURE);
         }
-
-        // final check: see if we can write to the temporary directory
-        ofstream ofs(pathtotemp + "log.txt");
-        if (!ofs.good()) {
-                cerr << "brownie: cannot write to directory: " << pathtotemp << "\n";
-                cerr << "Please make sure the path exists" << endl;
-                exit(EXIT_FAILURE);
-        }
-
-        for (int i = 0; i < argc-1; i++)
-                ofs << argc << " ";
-        ofs << args[argc-1] << endl;
-
-        ofs.close();
 }

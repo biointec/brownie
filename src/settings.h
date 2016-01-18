@@ -65,6 +65,18 @@ public:
          * Default constructor
          */
         Settings();
+         /**
+         * Parse the command line arguments
+         * @param argc Command line argument count
+         * @param args Command line arguments
+         * @param libCont Library container (output)
+         */
+
+         void parseCommandLineArgumentsMain(int argc, char** args,LibraryContainer& libCont);
+         /**
+          * @param libCont Library container (output)
+          */
+         void checkInputArguments(LibraryContainer& libCont);
 
         /**
          * Parse the command line arguments
@@ -72,8 +84,10 @@ public:
          * @param args Command line arguments
          * @param libCont Library container (output)
          */
-        void parseCommandLineArguments(int argc, char **args,
+        void parseCommandLineArgumentsEC(int argc, char **args,
                                        LibraryContainer& libCont);
+
+
 
         /**
          * Get the user-specified kmer hash length

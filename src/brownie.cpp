@@ -32,7 +32,7 @@ using namespace std;
 
 Brownie::Brownie(int argc, char** args)
 {
-        settings.parseCommandLineArguments(argc, args, libraries);
+        settings.parseCommandLineArgumentsMain(argc, args, libraries);
 
         Kmer::setWordSize(settings.getK());
         RKmer::setWordSize(settings.getK() - KMERBYTEREDUCTION * 4);
@@ -244,7 +244,7 @@ void Brownie::stageFour()
         if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 4..." << endl << endl;
-                 return;
+                return;
         }
         DBGraph graph(settings);
         parameterEstimationInStage4( graph );
