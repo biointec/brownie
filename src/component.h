@@ -21,23 +21,28 @@
 
 #ifndef COMPONENT_H
 #define COMPONENT_H
-class Component{
-public:
-        size_t N10;
-        size_t N20;
-        size_t N30;
-        size_t N40;
-        size_t N50;
-        size_t N60;
-        size_t N70;
-        size_t N80;
-        size_t N90;
 
+#include <map>
+
+class Component{
+private:
+        std::map<int, size_t> N;
+public:
         size_t Size;
         size_t numOfNodes;
         size_t numOfArcs;
         double nodeKmerCov;
         size_t largestNodeSize;
-        Component() :  N10(0), N30(0), N50(0),N70(0), N90(0), Size(0),numOfNodes(0),numOfArcs(0),nodeKmerCov(0), largestNodeSize(0)  {}
+        Component() :  N(), Size(0),numOfNodes(0),numOfArcs(0),nodeKmerCov(0), largestNodeSize(0)  {}
+        std::map<int, size_t> get_N() const {
+                return N;
+        }
+        void set_N(int x, size_t Nx) {
+                N[x] = Nx;
+        }
+        size_t get_N(int x) const {
+                return N.at(x);
+        }
 };
+
 #endif

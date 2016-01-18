@@ -931,8 +931,8 @@ void DBGraph::reportSta()
         sort( components.begin(), components.end(), greater_than_Component());
         size_t num=1;
         for (auto component: components){
-                cout       <<component.N10<<'\t'<<component.N30<<'\t'<<component.N50<<'\t'<<component.N70<<'\t'<<component.N90<<'\t'<<component.numOfNodes<<'\t'<<component.numOfArcs<<'\t'<<component.Size<<'\t' <<component.largestNodeSize<<'\t'<<component.nodeKmerCov <<endl;
-                sexpcovFile<<component.N10<<'\t'<<component.N30<<'\t'<<component.N50<<'\t'<<component.N70<<'\t'<<component.N90<<'\t'<<component.numOfNodes<<'\t'<<component.numOfArcs<<'\t'<<component.Size<<'\t' <<component.largestNodeSize<<'\t'<<component.nodeKmerCov <<endl;
+                cout       <<component.get_N(10)<<'\t'<<component.get_N(30)<<'\t'<<component.get_N(50)<<'\t'<<component.get_N(70)<<'\t'<<component.get_N(90)<<'\t'<<component.numOfNodes<<'\t'<<component.numOfArcs<<'\t'<<component.Size<<'\t' <<component.largestNodeSize<<'\t'<<component.nodeKmerCov <<endl;
+                sexpcovFile<<component.get_N(10)<<'\t'<<component.get_N(30)<<'\t'<<component.get_N(50)<<'\t'<<component.get_N(70)<<'\t'<<component.get_N(90)<<'\t'<<component.numOfNodes<<'\t'<<component.numOfArcs<<'\t'<<component.Size<<'\t' <<component.largestNodeSize<<'\t'<<component.nodeKmerCov <<endl;
                 if (component.Size>1000){
                         makeN50Files(num, component);
                         num++;
@@ -960,8 +960,8 @@ void DBGraph::makeN50Files(const size_t num,const Component component)
         n50stream<<"# number of nodes\t"<< component.numOfNodes<<endl;
         n50stream<<"# number of arcs\t"<< component.numOfArcs<<endl;
 
-        n50stream<<"N10\t" <<component.N10<<"\nN20\t" <<component.N20<<"\nN30\t" <<component.N30<<"\nN40\t" <<component.N40<<"\nN50\t" <<component.N50
-        <<"\nN60\t" <<component.N60<<"\nN70\t" <<component.N70<<"\nN80\t" <<component.N80<<"\nN90\t" <<component.N90;
+        n50stream<<"N10\t" <<component.get_N(10)<<"\nN20\t" <<component.get_N(20)<<"\nN30\t" <<component.get_N(30)<<"\nN40\t" <<component.get_N(40)<<"\nN50\t" <<component.get_N(50)
+        <<"\nN60\t" <<component.get_N(60)<<"\nN70\t" <<component.get_N(70)<<"\nN80\t" <<component.get_N(80)<<"\nN90\t" <<component.get_N(90);
         n50stream.close();
 }
 
@@ -1046,25 +1046,7 @@ void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, Component &component
         for (size_t i = 0; i < nodeLengths.size(); i++) {
                 currLength += nodeLengths[i];
                 while (currLength >= (currentNum * 0.1) * totalLength ) {
-                        if (currentNum==1)
-                                component.N10=nodeLengths[i];
-                        if (currentNum==2)
-                                component.N20=nodeLengths[i];
-                        if (currentNum==3)
-                                component.N30=nodeLengths[i];
-                        if (currentNum==4)
-                                component.N40=nodeLengths[i];
-                        if (currentNum==5)
-                                component.N50=nodeLengths[i];
-                        if (currentNum==6)
-                                component.N60=nodeLengths[i];
-                        if (currentNum==7)
-                                component.N70=nodeLengths[i];
-                        if (currentNum==8)
-                                component.N80=nodeLengths[i];
-                        if (currentNum==9)
-                                component.N90=nodeLengths[i];
-
+                        component.set_N(10 * currentNum, nodeLengths[i]);
                         currentNum++;
                 }
         }
