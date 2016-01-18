@@ -200,6 +200,13 @@ public:
     double safeValueCov;
     double redLineValueCov;
     double cutOffvalue;
+    double stepSize;
+    double redLineUpsize;
+    double redLineDownSize;
+    double safeValueDownSize;
+    double safeValueUpSize;
+    double certainValueUpSize;
+    double certainValueDownSize;
 
     double readLength;
     //this variable shows the Maximum node size which can be deleted, which is calculated based on the read readLength

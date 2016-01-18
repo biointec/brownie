@@ -57,6 +57,13 @@ void DBGraph::initialize()
     updateCutOffValueRound=1;
     maxNodeSizeToDel=readLength*4;
     cutOffvalue=redLineValueCov;
+    stepSize=.2;
+    redLineUpsize=1.5;
+    redLineDownSize=1;
+    safeValueDownSize=.7;
+    safeValueUpSize=1;
+    certainValueUpSize=.7;
+    certainValueDownSize=.3;
 }
 
 
@@ -78,7 +85,6 @@ void DBGraph::graphPurification(string trueMultFilename,
                                 const LibraryContainer& libraries)
 {
         int round=1;
-        updateGraphSize();
         size_t maxBubbleDepth=maxNodeSizeToDel;
         size_t increamentDepth = readLength;
         bool simplified = true;
@@ -97,7 +103,6 @@ void DBGraph::graphPurification(string trueMultFilename,
                 bool bubble=false;
                 size_t depth=settings.getK();
                 #ifdef DEBUG
-                updateCutOffValue(round);
                 compareToSolution(trueMultFilename, false);
                 #endif
                 cout << endl << " ================= Bubble Detection ==================" << endl;
@@ -115,7 +120,6 @@ void DBGraph::graphPurification(string trueMultFilename,
                 }
                 #ifdef DEBUG
                 compareToSolution(trueMultFilename,false);
-                updateCutOffValue(round);
                 #endif
                 extractStatistic(round);
                 cout << endl << " ============= Delete Unreliable Nodes  ==============" << endl;
@@ -130,7 +134,6 @@ void DBGraph::graphPurification(string trueMultFilename,
                 while(mergeSingleNodes(true));
                 #ifdef DEBUG
                 compareToSolution(trueMultFilename,false);
-                updateCutOffValue(round);
                 cout<<"estimated Kmer Coverage Mean: "<<estimatedKmerCoverage<<endl;
                 cout<<"estimated Kmer Coverage STD: "<<estimatedMKmerCoverageSTD<<endl;
                 #endif
@@ -152,27 +155,33 @@ void DBGraph::graphPurification(string trueMultFilename,
 void DBGraph::updateCutOffValue(int round)
 {
         /*............read line ...........*/
-        double ratio=1;
-        if (round<6)
-                ratio=ratio+(double)round/10;
-        this->redLineValueCov= this->cutOffvalue*ratio>this->redLineValueCov?this->cutOffvalue*ratio:this->redLineValueCov;
+        double ratio=redLineDownSize;
+        size_t roundLimit=(redLineUpsize-redLineDownSize)/stepSize;
+        if (round<=roundLimit)
+                ratio=ratio+(double)round*stepSize;
+        else
+                ratio=redLineUpsize;
+        redLineValueCov= cutOffvalue*ratio;
+
         /*............safe value ...........*/
-        ratio=.7;
-        if (round<4)
-                ratio=ratio+(double)round/10;
+        ratio=safeValueDownSize;
+        roundLimit=(safeValueUpSize-safeValueDownSize)/stepSize;
+        if (round<=roundLimit)
+                ratio=ratio+(double)round*stepSize;
         else
-                ratio=1;
-        this->safeValueCov=this->cutOffvalue*ratio;
+                ratio=safeValueUpSize;
+        safeValueCov=cutOffvalue*ratio;
+
         /*............certainValue ...........*/
-        ratio=.3;
-        if (round<3)
-                ratio=ratio+(double)round/10;
+        ratio=certainValueDownSize;
+        roundLimit=(certainValueUpSize-certainValueDownSize)/stepSize ;
+        if (round<=roundLimit)
+                ratio=ratio+(double)round*stepSize;
         else
-                ratio=.5;
-        this->certainVlueCov=this->cutOffvalue*ratio;
+                ratio=certainValueUpSize;
+        certainVlueCov=cutOffvalue*ratio;
 
-        this->updateCutOffValueRound++;
-
+        updateCutOffValueRound++;
         cout << "Certain value: " << this->certainVlueCov << endl;
         cout << "Safe value: " << this->safeValueCov << endl;
         cout << "Red line value: " << this->redLineValueCov << endl;
