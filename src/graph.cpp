@@ -789,7 +789,7 @@ size_t DBGraph::updateGraphSize()
 
         numExtractedNodes++;
         //check later for adding kmerSize
-        sizeOfGraph=sizeOfGraph +node.getMarginalLength()+ Kmer::getK();
+        sizeOfGraph = sizeOfGraph + node.getMarginalLength() + Kmer::getK() - 1;
         KmerOverlap ol;
         for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
             char c = getSSNode(it->getNodeID()).getRightKmer().peekNucleotideLeft();
@@ -954,7 +954,7 @@ void DBGraph::makeN50Files(const size_t num,const Component component)
         ofstream n50stream;
 
         n50stream.open(sFileName.c_str());
-        n50stream<<"# size Of  component\t"<< component.Size<<endl;
+        n50stream<<"# size of component\t"<< component.Size<<endl;
         n50stream<<"# number of nodes\t"<< component.numOfNodes<<endl;
         n50stream<<"# number of arcs\t"<< component.numOfArcs<<endl;
 
@@ -1017,8 +1017,8 @@ void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, Component &component
                 if (!node.isValid())
                         continue;
                 numExtractedNodes++;
-                //check later for adding kmerSize
-                componentSize = componentSize + node.getMarginalLength() ;
+                //add full size of the node, including overlap
+                componentSize += node.getMarginalLength() + Kmer::getK() - 1;
                 KmerOverlap ol;
                 for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
                         char c = getSSNode(it->getNodeID()).getRightKmer().peekNucleotideLeft();
