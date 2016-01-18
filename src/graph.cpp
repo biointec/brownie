@@ -25,6 +25,7 @@
 #include "nodeendstable.h"
 #include "kmernode.h"
 #include "library.h"
+#include "component.h"
 #include <sys/stat.h>
 using namespace std;
 
