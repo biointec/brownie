@@ -70,52 +70,7 @@ bool DBGraph::clipTips(int round)
                                 numDeletedLocal++;
 
                         #ifdef DEBUG
-
-                        if (remove) {
-                                if (trueMult.size()>0&& trueMult[id] > 0) {
-                                        if (isolated)
-                                                #pragma omp critical
-                                                fps++;
-                                        else if(joinedTip)
-                                                #pragma omp critical
-                                                fpj++;
-                                        else
-                                                #pragma omp critical
-                                                fp++;
-                                } else {
-                                        if(isolated)
-                                                #pragma omp critical
-                                                tps++;
-                                        else if(joinedTip)
-                                                #pragma omp critical
-                                                tpj++;
-                                        else
-                                                #pragma omp critical
-                                                tp++;
-                                }
-                        } else {
-                                if (trueMult.size()>0&& trueMult[id] > 0) {
-                                        if(isolated)
-                                                #pragma omp critical
-                                                tns++;
-                                        else if(joinedTip)
-                                                #pragma omp critical
-                                                tnj++;
-                                        else
-                                                #pragma omp critical
-                                                tn++;
-                                } else {
-                                        if(isolated)
-                                                #pragma omp critical
-                                                fns++;
-                                        else if(joinedTip)
-                                                #pragma omp critical
-                                                fnj++;
-                                        else
-                                                #pragma omp critical
-                                                fn++;
-                                }
-                        }
+                        updateStaInClipTip(id , remove, isolated, joinedTip, fps,fpj, fp, tps, tpj,tp, tns, tnj,tn, fns, fnj, fn );
                         #endif
                 }
                 #pragma omp critical
@@ -127,7 +82,67 @@ bool DBGraph::clipTips(int round)
         }
 
         cout << "Clipped " << numDeleted << "/" << numTotal << " nodes" << endl;
-#ifdef DEBUG
+        #ifdef DEBUG
+        printStatisticInClipTip(fps,fpj, fp, tps, tpj,tp, tns, tnj,tn, fns, fnj, fn );
+        #endif
+        return  numDeleted > 0;
+}
+void DBGraph::updateStaInClipTip(NodeID id , bool remove, bool isolated, bool joinedTip, size_t& fps
+        , size_t &fpj, size_t &fp, size_t& tps, size_t &tpj,size_t &tp, size_t &tns, size_t &tnj,
+        size_t &tn, size_t &fns, size_t& fnj,size_t& fn ){
+        #ifdef DEBUG
+        if (remove) {
+                if (trueMult.size()>0&& trueMult[id] > 0) {
+                        if (isolated)
+                                #pragma omp critical
+                                fps++;
+                        else if(joinedTip)
+                                #pragma omp critical
+                                fpj++;
+                        else
+                                #pragma omp critical
+                                fp++;
+                } else {
+                        if(isolated)
+                                #pragma omp critical
+                                tps++;
+                        else if(joinedTip)
+                                #pragma omp critical
+                                tpj++;
+                        else
+                                #pragma omp critical
+                                tp++;
+                }
+        } else {
+                if (trueMult.size()>0&& trueMult[id] > 0) {
+                        if(isolated)
+                                #pragma omp critical
+                                tns++;
+                        else if(joinedTip)
+                                #pragma omp critical
+                                tnj++;
+                        else
+                                #pragma omp critical
+                                tn++;
+                } else {
+                        if(isolated)
+                                #pragma omp critical
+                                fns++;
+                        else if(joinedTip)
+                                #pragma omp critical
+                                fnj++;
+                        else
+                                #pragma omp critical
+                                fn++;
+                }
+        }
+        #endif
+}
+
+void DBGraph::printStatisticInClipTip(size_t& fps
+, size_t &fpj, size_t &fp, size_t& tps, size_t &tpj,size_t &tp, size_t &tns, size_t &tnj,
+size_t &tn, size_t &fns, size_t& fnj,size_t& fn){
+        #ifdef DEBUG
         cout << "****************************************" << endl;
         cout << "Isolated TP: " << tps << "\tTN: "<< tns << "\tFP: " << fps << "\tFN: "<< fns << endl;
         cout << "Sensitivity: " << 100.0 * Util::getSensitivity(tps, fns) << "%" << endl;
@@ -140,7 +155,5 @@ bool DBGraph::clipTips(int round)
         cout << "Tip TP: " << tp << "\tTN: " << tn << "\tFP: " << fp << "\tFN: " << fn << endl;
         cout << "Sensitivity: " << 100.0 * Util::getSensitivity(tp, fn) << "%" << endl;
         cout << "Specificity: " << 100.0 * Util::getSpecificity(tn, fp) << "%" << endl;
-#endif
-
-        return  numDeleted > 0;
+        #endif
 }
