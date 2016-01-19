@@ -207,7 +207,7 @@ public:
     double safeValueUpSize;
     double certainValueUpSize;
     double certainValueDownSize;
-
+    double touchLimitSize;
     double readLength;
     //this variable shows the Maximum node size which can be deleted, which is calculated based on the read readLength
     size_t maxNodeSizeToDel;

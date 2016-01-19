@@ -57,7 +57,7 @@ void DBGraph::initialize()
     updateCutOffValueRound=1;
     maxNodeSizeToDel=readLength*4;
     cutOffvalue=redLineValueCov;
-    stepSize=.2;
+    stepSize=.1;
     redLineUpsize=1.5;
     redLineDownSize=1;
     safeValueDownSize=.7;
@@ -109,8 +109,8 @@ void DBGraph::graphPurification(string trueMultFilename,
                 bubble= bubbleDetection(depth);
                 mergeSingleNodes(true);
                 bool continuEdit=true;
-                size_t maxDepth=(round)*increamentDepth>maxBubbleDepth?maxBubbleDepth:(round)*increamentDepth;
-                while(depth<maxDepth&& continuEdit){
+                size_t maxDepth=(round)*increamentDepth>maxBubbleDepth?maxBubbleDepth:(round)*increamentDepth+settings.getK();
+                while(depth<=maxDepth){//&& continuEdit){
                         depth=depth+increamentDepth;
                         cout << "Bubble depth: " << depth << endl;
                         continuEdit= bubbleDetection(depth);

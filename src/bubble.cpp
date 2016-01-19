@@ -331,7 +331,10 @@ vector<pair<vector<NodeID>, vector<NodeID> > >  DBGraph::searchForParallelNodes(
                                 if (nextLength > maxLength)
                                         continue;
                                 if (visited.size()>visitedNodesLimit)
+                                {
+                                        touchLimitSize++;
                                         continue;
+                                }
                                 PathInfo nextTop(nextID, nextLength);
                                 heap.push(nextTop);
                         }
@@ -353,7 +356,7 @@ vector<pair<vector<NodeID>, vector<NodeID>> >  DBGraph::searchForParallelNodes(S
         return (searchForParallelNodes(node, visited,nodeColor,prevNode, depth));
 }
 bool DBGraph::bubbleDetection(int depth) {
-
+        touchLimitSize=0;
         size_t numOfDel=0;
         size_t TP=0,TN=0,FP=0,FN=0;
         vector<NodeID> prevNode(2*numNodes+1, 0);
@@ -474,6 +477,9 @@ bool DBGraph::bubbleDetection(int depth) {
         cout << "Sensitivity: ("<<100*((double)TP/(double)(TP+FN))<<"%)"<<endl;
         cout<<"Specificity: ("<<100*((double)TN/(double)(TN+FP))<<"%)"<<endl;
         #endif
+        if (touchLimitSize>0)
+                cout<<"Number of times bubble search touches the limit depth:\t"<<touchLimitSize<<endl;
+
         if (numOfDel>0)
         cout << "Number of deleted nodes based on bubble detection: " << numOfDel << endl;
         if (numOfDel !=0)
