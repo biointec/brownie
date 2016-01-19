@@ -319,9 +319,6 @@ bool DBGraph::deleteExtraAttachedNodes(){
         {
                 #pragma omp for
                 for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
-                        if (lID % OUTPUT_FREQUENCY == 0)
-                                (cout << "Extracting node -" <<numNodes<< "/ "<<lID<<" /"<<numNodes
-                                << " from graph        \r").flush();
                         if (lID==0)
                                 continue;
                         SSNode node = getSSNode ( lID );
@@ -341,28 +338,19 @@ bool DBGraph::deleteExtraAttachedNodes(){
                                 SSNode firstNodeInDoPath;
                                 bool bubble=nodeIsBubble(node,currNode);
                                 double threshold=(!tip&& !bubble)? this->redLineValueCov:(this->estimatedKmerCoverage-this->estimatedMKmerCoverageSTD*2>this->redLineValueCov)?this->estimatedKmerCoverage-this->estimatedMKmerCoverageSTD*2:this->redLineValueCov;
-                                if (currNode.getNodeKmerCov()<threshold &&removeNode(currNode)){
-                                        #ifdef DEBUG
-                                        if (trueMult[abs(currNode.getNodeID())]>0 ){
-                                                fp++;
+                                bool remove=false;
+                                if (currNode.getNodeKmerCov()<threshold ){
+                                        remove=removeNode(currNode);
+                                        if(remove){
+                                                #ifdef DEBUG
+                                                updateStaInDeleteExtraAttachedNodes(remove, fp, tp,tn,fn,  currNode);
+                                                #endif
+                                                #pragma omp critical
+                                                numOfDel++;
+                                                break;
                                         }
-                                        else{
-                                                tp++;
-                                        }
-                                        #endif
-                                        numOfDel++;
-                                        break;
                                 }
-                                else{
-                                        #ifdef DEBUG
-                                        if (trueMult[abs(currNode.getNodeID())]>0){
-                                                tn++;
-                                        }
-                                        else{
-                                                fn++;
-                                        }
-                                        #endif
-                                }
+
                                 it++;
                         }
                 }
@@ -377,68 +365,107 @@ bool DBGraph::deleteExtraAttachedNodes(){
         #endif
         return (numOfDel>0);
 }
+
+void DBGraph::updateStaInDeleteExtraAttachedNodes(bool remove, size_t &fp, size_t &tp,size_t &tn,size_t &fn, SSNode currNode){
+        if (remove){
+                #ifdef DEBUG
+                if (trueMult[abs(currNode.getNodeID())]>0 ){
+                        #pragma omp critical
+                        fp++;
+                }
+                else{
+                        #pragma omp critical
+                        tp++;
+                }
+                #endif
+
+        }
+        else{
+                #ifdef DEBUG
+                if (trueMult[abs(currNode.getNodeID())]>0){
+                        #pragma omp critical
+                        tn++;
+                }
+                else{
+                        #pragma omp critical
+                        fn++;
+                }
+                #endif
+        }
+}
 bool DBGraph::connectSameMulNodes(){
         size_t secondFP=0;
         size_t secondTP=0;
         size_t numOfDel=0;
         double threshold=this->redLineValueCov;
-        for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
-                if (lID==0)
-                        continue;
-                SSNode node = getSSNode ( lID );
-                if(!node.isValid())
-                        continue;
-                if (!checkNodeIsReliable(node))
-                        continue;
-                ArcIt it = node.rightBegin();
-                SSNode currNode = getSSNode(it->getNodeID());
-                bool found=false;
-                while(it != node.rightEnd()) {
-                        if (!checkNodeIsReliable(currNode))
-                                it++;
-                        if (currNode.getExpMult()!=node.getExpMult() ||currNode.getExpMult()<2)
-                                it++;
-                        found=true;
-                        break;
-                }
-                if (found)
-                {
+        size_t numThreads= settings.getNumThreads();
+        #pragma omp parallel num_threads( numThreads)
+        {
+                size_t numOfDelLocal=0;
+                size_t secondFPLocal=0;
+                size_t secondTPLocal=0;
+
+                #pragma omp for
+                for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
+                        if (lID==0)
+                                continue;
+                        SSNode node = getSSNode ( lID );
+                        if(!node.isValid())
+                                continue;
+                        if (!checkNodeIsReliable(node))
+                                continue;
                         ArcIt it = node.rightBegin();
+                        SSNode currNode = getSSNode(it->getNodeID());
+                        bool found=false;
                         while(it != node.rightEnd()) {
-                                SSNode victim=getSSNode(it->getNodeID());
-                                if(victim.getNodeID()!=currNode.getNodeID()&&victim.getNodeKmerCov()<threshold&& removeNode(victim)){
-                                        numOfDel++;
-                                        #ifdef DEBUG
-                                        if (trueMult[abs(victim.getNodeID())]>0)
-                                                secondFP++;
-                                        else
-                                                secondTP++;
-                                        #endif
-                                        break;
-                                }
-                                it++;
-                        }
-                        it = currNode.leftBegin();
-                        while(it!=currNode.leftEnd()){
-                                SSNode victim=getSSNode(it->getNodeID());
-                                if (!victim.isValid())
+                                if (!checkNodeIsReliable(currNode))
                                         it++;
-                                if(victim.getNodeID()!=node.getNodeID()&&victim.getNodeKmerCov()<threshold &&removeNode(victim)){
-                                        numOfDel++;
-                                        #ifdef DEBUG
-                                        if (trueMult[abs(victim.getNodeID())]>0)
-                                                secondFP++;
-                                        else
-                                                secondTP++;
-                                        #endif
-                                        break;
-                                }
-                                it++;
+                                if (currNode.getExpMult()!=node.getExpMult() ||currNode.getExpMult()<2)
+                                        it++;
+                                found=true;
+                                break;
                         }
+                        if (found)
+                        {
+                                ArcIt it = node.rightBegin();
+                                while(it != node.rightEnd()) {
+                                        SSNode victim=getSSNode(it->getNodeID());
+                                        if(victim.getNodeID()!=currNode.getNodeID()&&victim.getNodeKmerCov()<threshold&& removeNode(victim)){
+                                                numOfDelLocal++;
+                                                #ifdef DEBUG
+                                                if (trueMult[abs(victim.getNodeID())]>0)
+                                                        secondFPLocal++;
+                                                else
+                                                        secondTPLocal++;
+                                                #endif
+                                                break;
+                                        }
+                                        it++;
+                                }
+                                it = currNode.leftBegin();
+                                while(it!=currNode.leftEnd()){
+                                        SSNode victim=getSSNode(it->getNodeID());
+                                        if (!victim.isValid())
+                                                it++;
+                                        if(victim.getNodeID()!=node.getNodeID()&&victim.getNodeKmerCov()<threshold &&removeNode(victim)){
+                                                numOfDelLocal++;
+                                                #ifdef DEBUG
+                                                if (trueMult[abs(victim.getNodeID())]>0)
+                                                        secondFPLocal++;
+                                                else
+                                                        secondTPLocal++;
+                                                #endif
+                                                break;
+                                        }
+                                        it++;
+                                }
+                        }
+
                 }
-
+                numOfDel=+numOfDelLocal;
+                secondFP=+ secondFPLocal;
+                secondTP=+ secondTPLocal;
         }
-
         if (numOfDel>0)
                 cout << "Number of deleted nodes in connectSameMulNodes: " << numOfDel << endl;
         #ifdef DEBUG
@@ -774,24 +801,28 @@ bool DBGraph::filterCoverage(float cutOff)
  */
 
 bool DBGraph::removeNode(SSNode & rootNode) {
+
         if (rootNode.getMarginalLength()>maxNodeSizeToDel)
                 return false;
-        for ( ArcIt it2 = rootNode.leftBegin(); it2 != rootNode.leftEnd(); it2++ ) {
-                SSNode llNode = getSSNode ( it2->getNodeID() );
-                if (llNode.getNodeID()==-rootNode.getNodeID())
-                        continue;
-                bool result = llNode.deleteRightArc ( rootNode.getNodeID() );
-                assert ( result );
+        #pragma omp critical
+        {
+                for ( ArcIt it2 = rootNode.leftBegin(); it2 != rootNode.leftEnd(); it2++ ) {
+                        SSNode llNode = getSSNode ( it2->getNodeID() );
+                        if (llNode.getNodeID()==-rootNode.getNodeID())
+                                continue;
+                        bool result = llNode.deleteRightArc ( rootNode.getNodeID() );
+                        assert ( result );
+                }
+                for ( ArcIt it3 = rootNode.rightBegin(); it3 != rootNode.rightEnd(); it3++ ) {
+                        SSNode rrNode = getSSNode ( it3->getNodeID() );
+                        if (rrNode.getNodeID()==-rootNode.getNodeID())
+                                continue;
+                        bool result = rrNode.deleteLeftArc ( rootNode.getNodeID() );
+                        assert ( result );
+                }
+                rootNode.deleteAllRightArcs();
+                rootNode.deleteAllLeftArcs();
+                rootNode.invalidate();
         }
-        for ( ArcIt it3 = rootNode.rightBegin(); it3 != rootNode.rightEnd(); it3++ ) {
-                SSNode rrNode = getSSNode ( it3->getNodeID() );
-                if (rrNode.getNodeID()==-rootNode.getNodeID())
-                        continue;
-                bool result = rrNode.deleteLeftArc ( rootNode.getNodeID() );
-                assert ( result );
-        }
-        rootNode.deleteAllRightArcs();
-        rootNode.deleteAllLeftArcs();
-        rootNode.invalidate();
         return true;
 }

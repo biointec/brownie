@@ -63,7 +63,6 @@ bool DBGraph::clipTips(int round)
                         bool remove = false;
                         if ((startNode.getNodeKmerCov() <threshold) &&
                                 (startNode.getMarginalLength() < maxNodeSizeToDel))
-                                #pragma omp critical
                                 remove = removeNode(startNode);
 
                         if (remove)

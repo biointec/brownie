@@ -251,6 +251,7 @@ public:
     bool checkNodeIsReliable(SSNode node);
     bool deleteUnreliableNodes();
     bool deleteExtraAttachedNodes();
+    void updateStaInDeleteExtraAttachedNodes(bool remove, size_t &fp, size_t &tp,size_t &tn,size_t &fn, SSNode currNode);
     bool connectSameMulNodes();
     bool deleteSuspiciousNodes();
     bool clipTips(int round);
