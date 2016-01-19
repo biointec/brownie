@@ -314,52 +314,57 @@ bool DBGraph::deleteUnreliableNodes(){
 bool DBGraph::deleteExtraAttachedNodes(){
         double tp=0, tn=0, fp=0,fn=0;
         size_t numOfDel=0;
-        for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
-                if (lID % OUTPUT_FREQUENCY == 0)
-                        (cout << "Extracting node -" <<numNodes<< "/ "<<lID<<" /"<<numNodes
-                        << " from graph        \r").flush();
-                if (lID==0)
-                        continue;
-                SSNode node = getSSNode ( lID );
+        size_t numThreads= settings.getNumThreads();
+        #pragma omp parallel num_threads( numThreads)
+        {
+                #pragma omp for
+                for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
+                        if (lID % OUTPUT_FREQUENCY == 0)
+                                (cout << "Extracting node -" <<numNodes<< "/ "<<lID<<" /"<<numNodes
+                                << " from graph        \r").flush();
+                        if (lID==0)
+                                continue;
+                        SSNode node = getSSNode ( lID );
 
-                if(!node.isValid())
-                        continue;
-                if (!checkNodeIsReliable(node))
-                        continue;
-                if(node.getExpMult()<node.getNumRightArcs())
-                        continue;
+                        if(!node.isValid())
+                                continue;
+                        if (!checkNodeIsReliable(node))
+                                continue;
+                        if(node.getExpMult()<node.getNumRightArcs())
+                                continue;
 
-                ArcIt it = node.rightBegin();
-                SSNode currNode = getSSNode(it->getNodeID());
-                while(it != node.rightEnd()) {
-                        bool tip=currNode.getNumRightArcs()==0&&currNode.getNumLeftArcs()==1;
-                        SSNode firstNodeInUpPath;
-                        SSNode firstNodeInDoPath;
-                        bool bubble=nodeIsBubble(node,currNode);
-                        double threshold=(!tip&& !bubble)? this->redLineValueCov:(this->estimatedKmerCoverage-this->estimatedMKmerCoverageSTD*2>this->redLineValueCov)?this->estimatedKmerCoverage-this->estimatedMKmerCoverageSTD*2:this->redLineValueCov;
-                        if (currNode.getNodeKmerCov()<threshold &&removeNode(currNode)){
-                                #ifdef DEBUG
-                                if (trueMult[abs(currNode.getNodeID())]>0 ){
-                                        fp++;
+                        ArcIt it = node.rightBegin();
+                        SSNode currNode = getSSNode(it->getNodeID());
+                        while(it != node.rightEnd()) {
+                                bool tip=currNode.getNumRightArcs()==0&&currNode.getNumLeftArcs()==1;
+                                SSNode firstNodeInUpPath;
+                                SSNode firstNodeInDoPath;
+                                bool bubble=nodeIsBubble(node,currNode);
+                                double threshold=(!tip&& !bubble)? this->redLineValueCov:(this->estimatedKmerCoverage-this->estimatedMKmerCoverageSTD*2>this->redLineValueCov)?this->estimatedKmerCoverage-this->estimatedMKmerCoverageSTD*2:this->redLineValueCov;
+                                if (currNode.getNodeKmerCov()<threshold &&removeNode(currNode)){
+                                        #ifdef DEBUG
+                                        if (trueMult[abs(currNode.getNodeID())]>0 ){
+                                                fp++;
+                                        }
+                                        else{
+                                                tp++;
+                                        }
+                                        #endif
+                                        numOfDel++;
+                                        break;
                                 }
                                 else{
-                                        tp++;
+                                        #ifdef DEBUG
+                                        if (trueMult[abs(currNode.getNodeID())]>0){
+                                                tn++;
+                                        }
+                                        else{
+                                                fn++;
+                                        }
+                                        #endif
                                 }
-                                #endif
-                                numOfDel++;
-                                break;
+                                it++;
                         }
-                        else{
-                                #ifdef DEBUG
-                                if (trueMult[abs(currNode.getNodeID())]>0){
-                                        tn++;
-                                }
-                                else{
-                                        fn++;
-                                }
-                                #endif
-                        }
-                        it++;
                 }
         }
         cout<<endl;
@@ -458,6 +463,7 @@ bool DBGraph::mergeSingleNodes(bool force)
         //comment by mahdi
         //the initial was lID=1
         bool change=false;//  deleteSuspiciousNodes();
+
         for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
                 if ( lID == 0 ) {
                         continue;

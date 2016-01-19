@@ -110,7 +110,7 @@ void DBGraph::graphPurification(string trueMultFilename,
                 mergeSingleNodes(true);
                 bool continuEdit=true;
                 size_t maxDepth=(round)*increamentDepth>maxBubbleDepth?maxBubbleDepth:(round)*increamentDepth+settings.getK();
-                while(depth<=maxDepth){//&& continuEdit){
+                while(depth<=maxDepth&& continuEdit){
                         depth=depth+increamentDepth;
                         cout << "Bubble depth: " << depth << endl;
                         continuEdit= bubbleDetection(depth);

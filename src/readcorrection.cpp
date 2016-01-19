@@ -513,8 +513,13 @@ void ReadCorrectionJan::correctRead(ReadRecord& record)
         cout << "BEST ALIGNMENT: " << bestScore << endl;
         alignment.printAlignment(read, bestCorrectedRead);*/
 
-        if (bestScore > ((int)read.size() / 2))
+        if (bestScore > ((int)read.size() / 2)){
                 read = bestCorrectedRead;
+                numOfChangesInReads=numOfChangesInReads+(read.length()-bestScore);
+                numOfCorrectedReads++;
+        }
+        numOfReads++;
+
 }
 
 void ReadCorrectionJan::correctChunk(vector<ReadRecord>& readChunk)
@@ -535,15 +540,19 @@ void ReadCorrectionJan::correctChunk(vector<ReadRecord>& readChunk)
 void ReadCorrectionHandler::workerThread(size_t myID, LibraryContainer& libraries)
 {
         ReadCorrectionJan readCorrection(dbg, settings, *sa, startpos);
-
+        pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
         // local storage of reads
         vector<ReadRecord> myReadBuf;
 
         while (true) {
                 size_t blockID, recordID;
                 bool result = libraries.getRecordChunk(myReadBuf, blockID, recordID);
-
                 readCorrection.correctChunk(myReadBuf);
+                pthread_mutex_lock(&lock);
+                numOfAllReads=+ readCorrection.numOfReads;
+                numOfAllCorrectedReads=+readCorrection.numOfCorrectedReads;
+                numOfAllChangesInReads=+readCorrection.numOfChangesInReads;
+                pthread_mutex_unlock(&lock);
 
                 if (result)
                         libraries.commitRecordChunk(myReadBuf, blockID, recordID);
@@ -622,6 +631,9 @@ void ReadCorrectionHandler::doErrorCorrection(LibraryContainer& libraries)
         for_each(workerThreads.begin(), workerThreads.end(), mem_fn(&thread::join));
 
         libraries.joinIOThreads();
+        cout <<"numOfAllReads:\t"<<numOfAllReads<<endl;
+        cout <<"numOfAllCorrectedReads:\t"<<numOfAllCorrectedReads<<endl;
+        cout <<"numOfAllChangesInReads:\t"<<numOfAllChangesInReads<<endl;
 }
 
 ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :

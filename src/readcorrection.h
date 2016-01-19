@@ -106,6 +106,7 @@ private:
         const sparseSA& sa;
         const std::vector<long>& startpos;
 
+
         /**
          * Get the marginal length of a string
          * @param str String under consideration
@@ -192,6 +193,9 @@ private:
                         const std::vector<Seed>& seeds);
 
 public:
+        size_t numOfReads;
+        size_t numOfCorrectedReads;
+        size_t numOfChangesInReads;
         /**
          * Default constructor
          * @param dbg_ Reference to the De Bruijn graph
@@ -221,7 +225,9 @@ private:
         sparseSA *sa;
         std::string reference;
         std::vector<long> startpos;
-
+        size_t numOfAllReads;
+        size_t numOfAllCorrectedReads;
+        size_t numOfAllChangesInReads;
         void initEssaMEM();
 
         /**

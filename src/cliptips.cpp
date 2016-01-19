@@ -20,6 +20,7 @@
  ***************************************************************************/
 
 #include "graph.h"
+#include "settings.h"
 
 
 using namespace std;
@@ -37,68 +38,92 @@ bool DBGraph::clipTips(int round)
         size_t numDeleted = 0, numTotal = 0;
         cout << "Cut-off value for removing tips is: " << redLineValueCov << endl;
         double threshold = redLineValueCov;
+        size_t numThreads= settings.getNumThreads();
+        #pragma omp parallel num_threads( numThreads)
+        {
+                size_t numDeletedLocal = 0, numTotalLocal = 0;
+                #pragma omp for
+                for (NodeID id = 1; id <= numNodes; id++) {
+                        SSNode node = getSSNode(id);
+                        if (!node.isValid())
+                                continue;
+                        numTotalLocal++;
 
-        for (NodeID id = 1; id <= numNodes; id++) {
-                SSNode node = getSSNode(id);
-                if (!node.isValid())
-                        continue;
-                numTotal++;
+                        // check for dead ends
+                        bool leftDE = (node.getNumLeftArcs() == 0);
+                        bool rightDE = (node.getNumRightArcs() == 0);
+                        if (!leftDE && !rightDE)
+                                continue;
 
-                // check for dead ends
-                bool leftDE = (node.getNumLeftArcs() == 0);
-                bool rightDE = (node.getNumRightArcs() == 0);
-                if (!leftDE && !rightDE)
-                        continue;
+                        SSNode startNode = (rightDE) ? getSSNode(-id) : getSSNode(id);
+                        bool isolated = rightDE && leftDE;
+                        bool joinedTip = startNode.getNumRightArcs() > 1;
+                        if (isolated||joinedTip)
+                                threshold=this->safeValueCov;
+                        bool remove = false;
+                        if ((startNode.getNodeKmerCov() <threshold) &&
+                                (startNode.getMarginalLength() < maxNodeSizeToDel))
+                                #pragma omp critical
+                                remove = removeNode(startNode);
 
-                SSNode startNode = (rightDE) ? getSSNode(-id) : getSSNode(id);
-                bool isolated = rightDE && leftDE;
-                bool joinedTip = startNode.getNumRightArcs() > 1;
-                if (isolated||joinedTip)
-                        threshold=this->safeValueCov;
-                bool remove = false;
-                if ((startNode.getNodeKmerCov() <threshold) &&
-                    (startNode.getMarginalLength() < maxNodeSizeToDel))
-                        remove = removeNode(startNode);
+                        if (remove)
+                                numDeletedLocal++;
 
-                if (remove)
-                        numDeleted++;
+                        #ifdef DEBUG
 
-#ifdef DEBUG
-
-                if (remove) {
-                        if (trueMult.size()>0&& trueMult[id] > 0) {
-                                if (isolated)
-                                        fps++;
-                                else if(joinedTip)
-                                        fpj++;
-                                else
-                                        fp++;
+                        if (remove) {
+                                if (trueMult.size()>0&& trueMult[id] > 0) {
+                                        if (isolated)
+                                                #pragma omp critical
+                                                fps++;
+                                        else if(joinedTip)
+                                                #pragma omp critical
+                                                fpj++;
+                                        else
+                                                #pragma omp critical
+                                                fp++;
+                                } else {
+                                        if(isolated)
+                                                #pragma omp critical
+                                                tps++;
+                                        else if(joinedTip)
+                                                #pragma omp critical
+                                                tpj++;
+                                        else
+                                                #pragma omp critical
+                                                tp++;
+                                }
                         } else {
-                                if(isolated)
-                                        tps++;
-                                else if(joinedTip)
-                                        tpj++;
-                                else
-                                        tp++;
+                                if (trueMult.size()>0&& trueMult[id] > 0) {
+                                        if(isolated)
+                                                #pragma omp critical
+                                                tns++;
+                                        else if(joinedTip)
+                                                #pragma omp critical
+                                                tnj++;
+                                        else
+                                                #pragma omp critical
+                                                tn++;
+                                } else {
+                                        if(isolated)
+                                                #pragma omp critical
+                                                fns++;
+                                        else if(joinedTip)
+                                                #pragma omp critical
+                                                fnj++;
+                                        else
+                                                #pragma omp critical
+                                                fn++;
+                                }
                         }
-                } else {
-                        if (trueMult.size()>0&& trueMult[id] > 0) {
-                                if(isolated)
-                                        tns++;
-                                else if(joinedTip)
-                                        tnj++;
-                                else
-                                        tn++;
-                        } else {
-                                if(isolated)
-                                        fns++;
-                                else if(joinedTip)
-                                        fnj++;
-                                else
-                                        fn++;
-                        }
+                        #endif
                 }
-#endif
+                #pragma omp critical
+                {
+                        numDeleted =+numDeletedLocal ;
+                        numTotal = +numTotalLocal;
+
+                }
         }
 
         cout << "Clipped " << numDeleted << "/" << numTotal << " nodes" << endl;
