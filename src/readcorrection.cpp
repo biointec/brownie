@@ -633,7 +633,7 @@ void ReadCorrectionHandler::doErrorCorrection(LibraryContainer& libraries)
         cout <<"\nStatistical report for error correction\n";
         cout <<"Number Of All Reads:\t\t"<<numOfAllReads<<endl;
         cout << "Number Of All Corrected Reads:\t"<<numOfAllCorrectedReads<<fixed <<std::setprecision(2)<< "\t\t("<< 100*(double)(numOfAllCorrectedReads)/(double)(numOfAllReads) <<")%"<< endl;
-        cout <<"Number Of All Changes In Reads:\t"<<numOfAllChangesInReads<<fixed <<std::setprecision(2)<<"\t\t("<<(double)(numOfAllChangesInReads)/(double)(numOfAllReads) <<") per read\n"<< endl;
+        cout <<"Number Of All Changes In Reads:\t"<<numOfAllChangesInReads<<fixed <<std::setprecision(2)<<"\t("<<(double)(numOfAllChangesInReads)/(double)(numOfAllReads) <<") per read\n"<< endl;
 }
 
 ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
