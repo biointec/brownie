@@ -503,10 +503,11 @@ void ReadCorrectionJan::correctRead(ReadRecord& record)
 
         string bestCorrectedRead;
         int bestScore = correctRead(read, bestCorrectedRead, seeds);
-
+        bool findByMem=false;
         if (bestScore <= ((int)read.size() / 2)) {
                 findSeedMEM(read, seeds);
                 bestScore = correctRead(read, bestCorrectedRead, seeds);
+                findByMem=true;
         }
 
         /*alignment.align(read, bestCorrectedRead);
@@ -517,6 +518,8 @@ void ReadCorrectionJan::correctRead(ReadRecord& record)
                 read = bestCorrectedRead;
                 numOfChangesInReads=numOfChangesInReads+(read.length()-bestScore);
                 numOfCorrectedReads++;
+                if (findByMem)
+                        numOfCorrectedByMem++;
         }
         numOfReads++;
 
@@ -557,6 +560,7 @@ void ReadCorrectionHandler::workerThread(size_t myID, LibraryContainer& librarie
         numOfAllReads=numOfAllReads+ readCorrection.numOfReads;
         numOfAllCorrectedReads=numOfAllCorrectedReads+readCorrection.numOfCorrectedReads;
         numOfAllChangesInReads=numOfAllChangesInReads+readCorrection.numOfChangesInReads;
+        numOfAllCorrectedByMem=numOfAllCorrectedByMem+readCorrection.numOfCorrectedByMem;
         pthread_mutex_unlock(&lock);
 }
 
@@ -630,14 +634,16 @@ void ReadCorrectionHandler::doErrorCorrection(LibraryContainer& libraries)
         for_each(workerThreads.begin(), workerThreads.end(), mem_fn(&thread::join));
 
         libraries.joinIOThreads();
-        cout <<"\nStatistical report for error correction\n";
-        cout <<"Number Of All Reads:\t\t"<<numOfAllReads<<endl;
-        cout << "Number Of All Corrected Reads:\t"<<numOfAllCorrectedReads<<fixed <<std::setprecision(2)<< "\t\t("<< 100*(double)(numOfAllCorrectedReads)/(double)(numOfAllReads) <<")%"<< endl;
-        cout <<"Number Of All Changes In Reads:\t"<<numOfAllChangesInReads<<fixed <<std::setprecision(2)<<"\t("<<(double)(numOfAllChangesInReads)/(double)(numOfAllReads) <<") per read\n"<< endl;
+        cout <<"\nStatistical report for error correction:\n";
+        cout <<"Number Of Reads:\t\t\t"<<numOfAllReads<<endl;
+        cout <<"Number Of Corrected Reads:\t\t"<<numOfAllCorrectedReads<<fixed <<std::setprecision(2)<< "\t\t("<< 100*(double)(numOfAllCorrectedReads)/(double)(numOfAllReads) <<")%"<< endl;
+        cout <<"Number Of Corrected Reads by Mem:\t"<<numOfAllCorrectedByMem<<fixed <<std::setprecision(2)<< "\t\t("<< 100*(double)(numOfAllCorrectedByMem)/(double)(numOfAllCorrectedReads) <<")%"<< endl;
+
+        cout <<"Number Of Changes In Reads:\t\t"<<numOfAllChangesInReads<<fixed <<std::setprecision(2)<<"\t("<<(double)(numOfAllChangesInReads)/(double)(numOfAllReads) <<") per read.\n"<< endl;
 }
 
 ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
-        dbg(g), settings(s), sa(NULL)
+        dbg(g), settings(s), sa(NULL),numOfAllReads(0), numOfAllCorrectedReads(0),numOfAllChangesInReads(0),numOfAllCorrectedByMem(0)
 {
         Util::startChrono();
         cout << "Creating kmer lookup table... "; cout.flush();
