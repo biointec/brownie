@@ -202,8 +202,7 @@ void Settings::parseCommandLineArgumentsMain(int argc, char** args,
                 exit(EXIT_SUCCESS);
         }
         else {
-                cerr << "brownie: wrong Usage\n";
-                cerr << "Try 'brownie --help' for more information" << endl;
+                cerr << "brownie: Wrong Usage\n";
                 printUsage();
                 exit(EXIT_SUCCESS);
         }

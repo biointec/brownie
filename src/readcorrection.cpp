@@ -548,17 +548,16 @@ void ReadCorrectionHandler::workerThread(size_t myID, LibraryContainer& librarie
                 size_t blockID, recordID;
                 bool result = libraries.getRecordChunk(myReadBuf, blockID, recordID);
                 readCorrection.correctChunk(myReadBuf);
-                pthread_mutex_lock(&lock);
-                numOfAllReads=+ readCorrection.numOfReads;
-                numOfAllCorrectedReads=+readCorrection.numOfCorrectedReads;
-                numOfAllChangesInReads=+readCorrection.numOfChangesInReads;
-                pthread_mutex_unlock(&lock);
-
                 if (result)
                         libraries.commitRecordChunk(myReadBuf, blockID, recordID);
                 else
                         break;
         }
+        pthread_mutex_lock(&lock);
+        numOfAllReads=numOfAllReads+ readCorrection.numOfReads;
+        numOfAllCorrectedReads=numOfAllCorrectedReads+readCorrection.numOfCorrectedReads;
+        numOfAllChangesInReads=numOfAllChangesInReads+readCorrection.numOfChangesInReads;
+        pthread_mutex_unlock(&lock);
 }
 
 void ReadCorrectionHandler::initEssaMEM()
@@ -631,9 +630,10 @@ void ReadCorrectionHandler::doErrorCorrection(LibraryContainer& libraries)
         for_each(workerThreads.begin(), workerThreads.end(), mem_fn(&thread::join));
 
         libraries.joinIOThreads();
-        cout <<"numOfAllReads:\t"<<numOfAllReads<<endl;
-        cout <<"numOfAllCorrectedReads:\t"<<numOfAllCorrectedReads<<endl;
-        cout <<"numOfAllChangesInReads:\t"<<numOfAllChangesInReads<<endl;
+        cout <<"\nStatistical report for error correction\n";
+        cout <<"Number Of All Reads:\t\t"<<numOfAllReads<<endl;
+        cout <<"Number Of All Corrected Reads:\t"<<numOfAllCorrectedReads<<" ("<<100*(double)(numOfAllCorrectedReads)/(double)(numOfAllReads) <<"%)"<< endl;
+        cout <<"Number Of All Changes In Reads:\t"<<numOfAllChangesInReads<<" ("<<(double)(numOfAllChangesInReads)/(double)(numOfAllReads) <<") per read"<< endl;
 }
 
 ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
