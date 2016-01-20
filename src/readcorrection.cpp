@@ -23,7 +23,7 @@
 #include "library.h"
 #include "readcorrection.h"
 #include "kmernode.h"
-
+#include <iomanip>      // std::setprecision
 using namespace std;
 
 // ============================================================================
@@ -632,8 +632,8 @@ void ReadCorrectionHandler::doErrorCorrection(LibraryContainer& libraries)
         libraries.joinIOThreads();
         cout <<"\nStatistical report for error correction\n";
         cout <<"Number Of All Reads:\t\t"<<numOfAllReads<<endl;
-        cout <<"Number Of All Corrected Reads:\t"<<numOfAllCorrectedReads<<" ("<<100*(double)(numOfAllCorrectedReads)/(double)(numOfAllReads) <<"%)"<< endl;
-        cout <<"Number Of All Changes In Reads:\t"<<numOfAllChangesInReads<<" ("<<(double)(numOfAllChangesInReads)/(double)(numOfAllReads) <<") per read"<< endl;
+        cout << "Number Of All Corrected Reads:\t"<<numOfAllCorrectedReads<<fixed <<std::setprecision(2)<< "\t("<< 100*(double)(numOfAllCorrectedReads)/(double)(numOfAllReads) <<")%"<< endl;
+        cout <<"Number Of All Changes In Reads:\t"<<numOfAllChangesInReads<<fixed <<std::setprecision(2)<<"\t("<<(double)(numOfAllChangesInReads)/(double)(numOfAllReads) <<") per read"<< endl;
 }
 
 ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
