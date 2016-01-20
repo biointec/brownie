@@ -312,7 +312,7 @@ bool DBGraph::deleteUnreliableNodes(){
       return (changeIn1||changeIn2);
 }
 bool DBGraph::deleteExtraAttachedNodes(){
-        double tp=0, tn=0, fp=0,fn=0;
+        size_t tp=0, tn=0, fp=0,fn=0;
         size_t numOfDel=0;
         size_t numThreads= settings.getNumThreads();
         #pragma omp parallel num_threads( numThreads)
