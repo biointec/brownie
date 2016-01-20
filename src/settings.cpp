@@ -84,8 +84,8 @@ void Settings::printUsage() const
         cout << "  -o\t--output\t\toutput file name [default = inputfile.corr]\n";
 
         cout << " examples:\n";
-        cout << "  ./brownie inputA.fastq\n";
-        cout << "  ./brownie -k 29 -t 4 -g 2800000 -o outputA.fasta inputA.fasta -o outputB.fasta inputB.fastq\n";
+        cout << "  ./brownie ErrorCorrection inputA.fastq\n";
+        cout << "  ./brownie ErrorCorrection -k 29 -t 4 -o outputA.fasta inputA.fasta -o outputB.fasta inputB.fastq\n";
 }
 
 // ============================================================================
@@ -172,8 +172,13 @@ void Settings::parseCommandLineArgumentsEC(int argc, char** args,
 void Settings::parseCommandLineArgumentsMain(int argc, char** args,
                                              LibraryContainer& libCont)
 {
-        string arg(args[1]);
-
+        string arg;
+        if (argc>1)
+                arg =args[1];
+        else{
+                printUsage();
+                exit(EXIT_SUCCESS);
+        }
         if (arg== "ErrorCorrection"){
                 parseCommandLineArgumentsEC(argc,args,libCont);
         }else if (arg== "Assembly"){
@@ -191,8 +196,15 @@ void Settings::parseCommandLineArgumentsMain(int argc, char** args,
         else if ((arg == "-h") || (arg == "--help")) {
                 printUsage();
                 exit(EXIT_SUCCESS);
-        } else if ((arg == "-i") || (arg == "--info")) {
+        }
+        else if ((arg == "-i") || (arg == "--info")) {
                 printProgramInfo();
+                exit(EXIT_SUCCESS);
+        }
+        else {
+                cerr << "brownie: wrong Usage\n";
+                cerr << "Try 'brownie --help' for more information" << endl;
+                printUsage();
                 exit(EXIT_SUCCESS);
         }
         checkInputArguments(libCont);
