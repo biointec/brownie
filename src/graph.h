@@ -250,11 +250,15 @@ public:
     void extractStatistic(int round);
     bool checkNodeIsReliable(SSNode node);
     bool deleteUnreliableNodes();
+    bool deleteUnreliableNodesPar();
     bool deleteExtraAttachedNodes();
+    bool deleteExtraAttachedNodesPar();
     void updateStaInDeleteExtraAttachedNodes(bool remove, size_t &fp, size_t &tp,size_t &tn,size_t &fn, SSNode currNode);
     bool connectSameMulNodes();
+    bool connectSameMulNodesPar();
     bool deleteSuspiciousNodes();
     bool clipTips(int round);
+    bool clipTipsPar(int round);
     void updateStaInClipTip(NodeID id , bool remove, bool isolated, bool joinedTip, size_t& fps
     , size_t &fpj, size_t &fp, size_t& tps, size_t &tpj,size_t &tp, size_t &tns, size_t &tnj,
         size_t &tn, size_t &fns, size_t& fnj,size_t& fn );

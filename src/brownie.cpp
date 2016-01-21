@@ -356,7 +356,7 @@ int main(int argc, char** args)
                 Brownie brownie(argc, args);
 #ifndef DEBUG
                 cout<<"running in Release mode"<<endl;
-                //brownie.printInFile();
+                brownie.printInFile();
 #endif
 #ifdef DEBUG
                 cout<<"In DEBUG mode"<<endl;

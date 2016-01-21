@@ -315,6 +315,57 @@ bool DBGraph::deleteExtraAttachedNodes(){
         size_t tp=0, tn=0, fp=0,fn=0;
         size_t numOfDel=0;
         size_t numThreads= settings.getNumThreads();
+        for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
+                if (lID==0)
+                        continue;
+                SSNode node = getSSNode ( lID );
+
+                if(!node.isValid())
+                        continue;
+                if (!checkNodeIsReliable(node))
+                        continue;
+                if(node.getExpMult()<node.getNumRightArcs())
+                        continue;
+
+                ArcIt it = node.rightBegin();
+                SSNode currNode = getSSNode(it->getNodeID());
+                while(it != node.rightEnd()) {
+                        bool tip=currNode.getNumRightArcs()==0&&currNode.getNumLeftArcs()==1;
+                        SSNode firstNodeInUpPath;
+                        SSNode firstNodeInDoPath;
+                        bool bubble=nodeIsBubble(node,currNode);
+                        double threshold=(!tip&& !bubble)? this->redLineValueCov:(this->estimatedKmerCoverage-this->estimatedMKmerCoverageSTD*2>this->redLineValueCov)?this->estimatedKmerCoverage-this->estimatedMKmerCoverageSTD*2:this->redLineValueCov;
+                        bool remove=false;
+                        if (currNode.getNodeKmerCov()<threshold ){
+                                remove=removeNode(currNode);
+                                if(remove){
+                                        #ifdef DEBUG
+                                        updateStaInDeleteExtraAttachedNodes(remove, fp, tp,tn,fn,  currNode);
+                                        #endif
+                                        #pragma omp critical
+                                        numOfDel++;
+                                        break;
+                                }
+                        }
+
+                        it++;
+                }
+        }
+        cout<<endl;
+        if (numOfDel>0)
+                cout << "Number of deleted nodes in deleteExtraAttachedNodes: " << numOfDel << endl;
+        #ifdef DEBUG
+        cout<< "TP:     "<<tp<<"        TN:     "<<tn<<"        FP:     "<<fp<<"        FN:     "<<fn<<endl;
+        cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
+        cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
+        #endif
+        return (numOfDel>0);
+}
+
+bool DBGraph::deleteExtraAttachedNodesPar(){
+        size_t tp=0, tn=0, fp=0,fn=0;
+        size_t numOfDel=0;
+        size_t numThreads= settings.getNumThreads();
         #pragma omp parallel num_threads( numThreads)
         {
                 #pragma omp for
@@ -394,6 +445,87 @@ void DBGraph::updateStaInDeleteExtraAttachedNodes(bool remove, size_t &fp, size_
         }
 }
 bool DBGraph::connectSameMulNodes(){
+        size_t secondFP=0;
+        size_t secondTP=0;
+        size_t numOfDel=0;
+        double threshold=this->redLineValueCov;
+        size_t numThreads= settings.getNumThreads();
+        size_t numOfDelLocal=0;
+        size_t secondFPLocal=0;
+        size_t secondTPLocal=0;
+
+
+        for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
+                if (lID==0)
+                        continue;
+                SSNode node = getSSNode ( lID );
+                if(!node.isValid())
+                        continue;
+                if (!checkNodeIsReliable(node))
+                        continue;
+                ArcIt it = node.rightBegin();
+                SSNode currNode = getSSNode(it->getNodeID());
+                bool found=false;
+                while(it != node.rightEnd()) {
+                        if (!checkNodeIsReliable(currNode))
+                                it++;
+                        if (currNode.getExpMult()!=node.getExpMult() ||currNode.getExpMult()<2)
+                                it++;
+                        found=true;
+                        break;
+                }
+                if (found)
+                {
+                        ArcIt it = node.rightBegin();
+                        while(it != node.rightEnd()) {
+                                SSNode victim=getSSNode(it->getNodeID());
+                                if(victim.getNodeID()!=currNode.getNodeID()&&victim.getNodeKmerCov()<threshold&& removeNode(victim)){
+                                        numOfDelLocal++;
+                                        #ifdef DEBUG
+                                        if (trueMult[abs(victim.getNodeID())]>0)
+                                                secondFPLocal++;
+                                        else
+                                                secondTPLocal++;
+                                        #endif
+                                        break;
+                                }
+                                it++;
+                        }
+                        it = currNode.leftBegin();
+                        while(it!=currNode.leftEnd()){
+                                SSNode victim=getSSNode(it->getNodeID());
+                                if (!victim.isValid())
+                                        it++;
+                                if(victim.getNodeID()!=node.getNodeID()&&victim.getNodeKmerCov()<threshold &&removeNode(victim)){
+                                        numOfDelLocal++;
+                                        #ifdef DEBUG
+                                        if (trueMult[abs(victim.getNodeID())]>0)
+                                                secondFPLocal++;
+                                        else
+                                                secondTPLocal++;
+                                        #endif
+                                        break;
+                                }
+                                it++;
+                        }
+                }
+
+        }
+        numOfDel=+numOfDelLocal;
+        secondFP=+ secondFPLocal;
+        secondTP=+ secondTPLocal;
+
+        if (numOfDel>0)
+                cout << "Number of deleted nodes in connectSameMulNodes: " << numOfDel << endl;
+        #ifdef DEBUG
+        cout<<endl<<"second FP: "<<secondFP<<endl;
+        cout<<"second TP: "<<secondTP<<endl;
+        #endif
+        return (numOfDel>0);
+}
+
+
+bool DBGraph::connectSameMulNodesPar(){
         size_t secondFP=0;
         size_t secondTP=0;
         size_t numOfDel=0;

@@ -18,7 +18,7 @@ endif(NOT CMAKE_BUILD_TYPE)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # set some definitions
-add_definitions("-DMAXKMERLENGTH=31")
+add_definitions("-DMAXKMERLENGTH=127")
 add_definitions("-DCATEGORIES=2")
 add_definitions("-DBROWNIE_MAJOR_VERSION=${${PROJECT_NAME}_MAJOR_VERSION}")
 add_definitions("-DBROWNIE_MINOR_VERSION=${${PROJECT_NAME}_MINOR_VERSION}")
@@ -46,7 +46,7 @@ else (CMAKE_BUILD_TYPE STREQUAL Release)
         add_definitions(-DDEBUG)
 endif (CMAKE_BUILD_TYPE STREQUAL Release)
 
-# check if zlib is present
+# # check if zlib is present
 find_package(ZLIB)
 if (ZLIB_FOUND)
     add_definitions(-DHAVE_ZLIB)

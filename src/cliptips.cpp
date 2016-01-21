@@ -25,7 +25,7 @@
 
 using namespace std;
 
-bool DBGraph::clipTips(int round)
+bool DBGraph::clipTipsPar(int round)
 {
         cout <<endl<< " =================== Removing tips ===================" << endl;
 
@@ -79,6 +79,62 @@ bool DBGraph::clipTips(int round)
 
                 }
         }
+
+        cout << "Clipped " << numDeleted << "/" << numTotal << " nodes" << endl;
+        #ifdef DEBUG
+        printStatisticInClipTip(fps,fpj, fp, tps, tpj,tp, tns, tnj,tn, fns, fnj, fn );
+        #endif
+        return  numDeleted > 0;
+}
+
+bool DBGraph::clipTips(int round)
+{
+        cout <<endl<< " =================== Removing tips ===================" << endl;
+
+        #ifdef DEBUG
+        size_t tp=0, tn=0, fp=0,fn=0;
+        size_t tps=0, tns=0, fps=0,fns=0;
+        size_t tpj=0, tnj=0, fpj=0,fnj=0;
+        #endif
+
+        size_t numDeleted = 0, numTotal = 0;
+        cout << "Cut-off value for removing tips is: " << redLineValueCov << endl;
+        double threshold = redLineValueCov;
+        size_t numThreads= settings.getNumThreads();
+
+        size_t numDeletedLocal = 0, numTotalLocal = 0;
+        for (NodeID id = 1; id <= numNodes; id++) {
+                SSNode node = getSSNode(id);
+                if (!node.isValid())
+                        continue;
+                numTotalLocal++;
+
+                // check for dead ends
+                bool leftDE = (node.getNumLeftArcs() == 0);
+                bool rightDE = (node.getNumRightArcs() == 0);
+                if (!leftDE && !rightDE)
+                        continue;
+
+                SSNode startNode = (rightDE) ? getSSNode(-id) : getSSNode(id);
+                bool isolated = rightDE && leftDE;
+                bool joinedTip = startNode.getNumRightArcs() > 1;
+                if (isolated||joinedTip)
+                        threshold=this->safeValueCov;
+                bool remove = false;
+                if ((startNode.getNodeKmerCov() <threshold) &&
+                        (startNode.getMarginalLength() < maxNodeSizeToDel))
+                        remove = removeNode(startNode);
+
+                if (remove)
+                        numDeletedLocal++;
+
+                #ifdef DEBUG
+                updateStaInClipTip(id , remove, isolated, joinedTip, fps,fpj, fp, tps, tpj,tp, tns, tnj,tn, fns, fnj, fn );
+                #endif
+        }
+        numDeleted =+numDeletedLocal ;
+        numTotal = +numTotalLocal;
+
 
         cout << "Clipped " << numDeleted << "/" << numTotal << " nodes" << endl;
         #ifdef DEBUG
