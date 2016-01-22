@@ -332,13 +332,16 @@ vector<pair<vector<NodeID>, vector<NodeID> > >  DBGraph::searchForParallelNodes(
                                         continue;
                                 if (visited.size()>visitedNodesLimit)
                                 {
-                                        touchLimitSize++;
                                         continue;
                                 }
                                 PathInfo nextTop(nextID, nextLength);
                                 heap.push(nextTop);
                         }
                 }
+        }
+        if (visited.size()>visitedNodesLimit)
+        {
+                touchLimitSize++;
         }
 
        for (auto it : visited) {
