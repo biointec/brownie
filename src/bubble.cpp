@@ -331,17 +331,16 @@ vector<pair<vector<NodeID>, vector<NodeID> > >  DBGraph::searchForParallelNodes(
                                 if (nextLength > maxLength)
                                         continue;
                                 if (visited.size()>visitedNodesLimit)
-                                {
-                                        touchLimitSize++;
                                         continue;
-                                }
+
                                 PathInfo nextTop(nextID, nextLength);
                                 heap.push(nextTop);
                         }
                 }
         }
-
-       for (auto it : visited) {
+        if (visited.size()>visitedNodesLimit)
+                touchLimitSize++;
+        for (auto it : visited) {
                 prevNode[it + numNodes] = 0;
                 nodeColor[it + numNodes] = 0;
         }

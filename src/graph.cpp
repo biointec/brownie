@@ -231,7 +231,7 @@ void DBGraph::plotCovDiagram(){
                 if (intervalCount!=0)
                         frequencyArray.push_back(make_pair(make_pair( sumOfMarginalLenght, correctNodeMarginalLength) , make_pair(representative,intervalCount)));
                 St=St+Interval;
-                if (St>estimatedKmerCoverage+estimatedMKmerCoverageSTD*10)
+                if (St>estimatedKmerCoverage+estimatedMKmerCoverageSTD*100)
                         break;
         }
         //wrriting in file

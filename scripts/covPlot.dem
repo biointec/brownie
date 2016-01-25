@@ -1,11 +1,11 @@
 
-set output "../bin/reads/mydir/cov/scov_001.pdf"
-set xrange [0:1000]
+set output "../bin/reads/mydir/cov/scov_008.pdf"
+set xrange [0:500]
 set xtics 50
-set yrange [0:10000]
+set yrange [0:50000]
 set terminal pdf
 
 set datafile separator "\t"
-plot "../bin/reads/mydir/cov/scov_001.dat" using 1:3 smooth freq   lc rgb"green" notitle,\
-     "../bin/reads/mydir/cov/scov_001.dat" using 2:4 smooth freq   lc rgb"red" notitle,
+plot "../bin/reads/mydir/cov/scov_008.dat" using 1:3 smooth freq   lc rgb"green" notitle,\
+     "../bin/reads/mydir/cov/scov_008.dat" using 2:4 smooth freq   lc rgb"red" notitle,
      
