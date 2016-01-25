@@ -1027,7 +1027,7 @@ void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, Component &component
                         continue;
                 numExtractedNodes++;
                 //add full size of the node, including overlap
-                componentSize += node.getMarginalLength() + Kmer::getK() - 1;
+                componentSize += node.getMarginalLength() ;
                 KmerOverlap ol;
                 for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
                         char c = getSSNode(it->getNodeID()).getRightKmer().peekNucleotideLeft();
@@ -1038,8 +1038,8 @@ void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, Component &component
                         ol.markRightOverlap(c);
                 }
                 numExtractedArcs += ol.getNumLeftOverlap() + ol.getNumRightOverlap();
-                nodeLengths.push_back(node.getLength());
-                summedCoverage += node.getNodeKmerCov();
+                nodeLengths.push_back(node.getMarginalLength());
+                summedCoverage += node.getKmerCov();
         }
         component.Size=componentSize;
         component.numOfArcs=numExtractedArcs;
@@ -1056,7 +1056,7 @@ void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, Component &component
                         currentNum++;
                 }
         }
-        component.nodeKmerCov=round( summedCoverage / numExtractedNodes);
+        component.nodeKmerCov=round( summedCoverage / componentSize);
         component.largestNodeSize=nodeLengths[0];
 }
 
