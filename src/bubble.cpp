@@ -331,6 +331,10 @@ vector<pair<vector<NodeID>, vector<NodeID> > >  DBGraph::searchForParallelNodes(
                                 if (nextLength > maxLength)
                                         continue;
                                 if (visited.size()>visitedNodesLimit)
+<<<<<<< HEAD
+=======
+                                {
+>>>>>>> 7eb8077cda488e86e3847541c9d8f2b9544cdebe
                                         continue;
 
                                 PathInfo nextTop(nextID, nextLength);
@@ -339,8 +343,16 @@ vector<pair<vector<NodeID>, vector<NodeID> > >  DBGraph::searchForParallelNodes(
                 }
         }
         if (visited.size()>visitedNodesLimit)
+<<<<<<< HEAD
                 touchLimitSize++;
         for (auto it : visited) {
+=======
+        {
+                touchLimitSize++;
+        }
+
+       for (auto it : visited) {
+>>>>>>> 7eb8077cda488e86e3847541c9d8f2b9544cdebe
                 prevNode[it + numNodes] = 0;
                 nodeColor[it + numNodes] = 0;
         }
