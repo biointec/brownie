@@ -296,6 +296,7 @@ public:
     void writeCytoscapeGraph(int ID);
 
     void writeLocalCytoscapeGraph(int ID, NodeID nodeID,size_t maxDepth);
+    void writeCytoscapeComponent(Component &component, size_t ID);
 
     void readReferenceGenome();
 

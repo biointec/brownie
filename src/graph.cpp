@@ -871,7 +871,6 @@ void DBGraph::reportSta()
         ofstream sexpcovFile;
         string dir=settings.getTempDirectory()+"Statistic";
         const int dir_err = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
         string sFileName=dir+"/componentStatistics_" + std::to_string( updateCutOffValueRound)+".txt";
         sexpcovFile.open(sFileName.c_str());
         double nkcovAVG=0;
@@ -928,8 +927,10 @@ void DBGraph::reportSta()
                         Component component;
                         numberOfcomponents++;
                         getComponentSta(currentSetNodes, component);
+                        component.setNodeIDSet(currentSetNodes);
                         components.push_back(component);
                 }
+
                 currentSetNodes.clear();
         }
         sexpcovFile<<endl<<"#number of nodes:\t"<<nodesHandled.size()<<endl;
@@ -942,6 +943,7 @@ void DBGraph::reportSta()
                 sexpcovFile<<component.get_N(10)<<'\t'<<component.get_N(30)<<'\t'<<component.get_N(50)<<'\t'<<component.get_N(70)<<'\t'<<component.get_N(90)<<'\t'<<component.numOfNodes<<'\t'<<component.numOfArcs<<'\t'<<component.Size<<'\t' <<component.largestNodeSize<<'\t'<<component.nodeKmerCov <<endl;
                 if (component.Size>1000){
                         makeN50Files(num, component);
+                        writeCytoscapeComponent(component, num);
                         num++;
                 }
         }

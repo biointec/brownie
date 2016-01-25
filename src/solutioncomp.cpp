@@ -22,8 +22,11 @@
 #include "graph.h"
 #include "readfile/fastafile.h"
 #include "settings.h"
+#include <sys/stat.h>
+
 extern "C" {
 #include "suffix_tree.h"
+#include "component.h"
 }
 
 void DBGraph::writeCytoscapeGraph(int ID)
@@ -123,6 +126,110 @@ void DBGraph::writeCytoscapeGraph(int ID)
     ofs.close();
 #endif
 }
+
+
+
+void DBGraph::writeCytoscapeComponent(Component &component, size_t ID)
+{
+    string dir=settings.getTempDirectory()+"Cytoscape";
+    const int dir_err = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+
+    int srcID=4;
+    int i=0;
+    set<NodeID> nodesHandled;
+
+    //const size_t maxDepth =150;    // maximium sequence depth (exclusive srcID length)
+    stringstream ss, ss2;   // create a stringstream
+
+    ss << ID;               // add number to the stream
+    ss2 << srcID;
+
+    ofstream ofs((dir+"/cytArcs_" + ss2.str() + "_" +ss.str() + ".txt").c_str());
+    ofs << "Source node\tTarget node\tArc coverage"<< endl;
+     set<NodeID>::iterator it;
+     cout<<component.getNodeIDSet().size();
+     set<NodeID> nodeSet=component.getNodeIDSet();
+     for ( it =nodeSet.begin(); it != nodeSet.end(); it++){
+            NodeID i=*it;
+            if (!getSSNode(i).isValid())
+                    continue;
+            if (nodesHandled.find(i) != nodesHandled.end())
+                    continue;
+            if (nodesHandled.find(i) != nodesHandled.end())
+                    continue;
+            srcID=i;
+
+            multimap<size_t, NodeID> nodeDepth;     // map of all nodes in the local graph and its depth
+            nodeDepth.insert(pair<size_t, NodeID>(0, srcID));
+            // nodes that were already handled
+
+            while (!nodeDepth.empty()) {
+                    // get and erase the current node
+                    multimap<size_t, NodeID>::iterator
+                    e = nodeDepth.begin();
+                    size_t thisDepth = e->first;
+                    NodeID thisID = e->second;
+                    nodeDepth.erase(e);
+
+                    // if the node was already handled, skip
+                    if (nodesHandled.find(thisID) != nodesHandled.end())
+                            continue;
+                    if (nodesHandled.find(-thisID) != nodesHandled.end())
+                            continue;
+
+
+                    // mark this node as handled
+                    nodesHandled.insert(thisID);
+
+                    // if we're too far in the graph, stop
+                    //if (thisDepth > maxDepth)
+                    //    continue;
+
+                    SSNode thisNode = getSSNode(thisID);
+                    for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
+                            SSNode rNode = getSSNode(it->getNodeID());
+                            if (!rNode.isValid())
+                                    continue;
+                            if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
+                                    continue;
+                            ofs << thisID << "\t" << it->getNodeID() << "\t" << it->getCoverage() << endl;
+                            nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
+                    }
+
+                    for (ArcIt it = thisNode.leftBegin(); it != thisNode.leftEnd(); it++) {
+                            SSNode lNode = getSSNode(it->getNodeID());
+                            if (!lNode.isValid())
+                                    continue;
+                            if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
+                                    continue;
+                            ofs << it->getNodeID() << "\t" << thisID << "\t" << it->getCoverage() << endl;
+                            nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
+                    }
+            }
+    }
+    ofs.close();
+//comment by mahdi , adding new parameter in output file
+    ofs.open((dir+"/cytNodes_" + ss2.str() + "_" +ss.str() + ".txt").c_str());
+    ofs << "Node ID\tTrue multiplicity\tKmer coverage\tMarginal length\tReadStCov\t Multiplicity\t MulCertaintyRatio\t correctnessRatio\t tSequence" << endl;
+    for (set<NodeID>::iterator it = nodesHandled.begin(); it != nodesHandled.end(); it++) {
+        SSNode node = getSSNode(*it);
+        double confidenceRatio=0;
+        double nodeMultiplicity=0;
+        double correctnessRatio=0;
+        if(nodesExpMult.size()>1) {
+            pair<int, pair<double,double> >  result=nodesExpMult[abs( node.getNodeID())];
+            nodeMultiplicity=result.first;
+            confidenceRatio=result.second.first;
+            correctnessRatio=result.second.second;
+        }
+        ofs << *it << "\t" << 0 << "\t" << node.getNodeKmerCov() << "\t"
+            << node.getMarginalLength() << "\t"<<double(node.getReadStartCov()/node.getMarginalLength()) <<"\t"<<nodeMultiplicity<<"\t"<< confidenceRatio<<"\t"<< correctnessRatio <<"\t"<<node.getSequence() << endl;
+    }
+    ofs.close();
+
+}
+
 
 void DBGraph::writeLocalCytoscapeGraph(int ID, NodeID srcID, size_t maxDepth)
 {

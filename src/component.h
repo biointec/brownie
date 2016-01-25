@@ -21,12 +21,13 @@
 
 #ifndef COMPONENT_H
 #define COMPONENT_H
-
+#include "global.h"
 #include <map>
 
 class Component{
 private:
         std::map<int, size_t> N;
+        std::set<NodeID> NodesID;
 public:
         size_t Size;
         size_t numOfNodes;
@@ -42,6 +43,12 @@ public:
         }
         size_t get_N(int x) const {
                 return N.at(x);
+        }
+        void setNodeIDSet(set<NodeID> IDs){
+                NodesID=IDs;
+        }
+        set<NodeID> getNodeIDSet(){
+                return NodesID;
         }
 };
 
