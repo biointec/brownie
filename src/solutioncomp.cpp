@@ -148,7 +148,6 @@ void DBGraph::writeCytoscapeComponent(Component &component, size_t ID)
     ofstream ofs((dir+"/cytArcs_" + ss2.str() + "_" +ss.str() + ".txt").c_str());
     ofs << "Source node\tTarget node\tArc coverage"<< endl;
      set<NodeID>::iterator it;
-     cout<<component.getNodeIDSet().size();
      set<NodeID> nodeSet=component.getNodeIDSet();
      for ( it =nodeSet.begin(); it != nodeSet.end(); it++){
             NodeID i=*it;

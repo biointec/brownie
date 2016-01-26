@@ -875,6 +875,7 @@ void DBGraph::reportSta()
         sexpcovFile.open(sFileName.c_str());
         double nkcovAVG=0;
         vector<Component> components;
+        size_t graphSize=0;
         cout<<"#Extracting information about the components in the graph"<<endl;
 
         for (i =srcID ; i <= numNodes; i++){
@@ -904,7 +905,10 @@ void DBGraph::reportSta()
                         nodesHandled.insert(thisID);
                         currentSetNodes.insert(thisID);
                         SSNode thisNode = getSSNode(thisID);
-                        nkcovAVG=(nkcovAVG*(nodesHandled.size()-1)+thisNode.getNodeKmerCov())/nodesHandled.size();
+
+                        nkcovAVG=(thisNode.getKmerCov()+nkcovAVG*graphSize)/(graphSize+thisNode.getMarginalLength());
+                        graphSize=graphSize+thisNode.getMarginalLength();
+                        
                         for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
                                 SSNode rNode = getSSNode(it->getNodeID());
                                 if (!rNode.isValid())
