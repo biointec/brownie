@@ -1,0 +1,15 @@
+
+a=0
+cumulative_sum(x)=(a=a+x,a)
+set output outputFilename
+set boxwidth 0.1 absolute
+set style fill   solid 1.00 border lt -1
+set terminal pdf
+set yrange [0:]
+set xrange[0:]
+set xtics textcolor rgb "white"
+set datafile separator "\t"
+set title "The cumulative frequency graph of the Components number based on thier size."
+set xlabel "Component Size (number of kmers)."
+set ylabel "Number of Components."
+plot inputFilename using (cumulative_sum($2)):xticlabels(1) with boxes lc rgb"green" notitle
