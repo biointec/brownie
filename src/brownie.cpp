@@ -244,7 +244,7 @@ void Brownie::stageFour()
         if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 4..." << endl << endl;
-                return;
+                //return;
         }
         DBGraph graph(settings);
         parameterEstimationInStage4( graph );
@@ -281,8 +281,8 @@ void Brownie::stageFour()
 #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), false);
         graph.sanityCheck();
-        string command="pdftk "+settings.getTempDirectory()+ "cov/*.pdf cat output allpdfFiles.pdf";
-        system(command.c_str());
+        //string command="pdftk "+settings.getTempDirectory()+ "Cov/*.pdf cat output allpdfFiles.pdf";
+        //system(command.c_str());
 #endif
 
         //write graph to file
@@ -356,7 +356,7 @@ int main(int argc, char** args)
                 Brownie brownie(argc, args);
 #ifndef DEBUG
                 cout<<"running in Release mode"<<endl;
-                brownie.printInFile();
+                //brownie.printInFile();
 #endif
 #ifdef DEBUG
                 cout<<"In DEBUG mode"<<endl;

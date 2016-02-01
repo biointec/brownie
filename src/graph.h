@@ -349,6 +349,7 @@ public:
     bool filterCoverage( float round);
     void updateCutOffValue(int round);
     void plotCovDiagram();
+    void plotCovDiagramForComponent(Component &component, size_t num);
     void makeSampleReadFile(float num);
     size_t getLowestArcMultiplicity(NodeID left, NodeID right);
 

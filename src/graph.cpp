@@ -190,8 +190,8 @@ void DBGraph::updateCutOffValue(int round)
 
 
 void DBGraph::plotCovDiagram(){
-        string dir=settings.getTempDirectory()+"cov";
-        const int dir_err = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        string dir=settings.getTempDirectory()+"Cov";
+
 
         vector<pair<double,pair<size_t , pair<bool, int> > > > allNodes;
         vector<pair< pair< int , int> , pair<double,int> > > frequencyArray;
@@ -245,7 +245,7 @@ void DBGraph::plotCovDiagram(){
         else
                 roundstr=std::to_string( updateCutOffValueRound);
 
-        string sFileName=dir+"/scov_"+roundstr+".dat";
+        string sFileName=dir+"/Allcov_"+roundstr+".dat";
         sexpcovFile.open(sFileName.c_str());
         sexpcovFile<<"representative_1\trepresentative_2\tsumOfCorrectLength\tsumOfIncorrectLength"<<endl;
         i=0;
@@ -258,6 +258,79 @@ void DBGraph::plotCovDiagram(){
         sexpcovFile.close();
 }
 
+void DBGraph::plotCovDiagramForComponent(Component &component, size_t num){
+        string dir=settings.getTempDirectory()+"Cov";
+        const int dir_err = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        size_t i=0;
+        ofstream sexpcovFile;
+        std::string roundstr="";
+        if (num<10)
+                roundstr="000"+std::to_string( num);
+        else if (num<100)
+                roundstr="00"+std::to_string( num);
+        else if (num<1000)
+                roundstr=std::to_string( num);
+
+        string sFileName=dir+"/scov_"+roundstr+".dat";
+        sexpcovFile.open(sFileName.c_str());
+        sexpcovFile<<"representative_1\trepresentative_2\tsumOfCorrectLength\tsumOfIncorrectLength"<<endl;
+        vector<pair<double,pair<size_t , pair<bool, int> > > > allNodes;
+        vector<pair< pair< int , int> , pair<double,int> > > frequencyArray;
+        size_t validNodes=0;
+        set<NodeID>::iterator it;
+        set<NodeID> nodeSet=component.getNodeIDSet();
+        for ( it =nodeSet.begin(); it != nodeSet.end(); it++){
+                SSNode n = getSSNode(*it);
+                if(!n.isValid())
+                        continue;
+                validNodes++;
+                double kmerCoverage=n.getNodeKmerCov();
+                int marginalLength=n.getMarginalLength();//+ settings.getK();
+                bool correctNode=false;
+                double nodeMultiplicityR=1;
+                #ifdef DEBUG
+                nodeMultiplicityR=trueMult[abs(n.getNodeID())];
+                if (nodeMultiplicityR>0)
+                        correctNode=true;
+                #endif
+                allNodes.push_back( make_pair(kmerCoverage, make_pair( nodeMultiplicityR, make_pair(correctNode,marginalLength)) ));
+        }
+        std::sort (allNodes.begin(), allNodes.end());
+        i=0;
+        double Interval=.5;
+        double  St=allNodes[0].first;
+        while (i<allNodes.size()-1) {
+                double intervalCount=0;
+                int sumOfMarginalLenght=0;
+                int correctNodeMarginalLength=0;
+                while (allNodes[i].first>=St && allNodes[i].first<St+Interval&& i<allNodes.size()-1) {
+                        intervalCount++;
+                        i++;
+                        sumOfMarginalLenght=sumOfMarginalLenght+allNodes[i].second.second.second ;
+                        if (allNodes[i].second.second.first)
+                                correctNodeMarginalLength=correctNodeMarginalLength+allNodes[i].second.second.second;
+                }
+                double representative=St+Interval/2;
+                if (intervalCount!=0)
+                        frequencyArray.push_back(make_pair(make_pair( sumOfMarginalLenght, correctNodeMarginalLength) , make_pair(representative,intervalCount)));
+                St=St+Interval;
+                if (St>estimatedKmerCoverage+estimatedMKmerCoverageSTD*100)
+                        break;
+        }
+        //wrriting in file
+
+
+        i=0;
+        if (frequencyArray.size()>0){
+                double added=(frequencyArray[1].second.first-frequencyArray[0].second.first)/2;
+                while(i<frequencyArray.size()) {
+                        pair<double,int> pre=frequencyArray[i].second;
+                        sexpcovFile<<pre.first<< "\t"<< pre.first+added<<"\t"<<frequencyArray[i].first.second<<"\t"<< frequencyArray[i].first.first-frequencyArray[i].first.second <<endl;
+                        i++;
+                }
+        }
+        sexpcovFile.close();
+}
 
 
 void DBGraph::sanityCheck()
@@ -908,7 +981,7 @@ void DBGraph::reportSta()
 
                         nkcovAVG=(thisNode.getKmerCov()+nkcovAVG*graphSize)/(graphSize+thisNode.getMarginalLength());
                         graphSize=graphSize+thisNode.getMarginalLength();
-                        
+
                         for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
                                 SSNode rNode = getSSNode(it->getNodeID());
                                 if (!rNode.isValid())
@@ -948,6 +1021,8 @@ void DBGraph::reportSta()
                 if (component.Size>1000){
                         makeN50Files(num, component);
                         writeCytoscapeComponent(component, num);
+                        if (component.numOfNodes>1)
+                        plotCovDiagramForComponent(component, num);
                         num++;
                 }
         }
@@ -956,7 +1031,7 @@ void DBGraph::reportSta()
 }
 void DBGraph::makeN50Files(const size_t num,const Component component)
 {
-        string dir=settings.getTempDirectory()+"n50";
+        string dir=settings.getTempDirectory()+"N50";
         const int dir_err = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
         std::string roundstr="";
         if (num<10)
