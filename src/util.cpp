@@ -23,6 +23,7 @@
 #include "global.h"
 #include <ctime>
 #include <sstream>
+#include <cmath>
 
 using namespace std;
 using namespace std::chrono;
@@ -83,3 +84,7 @@ string Util::getTime()
         return string(ctime(&time));
 }
 
+double Util::poissonPDF(unsigned int k, double mu)
+{
+        return exp(k*log(mu)-mu-lgamma(k+1));
+}

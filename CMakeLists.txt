@@ -53,10 +53,6 @@ if (ZLIB_FOUND)
     include_directories(${ZLIB_INCLUDE_DIR})
 endif(ZLIB_FOUND)
 
-# check if gsl is present
-find_package(GSL REQUIRED)
-include_directories(${GSL_INCLUDE_DIR})
-
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # set include path for Google's sparse hash table

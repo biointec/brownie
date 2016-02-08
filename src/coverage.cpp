@@ -22,7 +22,6 @@
 #include "graph.h"
 #include "kmernode.h"
 #include "settings.h"
-#include <gsl/gsl_randist.h>
 #include "library.h"
 
 using namespace std;
@@ -192,12 +191,12 @@ void DBGraph::extractStatistic(int round) {
                 int nodeMultiplicity=1;
                 double maxProb=0;
                 double newValue=avg*nodeMultiplicity*node.getMarginalLength();
-                double newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
+                double newProbability=Util::poissonPDF(node.getReadStartCov(),newValue);
                 while(newProbability>maxProb) {
                         nodeMultiplicity++;
                         maxProb=newProbability;
                         newValue=avg*nodeMultiplicity*node.getMarginalLength();
-                        newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
+                        newProbability=Util::poissonPDF(node.getReadStartCov(),newValue);
                 }
 
                 nodeMultiplicity--;
@@ -219,7 +218,7 @@ void DBGraph::extractStatistic(int round) {
                                 minus=true;
                                 i++;
                         }
-                        newProbability=gsl_ran_poisson_pdf(node.getReadStartCov(),newValue);
+                        newProbability=Util::poissonPDF(node.getReadStartCov(),newValue);
                         denominator=denominator+newProbability;
                 }while(abs(newProbability-currentProb)> .000001|| i<5);
                 double confidenceRatio=maxProb/denominator;
@@ -227,10 +226,10 @@ void DBGraph::extractStatistic(int round) {
                 double expectToSee=avg*nodeMultiplicity*node.getMarginalLength();
                 double observedprob=0;
                 if(node.getReadStartCov()<expectToSee)
-                        observedprob=gsl_ran_poisson_pdf(node.getReadStartCov(),expectToSee);
+                        observedprob=Util::poissonPDF(node.getReadStartCov(),expectToSee);
                 else
-                        observedprob=gsl_ran_poisson_pdf(expectToSee,expectToSee);
-                double inCorrctnessRatio=gsl_ran_poisson_pdf(expectToSee,expectToSee)/observedprob;
+                        observedprob=Util::poissonPDF(expectToSee,expectToSee);
+                double inCorrctnessRatio=Util::poissonPDF(expectToSee,expectToSee)/observedprob;
                 SSNode reverseNode=getSSNode(-node.getNodeID());
                 reverseNode.setExpMult(nodeMultiplicity);
                 node.setExpMult(nodeMultiplicity);
