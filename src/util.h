@@ -92,6 +92,14 @@ public:
                 file.close();
                 return OK;
         }
+
+        /**
+         * Compute the probability p(k) from a Poisson distribution with mean mu
+         * @param k Number of observations
+         * @param mu Expected number of observation (mean of distribution)
+         * @return The probability p(k)
+         */
+        static double poissonPDF(unsigned int k, double mu);
 };
 
 #endif
