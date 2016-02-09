@@ -506,6 +506,7 @@ public:
     void makeComponentPlotFile(vector<Component> components);
 
     void getComponentSta(set<NodeID> &currentSetNodes, Component &component);
+    void makeNxFileForGraph();
     void populateTable();
     /**
      * deletes the table again

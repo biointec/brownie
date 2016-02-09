@@ -6,7 +6,7 @@ set yrange [0:]
 set terminal pdf
 set xlabel "Node kmer coverage "
 set ylabel "Number of nodes"
-set title "Frequency of nodes with different Node kmer coverage after graph correction. "
+set title "Frequency of nodes with different Node kmer coverage. "
 set datafile separator "\t"
 plot inputFilename using 1:3 smooth freq   lc rgb"green" notitle,\
      inputFilename using 2:4 smooth freq   lc rgb"red" notitle,

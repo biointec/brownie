@@ -191,8 +191,6 @@ void DBGraph::updateCutOffValue(int round)
 
 void DBGraph::plotCovDiagram(){
         string dir=settings.getTempDirectory()+"Cov";
-
-
         vector<pair<double,pair<size_t , pair<bool, int> > > > allNodes;
         vector<pair< pair< int , int> , pair<double,int> > > frequencyArray;
         size_t validNodes=0;
@@ -1028,6 +1026,7 @@ void DBGraph::reportSta()
         }
         sexpcovFile.close();
         makeComponentPlotFile(components);
+        makeNxFileForGraph();
 }
 void DBGraph::makeN50Files(const size_t num,const Component component)
 {
@@ -1140,6 +1139,49 @@ void DBGraph::getComponentSta(set<NodeID> &currentSetNodes, Component &component
         component.nodeKmerCov=round( summedCoverage / componentSize);
         component.largestNodeSize=nodeLengths[0];
 }
+
+void DBGraph::makeNxFileForGraph()
+{
+
+        string dir=settings.getTempDirectory()+"N50";
+        const int dir_err = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        string sFileName=dir+"/N50_All_.dat";
+        ofstream n50stream;
+        n50stream.open(sFileName.c_str());
+
+
+        vector<size_t> nodeLengths;
+        size_t componentSize =0;
+        size_t numExtractedNodes = 0, numExtractedArcs = 0;
+        double summedCoverage = 0;
+        for (NodeID i =1 ; i <= numNodes; i++){
+                SSNode node = getSSNode(i);
+                if (!node.isValid())
+                        continue;
+                numExtractedNodes++;
+                //add full size of the node, including overlap
+                componentSize += node.getMarginalLength() ;
+                nodeLengths.push_back(node.getMarginalLength());
+                summedCoverage += node.getKmerCov();
+        }
+        sort(nodeLengths.begin(), nodeLengths.end(), std::greater<int>());
+        size_t totalLength = 0;
+        for (size_t i = 0; i < nodeLengths.size(); i++)
+                totalLength += nodeLengths[i];
+        size_t currLength = 0;
+        size_t currentNum=1;
+        for (size_t i = 0; i < nodeLengths.size(); i++) {
+                currLength += nodeLengths[i];
+                while (currLength >= (currentNum * 0.1) * totalLength ) {
+                        n50stream<<"N"<<currentNum*10 <<"\t"<<nodeLengths[i]<<endl;
+                       //component.set_N(10 * currentNum, nodeLengths[i]);
+                        currentNum++;
+                }
+        }
+        n50stream.close();
+
+}
+
 
 void DBGraph::populateTable() {
         table = new KmerNodeTable(settings, numNodes);

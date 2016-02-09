@@ -36,7 +36,7 @@ done
 
 
 
-Arr=($outputDir'/N50/N50_0*.dat')
+Arr=($outputDir'/N50/N50_*.dat')
 for k in ${Arr[@]}
 do 
 a=$k
