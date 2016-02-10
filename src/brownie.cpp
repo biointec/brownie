@@ -53,7 +53,7 @@ void Brownie::printInFile()
 void Brownie::parameterEstimationInStage4(DBGraph &graph){
         cout <<endl<< " ================ Parameter Estimation ===============" << endl;
         double  estimatedKmerCoverage=0,estimatedMKmerCoverageSTD=0, cutOffvalue=0, readLength=0;
-        readLength=libraries.getReadLength();
+        readLength=libraries.getAvgReadLength();
         if (readLength<=settings.getK() ||readLength>500)
                 readLength=150;
 

@@ -1,8 +1,3 @@
-#include "graph.h"
-
-#include "library.h"
-
-
 /***************************************************************************
  *   Copyright (C) 2014, 2015 Jan Fostier (jan.fostier@intec.ugent.be)     *
  *   Copyright (C) 2014, 2015 Mahdi Heydari (mahdi.heydari@intec.ugent.be) *
@@ -25,6 +20,8 @@
  ***************************************************************************/
 
 #include "graph.h"
+
+#include <queue>
 
 using namespace std;
 class PathInfo {

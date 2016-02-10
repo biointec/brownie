@@ -70,6 +70,10 @@ typedef uint32_t KmerLSB;       // set to uint16_t and all hell will break loose
 
 #define SCAFFOLD_SNAP_LINK 5
 
+// The number of recordBlocks simulataneously held in memory. Higher values
+// result in more parallel chunks at the cost of increased memory use.
+#define NUM_RECORD_BLOCKS 2
+
 // ============================================================================
 // TYPEDEFS
 // ============================================================================

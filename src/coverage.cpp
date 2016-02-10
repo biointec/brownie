@@ -658,7 +658,7 @@ double DBGraph::getInitialEstimateForCoverage ( const ReadLibrary& input,
         DBGraph::graph = this;
         sort ( sortedNodes.begin(), sortedNodes.end(), sortByLength );
 
-        size_t RL = input.getReadLength();
+        size_t RL = input.getAvgReadLength();
         size_t k = Kmer::getK();
 
         // for the biggest nodes compute the coverage
@@ -680,7 +680,7 @@ double DBGraph::estimateReadStartCoverage ( const ReadLibrary &input,
 {
         size_t nom = 0, denom = 0;
         size_t k = Kmer::getK();
-        size_t RL = input.getReadLength();
+        size_t RL = input.getAvgReadLength();
 
         for ( NodeID id = 1; id <= numNodes; id++ ) {
                 DSNode& node = getDSNode ( id );
