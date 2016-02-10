@@ -413,14 +413,7 @@ void LibraryContainer::inputThreadLibrary(ReadLibrary& input)
                 workLock.unlock();
 
                 // D) update stdout information
-
-                // FIXME: comment
-                cout << "INPUT THREAD READ BLOCK (FILE: " << currInputFileID
-                     << ", BLOCK: " << block->getBlockID() << ", NUMCHUNKS: "
-                     << thisBlockNumChunks << ", RECORDS: " << recordBuffer.size() << ")" << endl;
-
-                // FIXME: uncomment
-                //cout << "Number of reads processed: " << totNumReads << "\r"; cout.flush();
+                cout << "Number of reads processed: " << totNumReads << "\r"; cout.flush();
         }
 
         cout << "Number of reads processed: " << totNumReads << endl;
@@ -453,7 +446,6 @@ void LibraryContainer::commitRecordChunk(const vector<ReadRecord>& buffer,
 
         // C.b) if the block is ready, pass it to the output thread
         if (blockReady) {
-                cout << "BLOCK " << block->getBlockID() << " IS READY" << endl;     // FIXME: delete
                 std::unique_lock<std::mutex> outputLock(outputMutex);
                 outputBlocks[block->getBlockID()] = block;
 
@@ -471,7 +463,6 @@ void LibraryContainer::outputThreadLibrary(ReadLibrary& input)
         while (true) {
                 // A) wait until an output block is ready
                 std::unique_lock<std::mutex> outputLock(outputMutex);
-                cout << "OUTPUT: " << currOutputBlockID << endl;
                 outputReady.wait(outputLock, [this]{return (outputBlocks.find(currOutputBlockID) !=
                                                             outputBlocks.end()); });
 
@@ -504,8 +495,6 @@ void LibraryContainer::outputThreadLibrary(ReadLibrary& input)
 
                 if (!readFile->good())
                         throw ios_base::failure("Cannot write to " + input.getOutputFileName());
-
-                cout << "OUTPUT THREAD WROTE DATA (FILE: " << block->getFileID() << ", BLOCK: " << block->getBlockID() << ", RECORDS: " << block->getRecordBuffer().size() << ")" << endl;
 
                 // F) return the block to the input queue
                 block->reset();

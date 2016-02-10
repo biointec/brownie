@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2015, 2016 Jan Fostier (jan.fostier@intec.ugent.be)     *
+ *   Copyright (C) 2014, 2015 Jan Fostier (jan.fostier@intec.ugent.be)     *
  *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -20,7 +20,6 @@
 
 #include <thread>
 #include <string>
-#include <chrono>
 #include "library.h"
 #include "readcorrection.h"
 #include "kmernode.h"
@@ -544,9 +543,6 @@ void ReadCorrectionHandler::workerThread(size_t myID, LibraryContainer& librarie
                 size_t blockID, recordID;
                 bool result = libraries.getRecordChunk(myReadBuf, blockID, recordID);
 
-                cout << "Thread " << myID << " starting new chunk block ID " << blockID << ", recordID " << recordID << endl;
-             //   if (myID == 0)
-              //          std::this_thread::sleep_for(chrono::seconds(60));
                 readCorrection.correctChunk(myReadBuf);
 
                 if (result)

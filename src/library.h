@@ -239,7 +239,6 @@ public:
          */
         void writeRecordChunk(const std::vector<ReadRecord>& buffer,
                               size_t chunkOffset);
-
 };
 
 // ============================================================================
