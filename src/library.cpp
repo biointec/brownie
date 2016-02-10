@@ -261,7 +261,7 @@ bool LibraryContainer::getRecordChunk(vector<ReadRecord>& buffer,
                 workLock.unlock();
 
                 // send a termination message to the output thread
-                std::unique_lock<std::mutex> outputLock(inputMutex);
+                std::unique_lock<std::mutex> outputLock(outputMutex);
                 outputBlocks[currWorkBlockID] = NULL;
                 outputLock.unlock();
 
@@ -286,8 +286,8 @@ bool LibraryContainer::getRecordChunk(vector<ReadRecord>& buffer,
 
         // D.b) if no output thread is active, return block to input queue
         if (moveToNextBlock && !outputThreadActive) {
-                std::unique_lock<std::mutex> inputLock(inputMutex);
                 block->reset();
+                std::unique_lock<std::mutex> inputLock(inputMutex);
                 inputBlocks.push_back(block);
                 inputReady.notify_one();
                 inputLock.unlock();
@@ -316,7 +316,7 @@ bool LibraryContainer::getReadChunk(vector<string>& buffer,
                 workLock.unlock();
 
                 // send a termination message to the output thread
-                std::unique_lock<std::mutex> outputLock(inputMutex);
+                std::unique_lock<std::mutex> outputLock(outputMutex);
                 outputBlocks[currWorkBlockID] = NULL;
                 outputLock.unlock();
 
@@ -341,8 +341,8 @@ bool LibraryContainer::getReadChunk(vector<string>& buffer,
 
         // D.b) if no output thread is active, return block to input queue
         if (moveToNextBlock && !outputThreadActive) {
-                std::unique_lock<std::mutex> inputLock(inputMutex);
                 block->reset();
+                std::unique_lock<std::mutex> inputLock(inputMutex);
                 inputBlocks.push_back(block);
                 inputReady.notify_one();
                 inputLock.unlock();
