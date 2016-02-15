@@ -286,39 +286,38 @@ void Brownie::stageFour()
 
 void Brownie::stageFive()
 {
-
         cout << "Entering stage 5" << endl;
         cout << "================" << endl;
+
         if (!stageFiveNecessary()) {
-                         cout << "Files produced by this stage appear to be present, "
-                         "skipping stage 5..." << endl << endl;
-                         return;
+                cout << "Files produced by this stage appear to be present, "
+                        "skipping stage 5..." << endl << endl;
+                return;
         }
+
+        // Build a DBG from stage 4 files on disk
         DBGraph graph(settings);
         Util::startChrono();
-        cout << "Creating graph... ";
-        cout.flush();
-
+        cout << "Creating graph... "; cout.flush();
         graph.createFromFile(getNodeFilename(4),
                              getArcFilename(4),
                              getMetaDataFilename(4));
-        cout << "done (" << graph.getNumNodes() << " nodes, "
-        << graph.getNumArcs() << " arcs)" << endl;
-        cout << "Created graph in "
-        << Util::stopChrono() << "s." << endl;
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        cout << "Graph contains " << graph.getNumNodes() << " nodes and "
+             << graph.getNumArcs() << " arcs" << endl;
+
 #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(4),true);
         graph.updateGraphSize();
         graph.writeCytoscapeGraph(0);
 #endif
-        Util::startChrono();
 
+        Util::startChrono();
         ReadCorrectionHandler rcHandler(graph, settings);
         rcHandler.doErrorCorrection(libraries);
 
-        cout << "Error correction completed in "
-        << Util::stopChrono() << "s." << endl;
-        cout << "Stage 5 finished.\n" << endl;
+        cout << "Error correction completed in " << Util::stopChronoStr() << endl;
+        cout << "Stage 5 finished\n" << endl;
         graph.clear();
 }
 
