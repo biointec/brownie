@@ -22,7 +22,6 @@
 #define READLIBRARY_H
 
 #include "global.h"
-#include "tkmer.h"
 #include "readfile/readfile.h"
 
 #include <string>
@@ -56,7 +55,7 @@ private:
         FileType fileType;              // file type (FASTQ, FASTA, etc.)
 
         size_t numReads;                // number of reads in library
-        double avgReadLength;           // average size of the reads
+        double avgReadLength;           // average length of the reads
 
 public:
         /**
@@ -139,7 +138,7 @@ class RecordBlock
 private:
         size_t fileID;                  // file identifier
         size_t blockID;                 // block identifier
-        size_t numChunks;               // number of chunks within this block
+        size_t numChunks;               // number of chunks in this block
         size_t numChunksRead;           // number of chunks read
         size_t numChunksWritten;        // number of chunks written
         size_t nextChunkOffset;         // offset of the next chunk to be read
@@ -180,7 +179,7 @@ public:
 
         /**
          * Return true of at least one chunk if available for reading
-         * @param true or false
+         * @return true or false
          */
         bool chunkAvailable() const {
                 return numChunksRead < numChunks;

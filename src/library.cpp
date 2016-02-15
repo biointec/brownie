@@ -190,8 +190,8 @@ void RecordBlock::getRecordChunk(vector< ReadRecord >& buffer,
         size_t thisChunkSize = 0;
         for (size_t i = nextChunkOffset; i < recordBuffer.size(); i++) {
                 nextChunkOffset++;
-                thisChunkSize += recordBuffer[i].getReadLength() + 1 - Kmer::getK();
                 buffer.push_back(recordBuffer[i]);
+                thisChunkSize += recordBuffer[i].getReadLength() + 1 - Kmer::getK();
                 if (thisChunkSize >= targetChunkSize)
                         break;
         }
@@ -210,8 +210,8 @@ void RecordBlock::getReadChunk(vector< string >& buffer,
         size_t thisChunkSize = 0;
         for (size_t i = nextChunkOffset; i < recordBuffer.size(); i++) {
                 nextChunkOffset++;
-                thisChunkSize += recordBuffer[i].getReadLength() + 1 - Kmer::getK();
                 buffer.push_back(recordBuffer[i].getRead());
+                thisChunkSize += recordBuffer[i].getReadLength() + 1 - Kmer::getK();
                 if (thisChunkSize >= targetChunkSize)
                         break;
         }
@@ -248,7 +248,7 @@ bool LibraryContainer::getRecordChunk(vector<ReadRecord>& buffer,
         // clear the buffer
         buffer.clear();
 
-        // A) wait until work becomes available or the input thread stopped working
+        // A) wait until work becomes available
         std::unique_lock<std::mutex> workLock(workMutex);
         workReady.wait(workLock, [this]{return workBlocks.find(currWorkBlockID) !=
                                                workBlocks.end(); });
@@ -303,7 +303,7 @@ bool LibraryContainer::getReadChunk(vector<string>& buffer,
         // clear the buffer
         buffer.clear();
 
-        // A) wait until work becomes available or the input thread stopped working
+        // A) wait until work becomes available
         std::unique_lock<std::mutex> workLock(workMutex);
         workReady.wait(workLock, [this]{return workBlocks.find(currWorkBlockID) !=
                                                workBlocks.end(); });
@@ -404,8 +404,9 @@ void LibraryContainer::inputThreadLibrary(ReadLibrary& input)
 
                 block->setBlockInfo(currInputFileID, currInputBlockID++, thisBlockNumChunks);
 
-                // C) push the record block onto the worker stack
+                // C) push the record block onto the worker queue
                 std::unique_lock<std::mutex> workLock(workMutex);
+                assert(workBlocks.find(block->getBlockID()) == workBlocks.end());
                 workBlocks[block->getBlockID()] = block;
 
                 // notify workers that more work is available
@@ -434,6 +435,7 @@ void LibraryContainer::commitRecordChunk(const vector<ReadRecord>& buffer,
         std::unique_lock<std::mutex> workLock(workMutex);
 
         // B) get the corresponding block and write the contents
+        assert(workBlocks.find(blockID) != workBlocks.end());
         RecordBlock *block = workBlocks[blockID];
         block->writeRecordChunk(buffer, recordOffset);
 
@@ -522,7 +524,7 @@ void LibraryContainer::inputThreadEntry()
                 currInputFileID++;
         }
 
-        // wait until active buffer is empty
+        // send a termination message to the workers
         unique_lock<std::mutex> workLock(workMutex);
         workBlocks[currInputBlockID] = NULL;
         workReady.notify_all();
