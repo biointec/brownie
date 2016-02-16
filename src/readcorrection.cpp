@@ -692,7 +692,7 @@ ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
         Util::startChrono();
-        cout << "Building suffix array (sparsness factor: "
+        cout << "Building suffix array (sparseness factor: "
              << settings.getESSASparsenessFactor() << ")..."; cout.flush();
         initEssaMEM();
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
