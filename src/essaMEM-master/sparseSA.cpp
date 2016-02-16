@@ -589,6 +589,8 @@ void sparseSA::traverse_faster(const string &P,const long prefix, interval_t &cu
                 int curLCP = LCP[get_first_l(cur.start, cur.end)];
                 if (curLCP == cur.depth) {
                         intervalFound = top_down_child(P[c], cur);
+                } else {
+                        intervalFound = P[c] == S[SA[cur.start]+cur.depth];
                 }
         } else { //singleton
                 intervalFound = P[c] == S[SA[cur.start]+cur.depth];
