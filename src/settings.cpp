@@ -87,8 +87,8 @@ void Settings::printUsage() const
 // ============================================================================
 
 Settings::Settings() : kmerSize(31), numThreads(std::thread::hardware_concurrency()),
-        genomeSize(0), doubleStranded(true), essa_factor(1), bubbleDFSNodeLimit(1000),
-        readCorrDFSNodeLimit(1000), skip_stage_4(false), skip_stage_5(false) {}
+        genomeSize(0), doubleStranded(true), ESSASparsenessFactor(1), bubbleDFSNodeLimit(1000),
+        readCorrDFSNodeLimit(1000), skipStage4(false), skipStage5(false) {}
 
 void Settings::parseCommandLineArguments(int argc, char** args,
                                          LibraryContainer& libCont)
@@ -122,7 +122,7 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                 } else if ((arg == "-e") || (arg == "--essa")) {
                         i++;
                         if (i < argc)
-                                essa_factor = atoi(args[i]);
+                                ESSASparsenessFactor = atoi(args[i]);
                 } else if ((arg == "-v") || (arg == "--visits")) {
                         i++;
                         if (i < argc)
@@ -138,10 +138,10 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                         if (i < argc)
                                 pathtotemp = args[i];
                 } else if (arg == "--graph") {
-                        skip_stage_5 = true;
+                        skipStage5 = true;
                 } else if (arg == "--perfectgraph") {
-                        skip_stage_4 = true;
-                        skip_stage_5 = true;
+                        skipStage4 = true;
+                        skipStage5 = true;
                 } else if ((arg == "-o") || (arg == "--output")) {
                         i++;
                         if (i < argc)
