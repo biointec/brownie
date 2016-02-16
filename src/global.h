@@ -49,8 +49,6 @@ typedef uint32_t KmerLSB;       // set to uint16_t and all hell will break loose
         #define ATTRIBUTE_PACKED
 #endif
 
-#define MAXTOURBUSLENGTH 200
-#define MAXDIVERGENCE 0.2f
 #define MAXGAPS 3
 
 #define MAX_COVERAGE 65535

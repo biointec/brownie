@@ -175,7 +175,7 @@ void ReadCorrectionJan::recSearch(NodeID curr, string& read, vector<NodePosPair>
         const SSNode node = dbg.getSSNode(curr);
 
         counter++;
-        if (counter > 1000)
+        if (counter > settings.getReadCorrDFSNodeLimit())
                 return;
 
         vector<DFSNode> dfsNode;
@@ -586,15 +586,15 @@ void ReadCorrectionHandler::initEssaMEM()
         bool printSubstring = false;
         bool printRevCompForw = false;
 
-        sa = new sparseSA(reference,             //reference
-                          refdescr,             //
-                          startpos,             //
-                          false,                //4 column format or not
-                          1,                    //sparseness
-                          false,                //suffixlinks
-                          true,                 //child arrays
-                          1,                    //skip parameter
-                          printSubstring,       //
+        sa = new sparseSA(reference,                            // reference
+                          refdescr,
+                          startpos,                             // start index for each string
+                          false,                                // 4 column format or not
+                          settings.getESSASparsenessFactor(),   // ESSA sparseness factor
+                          false,                                // suffixlinks
+                          true,                                 // child arrays
+                          1,                                    // skip parameter
+                          printSubstring,
                           printRevCompForw);
         sa->construct();
 }
