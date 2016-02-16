@@ -23,6 +23,8 @@
 #include "settings.h"
 #include "library.h"
 
+#include <queue>
+
 using namespace std;
 class PathInfo {
 public:
