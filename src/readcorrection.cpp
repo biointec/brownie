@@ -43,17 +43,26 @@ void AlignmentMetrics::addMetrics(const AlignmentMetrics& rhs)
 
 void AlignmentMetrics::printStatistics() const
 {
+        size_t numCorrByKmer = numCorrReads - numCorrByMEM;
+        size_t numUncorrected = numReads - numCorrReads;
+
         cout << "\nError correction report:\n";
         cout << "\tNumber of reads handled: " << numReads << endl;
         cout << "\tNumber of corrected reads: " << numCorrReads
              << fixed << setprecision(2) << " ("
-             << 100*(double)(numCorrReads)/(double)(numReads) << "%)" << endl;
-        cout << "\tNumber of reads corrected by MEMs: " << numCorrByMEM
+             << Util::toPercentage(numCorrReads, numReads) << "%)" << endl;
+        cout << "\tNumber of reads corrected by kmer seeds: " << numCorrByKmer
              << fixed << setprecision(2) << " ("
-             << 100*(double)(numCorrByMEM)/(double)(numReads) << "%)" << endl;
+             << Util::toPercentage(numCorrByKmer, numReads) << "%)" << endl;
+        cout << "\tNumber of reads corrected by MEM seeds: " << numCorrByMEM
+             << fixed << setprecision(2) << " ("
+             << Util::toPercentage(numCorrByMEM, numReads) << "%)" << endl;
         cout << "\tNumber of subtitutions in reads: " << numSubstitutions
+             << fixed << setprecision(2) << " (avg of "
+             << double(numSubstitutions)/double(numReads) << " per read)" << endl;
+        cout << "\tNumber of uncorrected reads: " << numUncorrected
              << fixed << setprecision(2) << " ("
-             << (double)(numSubstitutions)/(double)(numReads) <<" per read)\n"<< endl;
+             << Util::toPercentage(numUncorrected, numReads) << "%)" << endl;
 }
 
 // ============================================================================

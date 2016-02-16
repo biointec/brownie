@@ -65,7 +65,7 @@ public:
                 numReads++;
                 if (corrected)
                         numCorrReads++;
-                if (corrByMEM)
+                if (corrected && corrByMEM)
                         numCorrByMEM++;
                 numSubstitutions += numSubstitutions_;
         }
