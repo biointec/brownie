@@ -100,6 +100,16 @@ public:
          * @return The probability p(k)
          */
         static double poissonPDF(unsigned int k, double mu);
+
+        /**
+         * Compute the percentage of two size_t numbers
+         * @param nom Nominator
+         * @param den Denominator
+         * @return The percentage
+         */
+        static double toPercentage(size_t nom, size_t den) {
+                return 100.0 * double(nom) / double(den);
+        }
 };
 
 #endif

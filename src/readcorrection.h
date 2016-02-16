@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2015 Jan Fostier (jan.fostier@intec.ugent.be)           *
+ *   Copyright (C) 2015-2016 Jan Fostier (jan.fostier@intec.ugent.be)      *
  *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -26,11 +26,93 @@
 #include "alignment.h"
 #include "essaMEM-master/sparseSA.hpp"
 
+#include <mutex>
+
 // ============================================================================
 // CLASS PROTOTYPES
 // ============================================================================
 
 class NodePosPair;
+
+// ============================================================================
+// ALIGNMENT METRICS CLASS
+// ============================================================================
+
+class AlignmentMetrics
+{
+private:
+        size_t numReads;                // number of reads handled
+        size_t numCorrReads;            // number of reads corrected
+        size_t numCorrByMEM;            // number of times MEM procedure was used
+        size_t numSubstitutions;        // number of substitutions made to the reads
+        std::mutex metricMutex;         // mutex for merging metrics
+
+public:
+        /**
+         * Default constructor
+         */
+        AlignmentMetrics() : numReads(0), numCorrReads(0), numCorrByMEM(0),
+                numSubstitutions(0) {}
+
+        /**
+         * Update the statistics
+         * @param corrected True if (part of) the read was corrected
+         * @param corrByMEM True if MEM procedure was used
+         * @param numSubstitutions_ Number of substitutions made to this read
+         */
+        void addObservation(bool corrected, bool corrByMEM,
+                            size_t numSubstitutions_) {
+                numReads++;
+                if (corrected)
+                        numCorrReads++;
+                if (corrected && corrByMEM)
+                        numCorrByMEM++;
+                numSubstitutions += numSubstitutions_;
+        }
+
+        /**
+         * Add other metrics (thread-safe)
+         * @param metrics Metrics to add
+         */
+        void addMetrics(const AlignmentMetrics& rhs);
+
+        /**
+         * Get the number of reads
+         * @return The number of reads
+         */
+        size_t getNumReads() const {
+                return numReads;
+        }
+
+        /**
+         * Get the number of corrected reads
+         * @return The number of corrected reads
+         */
+        size_t getNumCorrReads() const {
+                return numCorrReads;
+        }
+
+        /**
+         * Get the number of corrected reads using the MEM procedure
+         * @return The number of corrected reads using the MEM procedure
+         */
+        size_t getNumCorrByMEM() const {
+                return numCorrByMEM;
+        }
+
+        /**
+         * Get the number of substitutions made to the reads
+         * @return The number of substitutions made to the reads
+         */
+        size_t getNumSubstitutions() const {
+                return numSubstitutions;
+        }
+
+        /**
+         * Output statistics to the stdout
+         */
+        void printStatistics() const;
+};
 
 // ============================================================================
 // SEED CLASS
@@ -138,8 +220,9 @@ private:
         /**
          * Correct a specific read record
          * @param record Record to correct (input/output)
+         * @param metric Alignment metric to update (input/output)
          */
-        void correctRead(ReadRecord& record);
+        void correctRead(ReadRecord& record, AlignmentMetrics& metric);
 
         /**
          * Correct the records in one chunk
@@ -205,8 +288,10 @@ public:
         /**
          * Correct the records in one chunk
          * @param readChunk Chunk of records to correct
+         * @param metric Alignment metric to update
          */
-        void correctChunk(std::vector<ReadRecord>& readChunk);
+        void correctChunk(std::vector<ReadRecord>& readChunk,
+                          AlignmentMetrics& metric);
 };
 
 // ============================================================================
@@ -228,8 +313,10 @@ private:
          * Entry routine for worker thread
          * @param myID Unique threadID
          * @param libaries Library container with libraries to be corrected
+         * @param metrics Alignment metrics accross threads
          */
-        void workerThread(size_t myID, LibraryContainer& libraries);
+        void workerThread(size_t myID, LibraryContainer& libraries,
+                          AlignmentMetrics& metrics);
 
 public:
         /**

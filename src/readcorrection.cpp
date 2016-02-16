@@ -20,11 +20,50 @@
 
 #include <thread>
 #include <string>
+#include <iomanip>
+
 #include "library.h"
 #include "readcorrection.h"
 #include "kmernode.h"
 
 using namespace std;
+
+// ============================================================================
+// ALIGNMENT METRICS CLASS
+// ============================================================================
+
+void AlignmentMetrics::addMetrics(const AlignmentMetrics& rhs)
+{
+        lock_guard<mutex> lock(metricMutex);
+        numReads += rhs.numReads;
+        numCorrReads += rhs.numCorrReads;
+        numCorrByMEM += rhs.numCorrByMEM;
+        numSubstitutions += rhs.numSubstitutions;
+}
+
+void AlignmentMetrics::printStatistics() const
+{
+        size_t numCorrByKmer = numCorrReads - numCorrByMEM;
+        size_t numUncorrected = numReads - numCorrReads;
+
+        cout << "\nError correction report:\n";
+        cout << "\tNumber of reads handled: " << numReads << endl;
+        cout << "\tNumber of corrected reads: " << numCorrReads
+             << fixed << setprecision(2) << " ("
+             << Util::toPercentage(numCorrReads, numReads) << "%)" << endl;
+        cout << "\tNumber of reads corrected by kmer seeds: " << numCorrByKmer
+             << fixed << setprecision(2) << " ("
+             << Util::toPercentage(numCorrByKmer, numReads) << "%)" << endl;
+        cout << "\tNumber of reads corrected by MEM seeds: " << numCorrByMEM
+             << fixed << setprecision(2) << " ("
+             << Util::toPercentage(numCorrByMEM, numReads) << "%)" << endl;
+        cout << "\tNumber of subtitutions in reads: " << numSubstitutions
+             << fixed << setprecision(2) << " (avg of "
+             << double(numSubstitutions)/double(numReads) << " per read)" << endl;
+        cout << "\tNumber of uncorrected reads: " << numUncorrected
+             << fixed << setprecision(2) << " ("
+             << Util::toPercentage(numUncorrected, numReads) << "%)" << endl;
+}
 
 // ============================================================================
 // SEED CLASS
@@ -490,8 +529,10 @@ int ReadCorrectionJan::correctRead(const string& read,
         return bestScore;
 }
 
-void ReadCorrectionJan::correctRead(ReadRecord& record)
+void ReadCorrectionJan::correctRead(ReadRecord& record,
+                                    AlignmentMetrics& metrics)
 {
+        bool correctedByMEM = false, readCorrected = false;
         string& read = record.getRead();
 
         // if the read is too short, get out
@@ -505,6 +546,7 @@ void ReadCorrectionJan::correctRead(ReadRecord& record)
         int bestScore = correctRead(read, bestCorrectedRead, seeds);
 
         if (bestScore <= ((int)read.size() / 2)) {
+                correctedByMEM = true;
                 findSeedMEM(read, seeds);
                 bestScore = correctRead(read, bestCorrectedRead, seeds);
         }
@@ -513,43 +555,57 @@ void ReadCorrectionJan::correctRead(ReadRecord& record)
         cout << "BEST ALIGNMENT: " << bestScore << endl;
         alignment.printAlignment(read, bestCorrectedRead);*/
 
-        if (bestScore > ((int)read.size() / 2))
+        size_t numSubstitutions = 0;
+        if (bestScore > ((int)read.size() / 2)) {
                 read = bestCorrectedRead;
+                readCorrected = true;
+                numSubstitutions = (read.length() - bestScore)/2;
+        }
+
+        metrics.addObservation(readCorrected, correctedByMEM, numSubstitutions);
 }
 
-void ReadCorrectionJan::correctChunk(vector<ReadRecord>& readChunk)
+void ReadCorrectionJan::correctChunk(vector<ReadRecord>& readChunk,
+                                     AlignmentMetrics& metrics)
 {
         for (auto& it : readChunk)
-                correctRead(it);
+                correctRead(it, metrics);
 
         /*cout << readChunk.size() << endl;
         for (size_t i = 269; i < 270; i++) {
                 cout << "================== read " << i << endl;
-                correctRead(readChunk[i]);
+                correctRead(readChunk[i], metrics);
         }
 
         cout << "Bye... " << endl;
         exit(0);*/
 }
 
-void ReadCorrectionHandler::workerThread(size_t myID, LibraryContainer& libraries)
+void ReadCorrectionHandler::workerThread(size_t myID, LibraryContainer& libraries,
+                                         AlignmentMetrics& metrics)
 {
         ReadCorrectionJan readCorrection(dbg, settings, *sa, startpos);
 
         // local storage of reads
         vector<ReadRecord> myReadBuf;
 
+        // performance counters per thread
+        AlignmentMetrics threadMetrics;
+
         while (true) {
                 size_t blockID, recordID;
                 bool result = libraries.getRecordChunk(myReadBuf, blockID, recordID);
 
-                readCorrection.correctChunk(myReadBuf);
+                readCorrection.correctChunk(myReadBuf, threadMetrics);
 
                 if (result)
                         libraries.commitRecordChunk(myReadBuf, blockID, recordID);
                 else
                         break;
         }
+
+        // update the global metrics with the thread info (thread-safe)
+        metrics.addMetrics(threadMetrics);
 }
 
 void ReadCorrectionHandler::initEssaMEM()
@@ -617,15 +673,18 @@ void ReadCorrectionHandler::doErrorCorrection(LibraryContainer& libraries)
                                  true);
 
         // start worker threads
+        AlignmentMetrics metrics;
         vector<thread> workerThreads(numThreads);
         for (size_t i = 0; i < workerThreads.size(); i++)
                 workerThreads[i] = thread(&ReadCorrectionHandler::workerThread,
-                                          this, i, ref(libraries));
+                                          this, i, ref(libraries), ref(metrics));
 
         // wait for worker threads to finish
         for_each(workerThreads.begin(), workerThreads.end(), mem_fn(&thread::join));
 
         libraries.joinIOThreads();
+
+        metrics.printStatistics();
 }
 
 ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
@@ -636,6 +695,7 @@ ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
         dbg.populateTable();
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 }
+
 ReadCorrectionHandler::~ReadCorrectionHandler()
 {
         delete sa;
