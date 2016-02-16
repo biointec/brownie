@@ -591,11 +591,11 @@ void ReadCorrectionHandler::initEssaMEM()
                           startpos,                             // start index for each string
                           false,                                // 4 column format or not
                           settings.getESSASparsenessFactor(),   // ESSA sparseness factor
-                          false,                                // suffixlinks
+                          true,                                 // suffixlinks
                           true,                                 // child arrays,
-                          false,                                // kmertable
+                          true,                                 // kmertable
                           1,                                    // skip parameter
-                          0,                                    // kmer size
+                          10,                                   // kmer size
                           printSubstring,
                           printRevCompForw,
                           false                                 // nucleotides only
