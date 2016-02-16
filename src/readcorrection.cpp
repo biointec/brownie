@@ -20,11 +20,41 @@
 
 #include <thread>
 #include <string>
+#include <iomanip>
+
 #include "library.h"
 #include "readcorrection.h"
 #include "kmernode.h"
-#include <iomanip> // std::setprecision
+
 using namespace std;
+
+// ============================================================================
+// ALIGNMENT METRICS CLASS
+// ============================================================================
+
+void AlignmentMetrics::addMetrics(const AlignmentMetrics& rhs)
+{
+        lock_guard<mutex> lock(metricMutex);
+        numReads += rhs.numReads;
+        numCorrReads += rhs.numCorrReads;
+        numCorrByMEM += rhs.numCorrByMEM;
+        numSubstitutions += rhs.numSubstitutions;
+}
+
+void AlignmentMetrics::printStatistics() const
+{
+        cout << "\nError correction report:\n";
+        cout << "\tNumber of reads handled: " << numReads << endl;
+        cout << "\tNumber of corrected reads: " << numCorrReads
+             << fixed << setprecision(2) << " ("
+             << 100*(double)(numCorrReads)/(double)(numReads) << "%)" << endl;
+        cout << "\tNumber of reads corrected by MEMs: " << numCorrByMEM
+             << fixed << setprecision(2) << " ("
+             << 100*(double)(numCorrByMEM)/(double)(numReads) << "%)" << endl;
+        cout << "\tNumber of subtitutions in reads: " << numSubstitutions
+             << fixed << setprecision(2) << " ("
+             << (double)(numSubstitutions)/(double)(numReads) <<" per read)\n"<< endl;
+}
 
 // ============================================================================
 // SEED CLASS
@@ -490,8 +520,10 @@ int ReadCorrectionJan::correctRead(const string& read,
         return bestScore;
 }
 
-void ReadCorrectionJan::correctRead(ReadRecord& record)
+void ReadCorrectionJan::correctRead(ReadRecord& record,
+                                    AlignmentMetrics& metrics)
 {
+        bool correctedByMEM = false, readCorrected = false;
         string& read = record.getRead();
 
         // if the read is too short, get out
@@ -505,6 +537,7 @@ void ReadCorrectionJan::correctRead(ReadRecord& record)
         int bestScore = correctRead(read, bestCorrectedRead, seeds);
 
         if (bestScore <= ((int)read.size() / 2)) {
+                correctedByMEM = true;
                 findSeedMEM(read, seeds);
                 bestScore = correctRead(read, bestCorrectedRead, seeds);
         }
@@ -512,54 +545,58 @@ void ReadCorrectionJan::correctRead(ReadRecord& record)
         /*alignment.align(read, bestCorrectedRead);
         cout << "BEST ALIGNMENT: " << bestScore << endl;
         alignment.printAlignment(read, bestCorrectedRead);*/
-        bool findByMem=false;
-        if (bestScore > ((int)read.size() / 2)){
+
+        size_t numSubstitutions = 0;
+        if (bestScore > ((int)read.size() / 2)) {
                 read = bestCorrectedRead;
-                numOfChangesInReads=numOfChangesInReads+(read.length()-bestScore);
-                numOfCorrectedReads++;
-                if (findByMem)
-                        numOfCorrectedByMem++;
+                readCorrected = true;
+                numSubstitutions = (read.length() - bestScore)/2;
         }
-        numOfReads++;
+
+        metrics.addObservation(readCorrected, correctedByMEM, numSubstitutions);
 }
 
-void ReadCorrectionJan::correctChunk(vector<ReadRecord>& readChunk)
+void ReadCorrectionJan::correctChunk(vector<ReadRecord>& readChunk,
+                                     AlignmentMetrics& metrics)
 {
         for (auto& it : readChunk)
-                correctRead(it);
+                correctRead(it, metrics);
 
         /*cout << readChunk.size() << endl;
         for (size_t i = 269; i < 270; i++) {
                 cout << "================== read " << i << endl;
-                correctRead(readChunk[i]);
+                correctRead(readChunk[i], metrics);
         }
 
         cout << "Bye... " << endl;
         exit(0);*/
 }
 
-void ReadCorrectionHandler::workerThread(size_t myID, LibraryContainer& libraries)
+void ReadCorrectionHandler::workerThread(size_t myID, LibraryContainer& libraries,
+                                         AlignmentMetrics& metrics)
 {
         ReadCorrectionJan readCorrection(dbg, settings, *sa, startpos);
 
         // local storage of reads
         vector<ReadRecord> myReadBuf;
 
+        // performance counters per thread
+        AlignmentMetrics threadMetrics;
+
         while (true) {
                 size_t blockID, recordID;
                 bool result = libraries.getRecordChunk(myReadBuf, blockID, recordID);
 
-                readCorrection.correctChunk(myReadBuf);
+                readCorrection.correctChunk(myReadBuf, threadMetrics);
 
                 if (result)
                         libraries.commitRecordChunk(myReadBuf, blockID, recordID);
                 else
                         break;
         }
-        numOfAllReads=numOfAllReads+ readCorrection.numOfReads;
-        numOfAllCorrectedReads=numOfAllCorrectedReads+readCorrection.numOfCorrectedReads;
-        numOfAllChangesInReads=numOfAllChangesInReads+readCorrection.numOfChangesInReads;
-        numOfAllCorrectedByMem=numOfAllCorrectedByMem+readCorrection.numOfCorrectedByMem;
+
+        // update the global metrics with the thread info (thread-safe)
+        metrics.addMetrics(threadMetrics);
 }
 
 void ReadCorrectionHandler::initEssaMEM()
@@ -623,30 +660,29 @@ void ReadCorrectionHandler::doErrorCorrection(LibraryContainer& libraries)
                                  true);
 
         // start worker threads
+        AlignmentMetrics metrics;
         vector<thread> workerThreads(numThreads);
         for (size_t i = 0; i < workerThreads.size(); i++)
                 workerThreads[i] = thread(&ReadCorrectionHandler::workerThread,
-                                          this, i, ref(libraries));
+                                          this, i, ref(libraries), ref(metrics));
 
         // wait for worker threads to finish
         for_each(workerThreads.begin(), workerThreads.end(), mem_fn(&thread::join));
 
         libraries.joinIOThreads();
-        cout <<"\nStatistical report for error correction:\n";
-        cout <<"Number Of Reads:\t\t\t"<<numOfAllReads<<endl;
-        cout <<"Number Of Corrected Reads:\t\t"<<numOfAllCorrectedReads<<fixed <<std::setprecision(2)<< "\t\t("<< 100*(double)(numOfAllCorrectedReads)/(double)(numOfAllReads) <<")%"<< endl;
-        cout <<"Number Of Corrected Reads by Mem:\t"<<numOfAllCorrectedByMem<<fixed <<std::setprecision(2)<< "\t\t("<< 100*(double)(numOfAllCorrectedByMem)/(double)(numOfAllCorrectedReads) <<")%"<< endl;
-        cout <<"Number Of Changes In Reads:\t\t"<<numOfAllChangesInReads<<fixed <<std::setprecision(2)<<"\t("<<(double)(numOfAllChangesInReads)/(double)(numOfAllReads) <<") per read.\n"<< endl;
+
+        metrics.printStatistics();
 }
 
 ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
-        dbg(g), settings(s), sa(NULL),numOfAllReads(0), numOfAllCorrectedReads(0),numOfAllChangesInReads(0),numOfAllCorrectedByMem(0)
+        dbg(g), settings(s), sa(NULL)
 {
         Util::startChrono();
         cout << "Creating kmer lookup table... "; cout.flush();
         dbg.populateTable();
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 }
+
 ReadCorrectionHandler::~ReadCorrectionHandler()
 {
         delete sa;
