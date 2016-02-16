@@ -66,8 +66,8 @@ void Settings::printUsage() const
         cout << "  -k\t--kmersize\t\tkmer size [default = 31]\n";
         cout << "  -t\t--threads\t\tnumber of threads [default = available cores]\n";
         cout << "  -g\t--genomesize\t\tsize of the genome [default = auto]\n";
-        cout << "  -v\t--visits\t\tmaximal number of visited nodes in one bubble detection [default = 1000]\n";
-        cout << "  -d\t--depth\t\t\tmaximal number of visited nodes in one read correction [default = 1000]\n";
+        cout << "  -v\t--visits\t\tmaximum number of visited nodes in one bubble detection [default = 1000]\n";
+        cout << "  -d\t--depth\t\t\tmaximum number of visited nodes in one read correction [default = 1000]\n";
         cout << "  -e\t--essa\t\t\tsparseness factor of the enhanced sparse suffix array [default = 1]\n";
 
         cout << "  -p\t--pathtotmp\t\tpath to directory to store temporary files [default = current directory]\n\n";
@@ -87,8 +87,8 @@ void Settings::printUsage() const
 // ============================================================================
 
 Settings::Settings() : kmerSize(31), numThreads(std::thread::hardware_concurrency()),
-        genomeSize(0), doubleStranded(true), essa_factor(1), max_visits(1000),
-        max_depth(1000), skip_stage_4(false), skip_stage_5(false) {}
+        genomeSize(0), doubleStranded(true), essa_factor(1), bubbleDFSNodeLimit(1000),
+        readCorrDFSNodeLimit(1000), skip_stage_4(false), skip_stage_5(false) {}
 
 void Settings::parseCommandLineArguments(int argc, char** args,
                                          LibraryContainer& libCont)
@@ -126,11 +126,11 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                 } else if ((arg == "-v") || (arg == "--visits")) {
                         i++;
                         if (i < argc)
-                                max_visits = atoi(args[i]);
+                                bubbleDFSNodeLimit = atoi(args[i]);
                 } else if ((arg == "-d") || (arg == "--depth")) {
                         i++;
                         if (i < argc)
-                                max_depth = atoi(args[i]);
+                                readCorrDFSNodeLimit = atoi(args[i]);
                 } else if ((arg == "-s") || (arg == "--singlestranded")) {
                         doubleStranded = false;
                 } else if ((arg == "-p") || (arg == "--pathtotmp")) {

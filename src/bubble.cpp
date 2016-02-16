@@ -1,8 +1,3 @@
-#include "graph.h"
-
-#include "library.h"
-
-
 /***************************************************************************
  *   Copyright (C) 2014, 2015 Jan Fostier (jan.fostier@intec.ugent.be)     *
  *   Copyright (C) 2014, 2015 Mahdi Heydari (mahdi.heydari@intec.ugent.be) *
@@ -26,6 +21,7 @@
 
 #include "graph.h"
 #include "settings.h"
+#include "library.h"
 
 using namespace std;
 class PathInfo {
@@ -296,7 +292,7 @@ vector<pair<vector<NodeID>, vector<NodeID> > >  DBGraph::searchForParallelNodes(
         priority_queue<PathInfo, vector<PathInfo>, comparator> heap;
         heap.push(PathInfo(lID, 0));
         vector<pair<vector<NodeID>, vector<NodeID> > > parallelNodes;
-        size_t visitedNodesLimit = settings.getMaxVisits();
+        size_t visitedNodesLimit = settings.getBubbleDFSNodeLimit();
         while(!heap.empty()) {
                 PathInfo currTop = heap.top();
                 heap.pop();

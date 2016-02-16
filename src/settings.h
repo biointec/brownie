@@ -53,11 +53,11 @@ private:
         bool doubleStranded;            // double stranded sequences
         std::string pathtotemp;         // directory specified by user
 
-        int essa_factor;		// sparseness factor for essamem
-        int max_visits;			// maximal number of visited nodes for bubble detection
-        int max_depth;			// maximal search depth for stage 5
-        bool skip_stage_4;
-        bool skip_stage_5;
+        int ESSASparsenessFactor;       // sparseness factor for essamem
+        int bubbleDFSNodeLimit;         // maximal number of visited nodes for bubble detection
+        int readCorrDFSNodeLimit;       // maximal search depth for stage 5
+        bool skipStage4;
+        bool skipStage5;
 
 public:
         /**
@@ -130,24 +130,24 @@ public:
                 this->genomeSize=genomeSize;
         }
 
-        int getEssaFactor() const {
-                return essa_factor;
+        int getESSASparsenessFactor() const {
+                return ESSASparsenessFactor;
         }
 
-        int getMaxVisits() const {
-                return max_visits;
+        int getBubbleDFSNodeLimit() const {
+                return bubbleDFSNodeLimit;
         }
 
-        int getMaxDepth() const {
-                return max_depth;
+        int getReadCorrDFSNodeLimit() const {
+                return readCorrDFSNodeLimit;
         }
 
         bool getSkipStage4() const {
-                return skip_stage_4;
+                return skipStage4;
         }
 
         bool getSkipStage5() const {
-                return skip_stage_5;
+                return skipStage5;
         }
 };
 
