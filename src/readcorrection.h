@@ -192,6 +192,10 @@ private:
                         const std::vector<Seed>& seeds);
 
 public:
+        size_t numOfReads;
+        size_t numOfCorrectedReads;
+        size_t numOfChangesInReads;
+        size_t numOfCorrectedByMem;
         /**
          * Default constructor
          * @param dbg_ Reference to the De Bruijn graph
@@ -200,7 +204,8 @@ public:
         ReadCorrectionJan(const DBGraph& dbg_, const Settings& settings_,
                           const sparseSA& sa_, const std::vector<long>& startpos_) :
                           dbg(dbg_), settings(settings_),
-                          alignment(100, 2, 1, -1, -3), sa(sa_), startpos(startpos_) {}
+                          alignment(100, 2, 1, -1, -3), sa(sa_), startpos(startpos_),numOfReads(0),numOfCorrectedReads(0),
+                          numOfChangesInReads(0),numOfCorrectedByMem(0) {}
 
         /**
          * Correct the records in one chunk
@@ -221,7 +226,10 @@ private:
         sparseSA *sa;
         std::string reference;
         std::vector<long> startpos;
-
+        atomic< size_t> numOfAllReads;
+        atomic< size_t> numOfAllCorrectedReads;
+        atomic< size_t> numOfAllChangesInReads;
+        atomic< size_t> numOfAllCorrectedByMem;
         void initEssaMEM();
 
         /**
