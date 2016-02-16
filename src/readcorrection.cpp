@@ -57,7 +57,7 @@ void AlignmentMetrics::printStatistics() const
         cout << "\tNumber of reads corrected by MEM seeds: " << numCorrByMEM
              << fixed << setprecision(2) << " ("
              << Util::toPercentage(numCorrByMEM, numReads) << "%)" << endl;
-        cout << "\tNumber of subtitutions in reads: " << numSubstitutions
+        cout << "\tNumber of substitutions in reads: " << numSubstitutions
              << fixed << setprecision(2) << " (avg of "
              << double(numSubstitutions)/double(numReads) << " per read)" << endl;
         cout << "\tNumber of uncorrected reads: " << numUncorrected
@@ -692,7 +692,8 @@ ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
         Util::startChrono();
-        cout << "Building suffix array... "; cout.flush();
+        cout << "Building suffix array (sparsness factor: "
+             << settings.getESSASparsenessFactor() << ")..."; cout.flush();
         initEssaMEM();
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 }

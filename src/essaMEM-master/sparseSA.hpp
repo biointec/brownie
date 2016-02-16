@@ -56,10 +56,10 @@ struct vec_uchar {
         void resize(size_t N) { vec.resize(N); }
         // Vector X[i] notation to get LCP values.
         int operator[] (size_t idx) const {
-                if(vec[idx] == numeric_limits<unsigned char>::max()) 
+                if(vec[idx] == numeric_limits<unsigned char>::max())
                         return lower_bound(M.begin(), M.end(), item_t(idx,0))->val;
-                else 
-                        return vec[idx]; 
+                else
+                        return vec[idx];
         }
         // Actually set LCP values, distingushes large and small LCP
         // values.
@@ -72,8 +72,8 @@ struct vec_uchar {
         }
         // Once all the values are set, call init. This will assure the
         // values >= 255 are sorted by index for fast retrieval.
-        void init() { sort(M.begin(), M.end()); cout << "M.size()=" << M.size() << endl; std::vector<item_t>(M).swap(M);}
-        
+        void init() { sort(M.begin(), M.end()); /*cout << "M.size()=" << M.size() << endl;*/ std::vector<item_t>(M).swap(M);}
+
         long index_size_in_bytes() const {
                 long indexSize = 0L;
                 indexSize += sizeof(vec) + vec.capacity()*sizeof(unsigned char);
@@ -82,7 +82,7 @@ struct vec_uchar {
         }
 };
 
-// Match find by findMEM. 
+// Match find by findMEM.
 struct match_t {
         match_t() { ref = 0; query = 0, len = 0; }
         match_t(long r, long q, long l) { ref = r; query = q; len = l; }
@@ -98,7 +98,7 @@ struct saTuple_t {
         unsigned int right;
 };
 
-// depth : [start...end] 
+// depth : [start...end]
 struct interval_t {
         interval_t() { start = 1; end = 0; depth = -1; }
         interval_t(long s, long e, long d) { start = s; end = e; depth = d; }
@@ -114,7 +114,7 @@ struct sparseSA {
         bool _4column; // Use 4 column output format.
 
         long N; //!< Length of the sequence.
-        long logN; // ceil(log(N)) 
+        long logN; // ceil(log(N))
         long NKm1; // N/K - 1
         string &S; //!< Reference to sequence data.
         vector<unsigned int> SA; // Suffix array.
@@ -135,7 +135,7 @@ struct sparseSA {
         bool printRevCompForw;
         bool forward;
         bool nucleotidesOnly;
-        
+
         long index_size_in_bytes() {
                 long indexSize = 0L;
                 indexSize += sizeof(forward);
@@ -176,9 +176,9 @@ struct sparseSA {
                 seq = distance(startpos.begin(), it) - 1;
                 it--;
                 seqpos = hit - *it;
-        } 
+        }
 
-        // Constructor builds sparse suffix array. 
+        // Constructor builds sparse suffix array.
         sparseSA(string &S_, vector<string> const &descr_, vector<long> &startpos_,
         bool __4column, long K_, bool suflink_, bool child_, bool kmer_, int sparseMult_,
         int kMerSize_, bool printSubstring_, bool printRevCompForw_, bool nucleotidesOnly_);
@@ -230,15 +230,15 @@ struct sparseSA {
                 long thresh = 2 * link.depth * logN, exp = 0; // Threshold link expansion.
                 long start = link.start;
                 long end = link.end;
-                while(LCP[start] >= link.depth) { 
-                        exp++; 
+                while(LCP[start] >= link.depth) {
+                        exp++;
                         if(exp >= thresh) return false;
-                        start--; 
+                        start--;
                 }
-                while(end < NKm1 && LCP[end+1] >= link.depth) { 
-                        exp++; 
+                while(end < NKm1 && LCP[end+1] >= link.depth) {
+                        exp++;
                         if(exp >= thresh) return false;
-                        end++; 
+                        end++;
                 }
                 link.start = start; link.end = end;
                 return true;
@@ -264,16 +264,16 @@ struct sparseSA {
         // et. al. Note this is a "one-sided" query. It "streams" the query
         // P throught he index. Consequently, repeats can occur in the
         // pattern P.
-        void MAM(string const &P, vector<match_t> &matches, int min_len, long& memCount, bool forward_, bool print) { 
+        void MAM(string const &P, vector<match_t> &matches, int min_len, long& memCount, bool forward_, bool print) {
                 forward = forward_;
                 if(K != 1) return; // Only valid for full suffix array.
                 findMAM(P, matches, min_len, memCount, print);
         }
 
-        // Find Maximal Exact Matches (MEMs) 
+        // Find Maximal Exact Matches (MEMs)
         void MEM(string &P, vector<match_t> &matches, int min_len, bool print, long& memCount, bool forward_, int num_threads = 1);
 
-        // Maximal Unique Match (MUM) 
+        // Maximal Unique Match (MUM)
         void MUM(string const &P, vector<match_t> &unique, int min_len, long& memCount, bool forward_, bool print);
 
         //save index to files
