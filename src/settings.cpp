@@ -89,8 +89,8 @@ void Settings::printUsage() const
 }
 
 Settings::Settings() : kmerSize(31), numThreads(std::thread::hardware_concurrency()),
-        genomeSize(0), doubleStranded(true), essa_factor(1), max_visits(1000),
-        max_depth(1000),cutoff(0), skip_stage_4(false), skip_stage_5(false) {}
+        genomeSize(0), doubleStranded(true), ESSASparsenessFactor(1), bubbleDFSNodeLimit(1000),
+        readCorrDFSNodeLimit(1000),cutoff(0), skip_stage_4(false), skip_stage_5(false) {}
 
 void Settings::parseCommandLineArgumentsEC(int argc, char** args,
                                          LibraryContainer& libCont, size_t startArg)
@@ -119,11 +119,11 @@ void Settings::parseCommandLineArgumentsEC(int argc, char** args,
                 } else if ((arg == "-e") || (arg == "--essa")) {
                         i++;
                         if (i < argc)
-                                essa_factor = atoi(args[i]);
+                                ESSASparsenessFactor = atoi(args[i]);
                 } else if ((arg == "-v") || (arg == "--visits")) {
                         i++;
                         if (i < argc)
-                                max_visits = atoi(args[i]);
+                                bubbleDFSNodeLimit = atoi(args[i]);
                 } else if ((arg == "-d") || (arg == "--depth")) {
                         i++;
                         if (i < argc)

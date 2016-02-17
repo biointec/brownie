@@ -56,8 +56,6 @@ private:
         int ESSASparsenessFactor;       // sparseness factor for essamem
         int bubbleDFSNodeLimit;         // maximal number of visited nodes for bubble detection
         int readCorrDFSNodeLimit;       // maximal search depth for stage 5
-        int essa_factor;             // sparseness factor for essamem
-        int max_visits;                 // maximal number of visited nodes for bubble detection
         int max_depth;                  // maximal search depth for stage 5
         double cutoff;                   //cutoff value to separate true and false nodes based on their node-kmer-coverage
         bool skip_stage_4;
