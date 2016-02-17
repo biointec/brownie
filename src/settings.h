@@ -56,8 +56,12 @@ private:
         int ESSASparsenessFactor;       // sparseness factor for essamem
         int bubbleDFSNodeLimit;         // maximal number of visited nodes for bubble detection
         int readCorrDFSNodeLimit;       // maximal search depth for stage 5
-        bool skipStage4;
-        bool skipStage5;
+        int essa_factor;             // sparseness factor for essamem
+        int max_visits;                 // maximal number of visited nodes for bubble detection
+        int max_depth;                  // maximal search depth for stage 5
+        double cutoff;                   //cutoff value to separate true and false nodes based on their node-kmer-coverage
+        bool skip_stage_4;
+        bool skip_stage_5;
 
 public:
         /**
@@ -65,14 +69,29 @@ public:
          */
         Settings();
 
+            /**
+         * Parse the command line arguments
+         * @param argc Command line argument count
+         * @param args Command line arguments
+         * @param libCont Library container (output)
+         */
+
+         void parseCommandLineArgumentsMain(int argc, char** args,LibraryContainer& libCont);
+         /**
+          * @param libCont Library container (output)
+          */
+         void checkInputArguments(LibraryContainer& libCont);
+
         /**
          * Parse the command line arguments
          * @param argc Command line argument count
          * @param args Command line arguments
          * @param libCont Library container (output)
          */
-        void parseCommandLineArguments(int argc, char **args,
-                                       LibraryContainer& libCont);
+        void parseCommandLineArgumentsEC(int argc, char **args,
+                                       LibraryContainer& libCont, size_t startArg);
+
+
 
         /**
          * Get the user-specified kmer hash length
@@ -141,13 +160,15 @@ public:
         int getReadCorrDFSNodeLimit() const {
                 return readCorrDFSNodeLimit;
         }
-
+        double getCutOffValue(){
+                return cutoff;
+        }
         bool getSkipStage4() const {
-                return skipStage4;
+                return skip_stage_4;
         }
 
         bool getSkipStage5() const {
-                return skipStage5;
+                return skip_stage_5;
         }
 };
 
