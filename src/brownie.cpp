@@ -32,7 +32,7 @@ using namespace std;
 
 Brownie::Brownie(int argc, char** args)
 {
-        settings.parseCommandLineArguments(argc, args, libraries);
+        settings.parseCommandLineArgumentsMain(argc, args, libraries);
 
         Kmer::setWordSize(settings.getK());
         RKmer::setWordSize(settings.getK() - KMERBYTEREDUCTION * 4);
