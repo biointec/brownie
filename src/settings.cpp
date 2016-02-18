@@ -58,7 +58,7 @@ void Settings::printUsage() const
         cout << "Corrects sequence reads in file(s)\n\n";
 
         cout << " command\n";
-        cout << "  assemble\t\t\tDe novo assembly\n";
+        //cout << "  assemble\t\t\tDe novo assembly\n";
         cout << "  readCorrection\t\tCorrect input reads [default]\n";
         cout << "  graphConstruction\t\tBuild de bruijn graph only\n";
         cout << "  graphCorrection\t\tCorrect constructed de Bruijn graph only\n\n";
@@ -113,13 +113,13 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                         exit(EXIT_SUCCESS);
                 } else if (arg == "assembly"){
                         // do nothing not available yet.
-                        cout<<"This option is not available yet.";
-                        exit(EXIT_SUCCESS);
+                        // cout << "This option is not available yet";
+                        // exit(EXIT_SUCCESS);
                 } else if (arg == "graphCorrection"){
                         skipStage5 = true;
                 } else if (arg == "errorCorrection") {
                         // default conditions, do nothing
-                } else if (arg =="graphConstruction"){
+                } else if (arg == "graphConstruction"){
                         skipStage4 = true;
                         skipStage5 = true;
                 } else if ((arg == "-k") || (arg == "--kmersize")) {
