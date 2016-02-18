@@ -112,13 +112,13 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                         printProgramInfo();
                         exit(EXIT_SUCCESS);
                 } else if (arg == "assembly"){
-                        //do nothing not available yet.
+                        // do nothing not available yet.
                         cout<<"This option is not available yet.";
                         exit(EXIT_SUCCESS);
                 } else if (arg == "graphCorrection"){
-                        skipStage5=true;
+                        skipStage5 = true;
                 } else if (arg == "errorCorrection") {
-                        //defult conditions , do nothing
+                        // default conditions, do nothing
                 } else if (arg =="graphConstruction"){
                         skipStage4 = true;
                         skipStage5 = true;
