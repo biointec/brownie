@@ -57,11 +57,11 @@ void Settings::printUsage() const
         cout << "Usage: brownie command [options] [file_options] file1 [[file_options] file2]...\n";
         cout << "Corrects sequence reads in file(s)\n\n";
 
-        cout << "  command\n";
-        cout << "  assembly\t\t\tDe novo assembly\n";
-        cout << "  errorCorrection\t\tDe novo error correction\n";
-        cout << "  graphConstruction\t\tBuild de bruijn graph\n";
-        cout << "  graphCorrection\t\tCorrect constructed de bruijn graph\n\n";
+        cout << " command\n";
+        cout << "  assemble\t\t\tDe novo assembly\n";
+        cout << "  readCorrection\t\tCorrect input reads [default]\n";
+        cout << "  graphConstruction\t\tBuild de bruijn graph only\n";
+        cout << "  graphCorrection\t\tCorrect constructed de Bruijn graph only\n\n";
 
         cout << " [options]\n";
         cout << "  -h\t--help\t\t\tdisplay help page\n";
@@ -71,11 +71,10 @@ void Settings::printUsage() const
         cout << " [options arg]\n";
         cout << "  -k\t--kmersize\t\tkmer size [default = 31]\n";
         cout << "  -t\t--threads\t\tnumber of threads [default = available cores]\n";
-        cout << "  -g\t--genomesize\t\tsize of the genome [default = auto]\n";
-        cout << "  -v\t--visits\t\tmaximum number of visited nodes in one bubble detection [default = 1000]\n";
-        cout << "  -d\t--depth\t\t\tmaximum number of visited nodes in one read correction [default = 1000]\n";
+        cout << "  -v\t--visits\t\tmaximum number of visited nodes during bubble detection [default = 1000]\n";
+        cout << "  -d\t--depth\t\t\tmaximum number of visited nodes during read correction [default = 1000]\n";
         cout << "  -e\t--essa\t\t\tsparseness factor of the enhanced sparse suffix array [default = 1]\n";
-        cout << "  -c\t--cutoff\t\tvalue to separate ture and false nodes based on their coverage [default = calculated based on poisson mixture model]\n";
+        cout << "  -c\t--cutoff\t\tvalue to separate true and false nodes based on their coverage [default = calculated based on poisson mixture model]\n";
 
         cout << "  -p\t--pathtotmp\t\tpath to directory to store temporary files [default = current directory]\n\n";
 
@@ -83,8 +82,8 @@ void Settings::printUsage() const
         cout << "  -o\t--output\t\toutput file name [default = inputfile.corr]\n";
 
         cout << " examples:\n";
-        cout << "  ./brownie errorCorrection inputA.fastq\n";
-        cout << "  ./brownie errorCorrection -k 29 -t 4 -o outputA.fasta inputA.fasta -o outputB.fasta inputB.fastq\n";
+        cout << "  ./brownie readCorrection inputA.fastq\n";
+        cout << "  ./brownie readCorrection -k 29 -t 4 -o outputA.fasta inputA.fasta -o outputB.fasta inputB.fastq\n";
 }
 
 // ============================================================================
@@ -92,8 +91,8 @@ void Settings::printUsage() const
 // ============================================================================
 
 Settings::Settings() : kmerSize(31), numThreads(std::thread::hardware_concurrency()),
-        genomeSize(0), doubleStranded(true), ESSASparsenessFactor(1), bubbleDFSNodeLimit(1000),
-        readCorrDFSNodeLimit(1000),cutoff(0), skipStage4(false), skipStage5(false) {}
+        doubleStranded(true), essaMEMSparsenessFactor(1), bubbleDFSNodeLimit(1000),
+        readCorrDFSNodeLimit(1000), covCutoff(0), skipStage4(false), skipStage5(false) {}
 
 void Settings::parseCommandLineArguments(int argc, char** args,
                                          LibraryContainer& libCont)
@@ -112,15 +111,15 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                 } else if ((arg == "-i") || (arg == "--info")) {
                         printProgramInfo();
                         exit(EXIT_SUCCESS);
-                } else if (arg=="assembly"){
+                } else if (arg == "assembly"){
                         //do nothing not available yet.
                         cout<<"This option is not available yet.";
                         exit(EXIT_SUCCESS);
-                } else if (arg== "graphCorrection"){
+                } else if (arg == "graphCorrection"){
                         skipStage5=true;
-                } else if (arg== "errorCorrection") {
-                   //defult conditions , do nothing
-                } else if (arg=="graphConstruction"){
+                } else if (arg == "errorCorrection") {
+                        //defult conditions , do nothing
+                } else if (arg =="graphConstruction"){
                         skipStage4 = true;
                         skipStage5 = true;
                 } else if ((arg == "-k") || (arg == "--kmersize")) {
@@ -131,14 +130,10 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                         i++;
                         if (i < argc)
                                 numThreads = atoi(args[i]);
-                } else if ((arg == "-g") || (arg == "--genomesize")) {
-                        i++;
-                        if (i < argc)
-                                genomeSize = atoi(args[i]);
                 } else if ((arg == "-e") || (arg == "--essa")) {
                         i++;
                         if (i < argc)
-                                ESSASparsenessFactor = atoi(args[i]);
+                                essaMEMSparsenessFactor = atoi(args[i]);
                 } else if ((arg == "-v") || (arg == "--visits")) {
                         i++;
                         if (i < argc)
@@ -150,7 +145,7 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                 } else if ((arg == "-c") || (arg == "--cutoff")) {
                         i++;
                         if (i < argc)
-                                cutoff = atoi(args[i]);
+                                covCutoff = atoi(args[i]);
                 } else if ((arg == "-s") || (arg == "--singlestranded")) {
                         doubleStranded = false;
                 } else if ((arg == "-p") || (arg == "--pathtotmp")) {
@@ -174,7 +169,7 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                 numThreads = 1;
 
         if (numThreads > std::thread::hardware_concurrency()) {
-                cerr << "WARNING: number of threads is bigger than available number of cores" << endl;
+                cerr << "WARNING: number of threads is bigger than the available number of cores" << endl;
         }
 
         if (kmerSize <= KMERBYTEREDUCTION *4) {

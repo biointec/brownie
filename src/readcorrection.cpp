@@ -646,7 +646,7 @@ void ReadCorrectionHandler::initEssaMEM()
                           refdescr,
                           startpos,                             // start index for each string
                           false,                                // 4 column format or not
-                          settings.getESSASparsenessFactor(),   // ESSA sparseness factor
+                          settings.getEssaMEMSparsenessFactor(),// ESSA sparseness factor
                           true,                                 // suffixlinks
                           true,                                 // child arrays,
                           true,                                 // kmertable
