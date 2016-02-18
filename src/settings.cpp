@@ -72,8 +72,8 @@ void Settings::printUsage() const
         cout << "  -k\t--kmersize\t\tkmer size [default = 31]\n";
         cout << "  -t\t--threads\t\tnumber of threads [default = available cores]\n";
         cout << "  -g\t--genomesize\t\tsize of the genome [default = auto]\n";
-        cout << "  -v\t--visits\t\tmaximal number of visited nodes in one bubble detection [default = 1000]\n";
-        cout << "  -d\t--depth\t\t\tmaximal number of visited nodes in one read correction [default = 1000]\n";
+        cout << "  -v\t--visits\t\tmaximum number of visited nodes in one bubble detection [default = 1000]\n";
+        cout << "  -d\t--depth\t\t\tmaximum number of visited nodes in one read correction [default = 1000]\n";
         cout << "  -e\t--essa\t\t\tsparseness factor of the enhanced sparse suffix array [default = 1]\n";
         cout << "  -c\t--cutoff\t\tvalue to separate ture and false nodes based on their coverage [default = calculated based on poisson mixture model]\n";
 
