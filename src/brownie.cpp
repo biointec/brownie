@@ -79,8 +79,11 @@ void Brownie::parameterEstimationInStage4(DBGraph &graph){
         double estimatedErroneousKmerCoverage=1+estimatedKmerCoverage/100;
         double e=2.718281;
         double c=estimatedErroneousKmerCoverage/estimatedKmerCoverage;
-        cutOffvalue =(estimatedErroneousKmerCoverage-estimatedKmerCoverage)* (log(e)/log(c));
 
+        if (settings.getCutOffValue()>0)
+                cutOffvalue=settings.getCutOffValue();
+        else
+                cutOffvalue =(estimatedErroneousKmerCoverage-estimatedKmerCoverage)* (log(e)/log(c));
         testgraph.updateGraphSize();
         testgraph.clear();
            //initialize values for graph parameter based on test graph.
