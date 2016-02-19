@@ -49,7 +49,13 @@ void Brownie::printInFile()
         cout<<"-------------------------------------------------------------------------------"<<endl;
         cout << "Welcome to Brownie\n" << endl;
 }
-
+/**
+ * this routine estimates initial parameters for the graph
+ * by making a test graph.
+ *
+ * @graph The acutal graph which later will be cleand in this stage. Initial parameters of this
+ * graph will be set in this routine based on a test graph manipulation.
+ */
 void Brownie::parameterEstimationInStage4(DBGraph &graph){
         cout <<endl<< " ================ Parameter Estimation ===============" << endl;
         double  estimatedKmerCoverage=0,estimatedMKmerCoverageSTD=0, cutOffvalue=0, readLength=0;
@@ -74,27 +80,27 @@ void Brownie::parameterEstimationInStage4(DBGraph &graph){
         cout << "Estimated Kmer coverage mean: " << testgraph.estimatedKmerCoverage << endl;
         cout << "Estimated Kmer coverage std:  " << testgraph.estimatedMKmerCoverageSTD << endl;
 
-        estimatedKmerCoverage=testgraph.estimatedKmerCoverage;
-        estimatedMKmerCoverageSTD=testgraph.estimatedMKmerCoverageSTD;
-        double estimatedErroneousKmerCoverage=1+estimatedKmerCoverage/100;
-        double e=2.718281;
-        double c=estimatedErroneousKmerCoverage/estimatedKmerCoverage;
+        estimatedKmerCoverage = testgraph.estimatedKmerCoverage;
+        estimatedMKmerCoverageSTD = testgraph.estimatedMKmerCoverageSTD;
+        double estimatedErroneousKmerCoverage = 1+estimatedKmerCoverage/100;
+        double e = 2.718281;
+        double c = estimatedErroneousKmerCoverage/estimatedKmerCoverage;
 
-        if (settings.getCutOffValue()>0)
+        if (settings.getCutOffValue() > 0)
                 cutOffvalue=settings.getCutOffValue();
         else
                 cutOffvalue =(estimatedErroneousKmerCoverage-estimatedKmerCoverage)* (log(e)/log(c));
         testgraph.updateGraphSize();
         testgraph.clear();
            //initialize values for graph parameter based on test graph.
-        graph.estimatedKmerCoverage=estimatedKmerCoverage;
-        graph.estimatedMKmerCoverageSTD=estimatedMKmerCoverageSTD;
-        graph.cutOffvalue=cutOffvalue;
-        graph.readLength=readLength;
-        graph.maxNodeSizeToDel=readLength*4;
-        graph.redLineValueCov=cutOffvalue;
-        graph.certainVlueCov=cutOffvalue*.3;
-        graph.safeValueCov=cutOffvalue*.7;
+        graph.estimatedKmerCoverage = estimatedKmerCoverage;
+        graph.estimatedMKmerCoverageSTD = estimatedMKmerCoverageSTD;
+        graph.cutOffvalue = cutOffvalue;
+        graph.readLength = readLength;
+        graph.maxNodeSizeToDel = readLength*4;
+        graph.redLineValueCov = cutOffvalue;
+        graph.certainVlueCov = cutOffvalue*.3;
+        graph.safeValueCov = cutOffvalue*.7;
 
         cout << "Estimated Kmer coverage:        " << graph.estimatedKmerCoverage << endl;
         cout << "Estimated MKmer coverage std:   " << graph.estimatedMKmerCoverageSTD << endl;
