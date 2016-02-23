@@ -347,16 +347,15 @@ int main(int argc, char** args)
 {
         try {
                 Brownie brownie(argc, args);
-#ifndef DEBUG
-                cout<<"running in Release mode"<<endl;
-                //brownie.printInFile();
-#endif
-#ifdef DEBUG
-                cout<<"In DEBUG mode"<<endl;
-#endif
+
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
-                << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL << endl;
-                cout << "Today is " << Util::getTime() << endl;
+                     << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL;
+#ifdef DEBUG
+                cout << " (debug mode)" << endl;
+#else
+                cout << " (release mode)" << endl;
+#endif
+                cout << "Today is " << Util::getDateTime() << endl;
                 brownie.stageOne();
                 brownie.stageTwo();
                 brownie.stageThree();
