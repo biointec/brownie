@@ -141,6 +141,10 @@ void Brownie::stageOne()
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
         delete readParser;
+
+        // write metadata for all libraries
+        libraries.writeMetadata(settings.getTempDirectory());
+
         cout << "Stage 1 finished.\n" << endl;
 }
 
