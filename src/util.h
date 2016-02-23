@@ -64,7 +64,11 @@ public:
                 return humRead(stopChrono());
         }
 
-        static std::string getTime();
+        /**
+         * Get a string containing the date and time
+         * @return string containing date and time
+         */
+        static std::string getDateTime();
 
         /**
          * Compute the sensitivity
