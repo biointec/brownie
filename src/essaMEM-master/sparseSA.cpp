@@ -367,9 +367,9 @@ void sparseSA::construct() {
                 delete[] BucketBegin;
 
                 // Suffix sort integer text.
-                cout << "# suffixsort()" << endl;
+                //cout << "# suffixsort()" << endl;
                 suffixsort(t_new, intSA, N/K, bucketNr, 0);
-                cout << "# DONE suffixsort()" << endl;
+                //cout << "# DONE suffixsort()" << endl;
 
                 delete[] t_new;
 
@@ -411,10 +411,10 @@ void sparseSA::construct() {
                 suffixsort(&ISA[0], SAint , N-1, alphalast, 1);
         }
 
-        cout << "N=" << N << endl;
+        //cout << "N=" << N << endl;
 
         LCP.resize(N/K);
-        cout << "N/K=" << N/K << endl;
+        //cout << "N/K=" << N/K << endl;
         // Use algorithm by Kasai et al to construct LCP array.
         computeLCP(); // SA + ISA -> LCP
         LCP.init();
@@ -430,7 +430,7 @@ void sparseSA::construct() {
         }
         if (hasKmer) {
                 kMerTableSize = 1 << (2*kMerSize);
-                cout << "kmer table size: " << kMerTableSize << endl;
+                //cout << "kmer table size: " << kMerTableSize << endl;
                 KMR.resize(kMerTableSize, saTuple_t());
                 computeKmer();
         }
@@ -1071,7 +1071,7 @@ void sparseSA::MEM(string &P, vector<match_t> &matches, int min_len, bool print,
 }
 
 void sparseSA::checkMatches(std::string const &P,
-        std::vector<match_t> const &matches, int const min_len) const 
+        std::vector<match_t> const &matches, int const min_len) const
 {
         for ( int i = 0; i < matches.size(); ++i) {
                 match_t m = matches[i];

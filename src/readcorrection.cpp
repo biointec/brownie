@@ -57,7 +57,7 @@ void AlignmentMetrics::printStatistics() const
         cout << "\tNumber of reads corrected by MEM seeds: " << numCorrByMEM
              << fixed << setprecision(2) << " ("
              << Util::toPercentage(numCorrByMEM, numReads) << "%)" << endl;
-        cout << "\tNumber of subtitutions in reads: " << numSubstitutions
+        cout << "\tNumber of substitutions in reads: " << numSubstitutions
              << fixed << setprecision(2) << " (avg of "
              << double(numSubstitutions)/double(numReads) << " per read)" << endl;
         cout << "\tNumber of uncorrected reads: " << numUncorrected
@@ -417,7 +417,7 @@ void ReadCorrectionJan::findSeedMEM(const string& read,
         vector<match_t> matches;
 
         int memSize = Kmer::getK() - 1;
-        while (matches.size() < 100&& memSize>5) {
+        while (matches.size() < 100 && memSize>5) {
                 matches.clear();
                 //cout << "Find MEM: " << memSize << endl;
                 sa.findMEM(0l, read, matches, memSize, false);
@@ -664,10 +664,6 @@ void ReadCorrectionHandler::doErrorCorrection(LibraryContainer& libraries)
         const unsigned int& numThreads = settings.getNumThreads();
         cout << "Number of threads: " << numThreads << endl;
 
-        cout << "Building suffix array..."; cout.flush();
-        initEssaMEM();
-        cout << "done" << endl;
-
         libraries.startIOThreads(settings.getThreadWorkSize(),
                                  10 * settings.getThreadWorkSize() * settings.getNumThreads(),
                                  true);
@@ -693,6 +689,12 @@ ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
         Util::startChrono();
         cout << "Creating kmer lookup table... "; cout.flush();
         dbg.populateTable();
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+
+        Util::startChrono();
+        cout << "Building suffix array (sparseness factor: "
+             << settings.getESSASparsenessFactor() << ")..."; cout.flush();
+        initEssaMEM();
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 }
 
