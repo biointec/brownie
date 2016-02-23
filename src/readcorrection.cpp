@@ -112,7 +112,7 @@ void Seed::mergeSeeds(const vector<Seed>& seeds,
 // READ CORRECTION CLASS
 // ============================================================================
 
-void ReadCorrectionJan::revCompl(vector< NodePosPair >& npp)
+void ReadCorrection::revCompl(vector< NodePosPair >& npp)
 {
         reverse(npp.begin(), npp.end());
 
@@ -127,7 +127,7 @@ void ReadCorrectionJan::revCompl(vector< NodePosPair >& npp)
         }
 }
 
-void ReadCorrectionJan::findNPPSlow(const string& read, vector<NodePosPair>& npp)
+void ReadCorrection::findNPPSlow(const string& read, vector<NodePosPair>& npp)
 {
         for (KmerIt it(read); it.isValid(); it++) {
                 Kmer kmer = it.getKmer();
@@ -136,7 +136,7 @@ void ReadCorrectionJan::findNPPSlow(const string& read, vector<NodePosPair>& npp
         }
 }
 
-void ReadCorrectionJan::findNPPFast(const string& read, vector<NodePosPair>& nppv)
+void ReadCorrection::findNPPFast(const string& read, vector<NodePosPair>& nppv)
 {
         for (KmerIt it(read); it.isValid(); it++) {
                 Kmer kmer = it.getKmer();
@@ -165,7 +165,7 @@ void ReadCorrectionJan::findNPPFast(const string& read, vector<NodePosPair>& npp
         }
 }
 
-void ReadCorrectionJan::extractSeeds(const vector<NodePosPair>& nppv,
+void ReadCorrection::extractSeeds(const vector<NodePosPair>& nppv,
                                      vector<Seed>& seeds)
 {
         size_t prev = nppv.size();
@@ -207,7 +207,7 @@ void ReadCorrectionJan::extractSeeds(const vector<NodePosPair>& nppv,
         }
 }
 
-void ReadCorrectionJan::recSearch(NodeID curr, string& read, vector<NodePosPair>& npp,
+void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& npp,
                                   size_t currReadPos, size_t& counter,
                                   int currScore, int& bestScore, size_t& seedLast)
 {
@@ -289,7 +289,7 @@ void ReadCorrectionJan::recSearch(NodeID curr, string& read, vector<NodePosPair>
         }
 }
 
-void ReadCorrectionJan::extendSeed(string& read, vector<NodePosPair>& npp,
+void ReadCorrection::extendSeed(string& read, vector<NodePosPair>& npp,
                                    size_t& seedFirst, size_t& seedLast)
 {
         // remove at most k nucleotides from the seed
@@ -317,7 +317,7 @@ void ReadCorrectionJan::extendSeed(string& read, vector<NodePosPair>& npp,
                 recSearch(node.getNodeID(), read, npp, seedLast, counter, 0, bestScore, seedLast);
 }
 
-void ReadCorrectionJan::applyReadCorrection(string& read,
+void ReadCorrection::applyReadCorrection(string& read,
                                             const vector<NodePosPair>& npp,
                                             size_t seedFirst, size_t seedLast)
 {
@@ -333,7 +333,7 @@ void ReadCorrectionJan::applyReadCorrection(string& read,
         }
 }
 
-void ReadCorrectionJan::correctRead(string& read, vector<NodePosPair> npp,
+void ReadCorrection::correctRead(string& read, vector<NodePosPair> npp,
                                     size_t& first, size_t& last)
 {
         // extend to the right
@@ -360,7 +360,7 @@ void ReadCorrectionJan::correctRead(string& read, vector<NodePosPair> npp,
         applyReadCorrection(read, npp, first, last);
 }
 
-void ReadCorrectionJan::findSeedKmer(const std::string& read,
+void ReadCorrection::findSeedKmer(const std::string& read,
                                      vector<Seed>& mergedSeeds)
 {
         vector<NodePosPair> nppv(read.length() + 1 - Kmer::getK());
@@ -411,7 +411,7 @@ bool sortByLength(const Seed& a, const Seed& b) {
         return ((a.readEnd-a.readFirst) > (b.readEnd-b.readFirst));
 }
 
-void ReadCorrectionJan::findSeedMEM(const string& read,
+void ReadCorrection::findSeedMEM(const string& read,
                                     vector<Seed>& mergedSeeds)
 {
         vector<match_t> matches;
@@ -494,7 +494,7 @@ void ReadCorrectionJan::findSeedMEM(const string& read,
         // ----------- OUTPUT ------------
 }
 
-int ReadCorrectionJan::correctRead(const string& read,
+int ReadCorrection::correctRead(const string& read,
                                    string& bestCorrectedRead,
                                    const vector<Seed>& seeds)
 {
@@ -529,7 +529,7 @@ int ReadCorrectionJan::correctRead(const string& read,
         return bestScore;
 }
 
-void ReadCorrectionJan::correctRead(ReadRecord& record,
+void ReadCorrection::correctRead(ReadRecord& record,
                                     AlignmentMetrics& metrics)
 {
         bool correctedByMEM = false, readCorrected = false;
@@ -565,7 +565,7 @@ void ReadCorrectionJan::correctRead(ReadRecord& record,
         metrics.addObservation(readCorrected, correctedByMEM, numSubstitutions);
 }
 
-void ReadCorrectionJan::correctChunk(vector<ReadRecord>& readChunk,
+void ReadCorrection::correctChunk(vector<ReadRecord>& readChunk,
                                      AlignmentMetrics& metrics)
 {
         for (auto& it : readChunk)
@@ -584,7 +584,7 @@ void ReadCorrectionJan::correctChunk(vector<ReadRecord>& readChunk,
 void ReadCorrectionHandler::workerThread(size_t myID, LibraryContainer& libraries,
                                          AlignmentMetrics& metrics)
 {
-        ReadCorrectionJan readCorrection(dbg, settings, *sa, startpos);
+        ReadCorrection readCorrection(dbg, settings, *sa, startpos);
 
         // local storage of reads
         vector<ReadRecord> myReadBuf;

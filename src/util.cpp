@@ -78,7 +78,7 @@ double Util::stopChrono()
         return (elapsed.count());
 }
 
-string Util::getTime()
+string Util::getDateTime()
 {
         time_t time = system_clock::to_time_t(system_clock::now());
         return string(ctime(&time));

@@ -179,7 +179,7 @@ public:
 // READ CORRECTION CLASS
 // ============================================================================
 
-class ReadCorrectionJan
+class ReadCorrection
 {
 private:
         const DBGraph &dbg;
@@ -280,7 +280,7 @@ public:
          * @param dbg_ Reference to the De Bruijn graph
          * @param settings_ Reference to the settings class
          */
-        ReadCorrectionJan(const DBGraph& dbg_, const Settings& settings_,
+        ReadCorrection(const DBGraph& dbg_, const Settings& settings_,
                           const sparseSA& sa_, const std::vector<long>& startpos_) :
                           dbg(dbg_), settings(settings_),
                           alignment(100, 2, 1, -1, -3), sa(sa_), startpos(startpos_) {}

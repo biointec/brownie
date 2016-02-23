@@ -127,6 +127,18 @@ public:
         double getAvgReadLength() const {
                 return avgReadLength;
         }
+
+        /**
+         * Read the metadata to disk
+         * @param path Path to dir where the metadata should be read
+         */
+        void readMetadata(const std::string& path);
+
+        /**
+         * Write the metadata to disk
+         * @param path Path to dir where the metadata should be written
+         */
+        void writeMetadata(const std::string& path) const;
 };
 
 // ============================================================================
@@ -387,6 +399,18 @@ public:
          * routine is called will result in undefined behavior
          */
         void joinIOThreads();
+
+        /**
+         * Read the metadata to disk
+         * @param path Path to dir where the metadata should be read
+         */
+        void readMetadata(const std::string& path);
+
+        /**
+         * Write the metadata to disk
+         * @param path Path to dir where the metadata should be written
+         */
+        void writeMetadata(const std::string& path) const;
 };
 
 #endif

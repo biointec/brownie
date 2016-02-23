@@ -71,6 +71,27 @@ std::ostream &operator<<(std::ostream &out, const FileType &fileType) {
         return out;
 }
 
+void ReadLibrary::readMetadata(const string& path)
+{
+        ifstream ifs((path + inputFilename + ".met").c_str());
+        if (!ifs.good())
+                return;
+        string line, tmp;
+        getline(ifs, line);
+        stringstream(line) >> tmp >> tmp >> tmp >> numReads;
+        getline(ifs, line);
+        stringstream(line) >> tmp >> tmp >> tmp >> avgReadLength;
+        ifs.close();
+}
+
+void ReadLibrary::writeMetadata(const string& path) const
+{
+        ofstream ofs((path + inputFilename + ".met").c_str());
+        ofs << "Number of reads: " << numReads << "\n"
+            << "Average read length: " << avgReadLength << endl;
+        ofs.close();
+}
+
 // ============================================================================
 // READLIBRARY CLASS
 // ============================================================================
@@ -583,4 +604,16 @@ void LibraryContainer::joinIOThreads()
         inputBlocks.clear();            // contains all blocks
         workBlocks.clear();             // contains only a termination msg
         outputBlocks.clear();           // contains only a termination msg
+}
+
+void LibraryContainer::readMetadata(const string& path)
+{
+        for (auto& it : container)
+                it.readMetadata(path);
+}
+
+void LibraryContainer::writeMetadata(const string& path) const
+{
+        for (const auto& it : container)
+                it.writeMetadata(path);
 }

@@ -26,6 +26,8 @@ extern "C" {
 #include "suffix_tree.h"
 }
 
+#include <iomanip>
+
 void DBGraph::writeCytoscapeGraph(int ID)
 {
 #ifdef DEBUG
@@ -291,10 +293,21 @@ void DBGraph::compareToSolution(const string& filename, bool load)
         for (size_t i = 0; i < reference.size(); i++)
                 sizeGenome += reference[i].size()/2 + 1 - Kmer::getK();
 
-        cout << " ===== Quality report =====" << endl;
-        cout << "\tNumber of nodes that exist: " << numCorrect << " (" << 100.00 * numCorrect / numTotal << "%) -> (" << 100.00 *  sizeCorrect/ sizeTotal << "% of graph sequence content)" << endl;
-        cout << "\tNumber of nodes that do not exist: " << numIncorrect << " (" << 100.00 * numIncorrect / numTotal << "%) -> ("<<100.00 *  sizeIncorrect/ sizeTotal << "% of graph sequence content)" <<endl;
-        cout << "\tThe fraction of the genome that is covered: " << 100.00 * sizeCorrect / sizeGenome << "%" << endl;
+        cout << "\t===== DEBUG: quality report =====" << endl;
+        cout << "\tNumber of nodes that exist: " << numCorrect << "/"
+             << numTotal << " (" << fixed << setprecision(2)
+             << Util::toPercentage(numCorrect, numTotal) << "%) -> ("
+             << Util::toPercentage(sizeCorrect, sizeTotal)
+             << "% of graph sequence content)" << endl;
+        cout << "\tNumber of nodes that do not exist: " << numIncorrect << "/"
+             << numTotal << " (" << fixed << setprecision(2)
+             << Util::toPercentage(numIncorrect, numTotal) << "%) -> ("
+             << Util::toPercentage(sizeIncorrect, sizeTotal)
+             << "% of graph sequence content)" << endl;
+        cout << "\tThe fraction of the genome that is covered: "
+             << fixed << setprecision(2)
+             << Util::toPercentage(sizeCorrect, sizeGenome) << "%" << endl;
+        cout << "\t===== DEBUG: end =====" << endl;
 
 #endif
 }

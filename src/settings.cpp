@@ -215,4 +215,7 @@ void Settings::parseCommandLineArguments(int argc, char** args,
         ofs << args[argc-1] << endl;
 
         ofs.close();
+
+        // try to read the metadata for each library
+        libCont.readMetadata(getTempDirectory());
 }
