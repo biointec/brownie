@@ -33,7 +33,6 @@ using namespace std;
 Brownie::Brownie(int argc, char** args)
 {
         settings.parseCommandLineArguments(argc, args, libraries);
-
         Kmer::setWordSize(settings.getK());
         RKmer::setWordSize(settings.getK() - KMERBYTEREDUCTION * 4);
 }
@@ -42,27 +41,29 @@ void Brownie::printInFile()
 {
         string konsole = settings.getTempDirectory()+ "/konsole.txt";
         freopen(konsole.c_str(), "a", stdout);
-        cout<<"-------------------------------------------------------------------------------"<<endl;
+        cout << "-------------------------------------------------------------------------------" << endl;
         time_t t;
         time(&t);
         cout << ctime(&t) << endl; // e.g., Fri May 02 17:57:14 2003
-        cout<<"-------------------------------------------------------------------------------"<<endl;
+        cout << "-------------------------------------------------------------------------------" << endl;
         cout << "Welcome to Brownie\n" << endl;
 }
 
 void Brownie::parameterEstimationInStage4(DBGraph &graph){
-        cout <<endl<< " ================ Parameter Estimation ===============" << endl;
-        double  estimatedKmerCoverage=0,estimatedMKmerCoverageSTD=0, cutOffvalue=0, readLength=0;
-        readLength=libraries.getAvgReadLength();
-        if (readLength<=settings.getK() ||readLength>500)
-                readLength=150;
-
+        cout << endl << " ================ Parameter Estimation ===============" << endl;
+        double  estimatedKmerCoverage = 0,
+                estimatedMKmerCoverageSTD = 0,
+                cutOffvalue = 0,
+                readLength = 0;
+        readLength = libraries.getAvgReadLength();
+        if (readLength <= settings.getK() || readLength > 500)
+                readLength = 150;
         cout << "Loading test graph for initial parameter estimation" << endl;
         DBGraph testgraph(settings);
         testgraph.loadGraphBin(getBinNodeFilename(3),
                                getBinArcFilename(3),
                                getMetaDataFilename(3));
-        testgraph.readLength=readLength;
+        testgraph.readLength = readLength;
         #ifdef DEBUG
         testgraph.compareToSolution(getTrueMultFilename(3), true);
         #endif
@@ -74,24 +75,27 @@ void Brownie::parameterEstimationInStage4(DBGraph &graph){
         cout << "Estimated Kmer coverage mean: " << testgraph.estimatedKmerCoverage << endl;
         cout << "Estimated Kmer coverage std:  " << testgraph.estimatedMKmerCoverageSTD << endl;
 
-        estimatedKmerCoverage=testgraph.estimatedKmerCoverage;
-        estimatedMKmerCoverageSTD=testgraph.estimatedMKmerCoverageSTD;
-        double estimatedErroneousKmerCoverage=1+estimatedKmerCoverage/100;
-        double e=2.718281;
-        double c=estimatedErroneousKmerCoverage/estimatedKmerCoverage;
-        cutOffvalue =(estimatedErroneousKmerCoverage-estimatedKmerCoverage)* (log(e)/log(c));
+        estimatedKmerCoverage = testgraph.estimatedKmerCoverage;
+        estimatedMKmerCoverageSTD = testgraph.estimatedMKmerCoverageSTD;
+        double estimatedErroneousKmerCoverage = 1+ estimatedKmerCoverage/100;
+        double e = 2.718281;
+        double c = estimatedErroneousKmerCoverage/estimatedKmerCoverage;
 
+        if (settings.getCutOffValue() > 0)
+                cutOffvalue = settings.getCutOffValue();
+        else
+                cutOffvalue = (estimatedErroneousKmerCoverage-estimatedKmerCoverage)* (log(e)/log(c));
         testgraph.updateGraphSize();
         testgraph.clear();
            //initialize values for graph parameter based on test graph.
-        graph.estimatedKmerCoverage=estimatedKmerCoverage;
-        graph.estimatedMKmerCoverageSTD=estimatedMKmerCoverageSTD;
-        graph.cutOffvalue=cutOffvalue;
-        graph.readLength=readLength;
-        graph.maxNodeSizeToDel=readLength*4;
-        graph.redLineValueCov=cutOffvalue;
-        graph.certainVlueCov=cutOffvalue*.3;
-        graph.safeValueCov=cutOffvalue*.7;
+        graph.estimatedKmerCoverage = estimatedKmerCoverage;
+        graph.estimatedMKmerCoverageSTD = estimatedMKmerCoverageSTD;
+        graph.cutOffvalue = cutOffvalue;
+        graph.readLength = readLength;
+        graph.maxNodeSizeToDel = readLength*4;
+        graph.redLineValueCov = cutOffvalue;
+        graph.certainVlueCov = cutOffvalue*.3;
+        graph.safeValueCov = cutOffvalue*.7;
 
         cout << "Estimated Kmer coverage:        " << graph.estimatedKmerCoverage << endl;
         cout << "Estimated MKmer coverage std:   " << graph.estimatedMKmerCoverageSTD << endl;
@@ -277,8 +281,6 @@ void Brownie::stageFour()
 
 #ifdef DEBUG
         graph.sanityCheck();
-        string command="pdftk "+settings.getTempDirectory()+ "cov/*.pdf cat output allpdfFiles.pdf";
-        system(command.c_str());
 #endif
         graph.clear();
         cout << "Stage 4 finished.\n" << endl;

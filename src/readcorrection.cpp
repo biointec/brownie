@@ -646,7 +646,7 @@ void ReadCorrectionHandler::initEssaMEM()
                           refdescr,
                           startpos,                             // start index for each string
                           false,                                // 4 column format or not
-                          settings.getESSASparsenessFactor(),   // ESSA sparseness factor
+                          settings.getEssaMEMSparsenessFactor(),// ESSA sparseness factor
                           true,                                 // suffixlinks
                           true,                                 // child arrays,
                           true,                                 // kmertable
@@ -693,7 +693,7 @@ ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
 
         Util::startChrono();
         cout << "Building suffix array (sparseness factor: "
-             << settings.getESSASparsenessFactor() << ")..."; cout.flush();
+             << settings.getEssaMEMSparsenessFactor() << ")..."; cout.flush();
         initEssaMEM();
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 }

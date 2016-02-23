@@ -200,14 +200,24 @@ public:
         }
         /**
          * estimate kmer NodeKmerCoverageMean and STD with manipulating a test graph.
-         *
+         * this routine estimates initial parameters for the graph
+         * by making a test graph.
+         * @param @graph The acutal graph which later will be cleand in this stage. Initial parameters of this
+         * graph will be set in this routine based on a test graph manipulation.
          */
         void parameterEstimationInStage4( DBGraph &graph );
         /**
-         * redirect the output to file stream
+         * Redirects the output printed information of
+         * Brownie in konsole to a file with same name.
          *
          */
         void printInFile();
+        /**
+         * In case Brownie skip  stage 4 or 5, it writes
+         * the output contigs in fasta format.
+         * By defult Brownie writes stage 3 output in binary format and read in fasta format in stage 5
+         *
+         */
         void writeGraphFasta();
 };
 

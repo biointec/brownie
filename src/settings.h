@@ -49,15 +49,15 @@ private:
 
         unsigned int kmerSize;          // user specified kmer size
         size_t numThreads;              // number of threads
-        size_t genomeSize;              // genome size
         bool doubleStranded;            // double stranded sequences
         std::string pathtotemp;         // directory specified by user
 
-        int ESSASparsenessFactor;       // sparseness factor for essamem
-        int bubbleDFSNodeLimit;         // maximal number of visited nodes for bubble detection
-        int readCorrDFSNodeLimit;       // maximal search depth for stage 5
-        bool skipStage4;
-        bool skipStage5;
+        int essaMEMSparsenessFactor;    // sparseness factor for essaMEM
+        int bubbleDFSNodeLimit;         // maximum number of visited nodes during bubble detection
+        int readCorrDFSNodeLimit;       // maximal number of visited nodes during read mapping
+        double covCutoff;               // coverage cutoff value to separate true and false nodes based on their node-kmer-coverage
+        bool skipStage4;                // true if stage 4 should be skipped
+        bool skipStage5;                // true if stage 5 should be skipped
 
 public:
         /**
@@ -122,32 +122,52 @@ public:
                 return 100000;
         }
 
-        size_t getGenomeSize() const{
-                return this->genomeSize;
+        /**
+         * Get the essaMEM sparseness factor
+         * @return The essaMEM sparseness factor
+         */
+        int getEssaMEMSparsenessFactor() const {
+                return essaMEMSparsenessFactor;
         }
 
-        void setGenomeSize(){
-                this->genomeSize=genomeSize;
-        }
-
-        int getESSASparsenessFactor() const {
-                return ESSASparsenessFactor;
-        }
-
+        /**
+         * Get the maximum number of nodes visited during a DFS during bubble detection
+         * @return The maximum number of nodes visited during bubble detection
+         */
         int getBubbleDFSNodeLimit() const {
                 return bubbleDFSNodeLimit;
         }
 
+        /**
+         * Get the maximum number of nodes visited during a DFS during read correction
+         * @return The maximum number of nodes visited during read correction
+         */
         int getReadCorrDFSNodeLimit() const {
                 return readCorrDFSNodeLimit;
         }
 
+        /**
+         * True if stage 4 should be skipped
+         * @return True if stage 4 should be skipped
+         */
         bool getSkipStage4() const {
                 return skipStage4;
         }
 
+        /**
+         * True if stage 5 should be skipped
+         * @return True if stage 5 should be skipped
+         */
         bool getSkipStage5() const {
                 return skipStage5;
+        }
+
+        /**
+         * Get the coverage cutoff value for a node
+         * @return The coverage cutoff value for a node
+         */
+        double getCutOffValue(){
+                return covCutoff;
         }
 };
 
