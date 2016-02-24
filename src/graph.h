@@ -291,24 +291,6 @@ public:
                                  std::vector<std::vector<size_t> >& pos,
                                  std::vector<std::vector<size_t> >& posRC) const;
 
-    /**
-     * Find the real path from srcID to dstID
-     * @param srcID Source node identifier
-     * @param dstID Destination node identifier
-     * @param distance Maximum distance between srcID and dstID
-     * @param result Vector in which to store the path
-     */
-    void getActualPath(NodeID srcID, NodeID dstID, size_t distance,
-                       std::vector<NodeID>& result) const;
-
-    bool getDistance(NodeID srcID, NodeID dstID, double maxDistance,
-                     double &result) const;
-
-    void getTrueOccurencesForReadPair(std::string &start,
-                                      std::string &stop,
-                                      std::vector<string>& output,
-                                      size_t maxSize);
-
     // ====================================================================
     // COVERAGE.CPP PUBLIC
     // ====================================================================
@@ -502,8 +484,6 @@ public:
 
     void graphPurification(string trueMultFilename,
                            const LibraryContainer& libraries);
-
-
 };
 
 #endif
