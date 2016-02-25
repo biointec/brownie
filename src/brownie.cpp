@@ -67,11 +67,11 @@ void Brownie::parameterEstimationInStage4(DBGraph &graph){
         #ifdef DEBUG
         testgraph.compareToSolution(getTrueMultFilename(3), true);
         #endif
-        testgraph.clipTips(0);
-        testgraph.mergeSingleNodes(true);
-        testgraph.filterCoverage(testgraph.cutOffvalue);
-        testgraph.mergeSingleNodes(true);
-        testgraph.extractStatistic(0);
+      //  testgraph.clipTips(0);
+     //   testgraph.concatenateNodes(true);
+        //testgraph.filterCoverage(testgraph.cutOffvalue);
+        //testgraph.concatenateNodes(true);
+        //testgraph.extractStatistic(0);
         cout << "Estimated Kmer coverage mean: " << testgraph.estimatedKmerCoverage << endl;
         cout << "Estimated Kmer coverage std:  " << testgraph.estimatedMKmerCoverageSTD << endl;
 
@@ -85,7 +85,7 @@ void Brownie::parameterEstimationInStage4(DBGraph &graph){
                 cutOffvalue = settings.getCutOffValue();
         else
                 cutOffvalue = (estimatedErroneousKmerCoverage-estimatedKmerCoverage)* (log(e)/log(c));
-        testgraph.updateGraphSize();
+        testgraph.getGraphStats();
         testgraph.clear();
            //initialize values for graph parameter based on test graph.
         graph.estimatedKmerCoverage = estimatedKmerCoverage;
@@ -253,35 +253,69 @@ void Brownie::stageFour()
                  return;
         }
         DBGraph graph(settings);
-        parameterEstimationInStage4( graph );
+        //parameterEstimationInStage4( graph );
 
         Util::startChrono();
-        cout << "Creating graph... ";
+        cout << "Creating graph... "; cout.flush();
         graph.loadGraphBin(getBinNodeFilename(3),
                            getBinArcFilename(3),
                            getMetaDataFilename(3));
-
-
-        cout.flush();
-        cout << "done (" << graph.getNumNodes() << " nodes, "
-             << graph.getNumArcs() << " arcs)" << endl;
-        cout << "Created graph in "
-             << Util::stopChrono() << "s." << endl;
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        cout <<  graph.getGraphStats() << endl;
 
 #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), true);
-#endif
+
         Util::startChrono();
-        graph.graphPurification(getTrueMultFilename(3), libraries);
+        cout << "Writing cytoscape graph files..."; cout.flush();
+        graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytUncorrected", 3, 10);
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+#endif
+
+        // TIP CLIPPING
+        while (graph.clipTips(30, libraries.getAvgReadLength()))
+                graph.concatenateNodes();
+
+        cout <<  graph.getGraphStats() << endl;
+        Util::startChrono();
+        cout << "Writing cytoscape graph files..."; cout.flush();
+        graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytAftertips", 656786, 10);
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+
+        // CANONICAL BUBBLES
+       /* while (graph.canonicalBubble(30))
+                graph.concatenateNodes();
+
+        cout <<  graph.getGraphStats() << endl;
+        Util::startChrono();
+        cout << "Writing cytoscape graph files..."; cout.flush();
+        graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytAfterCanBubble", graph.getFirstValidNode(20), 10);
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;*/
+
+        // BUBBLE DETECTION
+        while (graph.bubbleDetection(30, libraries.getAvgReadLength()))
+                graph.concatenateNodes();
+
+        // TIP CLIPPING
+        while (graph.clipTips(30, libraries.getAvgReadLength()))
+                graph.concatenateNodes();
+
+        cout <<  graph.getGraphStats() << endl;
+        Util::startChrono();
+        cout << "Writing cytoscape graph files..."; cout.flush();
+        graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytFinal", graph.getFirstValidNode(20), 10);
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+
+        cout << " --------------- " << endl;
+      /*  while (graph.bubbleDetection(-479869, 10, libraries.getAvgReadLength()))
+                graph.concatenateNodes();*/
+
 #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), false);
 #endif
-        cout << "Graph size: " << graph.sizeOfGraph << " bp" << endl;
-        graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));
-        cout<<"N50 is: "<<graph.n50<<endl;
-        cout << "Graph correction completed in "
-             << Util::stopChrono() << "s." << endl;
-        Util::startChrono();
+
+        // graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4)); // FIXME !!
+        //cout << "Graph correction completed in " << Util::stopChronoStr() << endl;
 
 #ifdef DEBUG
         graph.sanityCheck();
@@ -314,7 +348,7 @@ void Brownie::stageFive()
 
 #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(4),true);
-        graph.updateGraphSize();
+        graph.getGraphStats();
         graph.writeCytoscapeGraph(0);
 #endif
 
@@ -364,7 +398,7 @@ int main(int argc, char** args)
                 brownie.stageTwo();
                 brownie.stageThree();
                 brownie.stageFour();
-                brownie.stageFive();
+                //brownie.stageFive();  // FIXME !!
                 brownie.writeGraphFasta();
         } catch (exception &e) {
                 cerr << "Fatal error: " << e.what() << endl;
@@ -373,4 +407,3 @@ int main(int argc, char** args)
         cout << "Exiting... bye!" << endl << endl;
         return EXIT_SUCCESS;
 }
-

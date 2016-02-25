@@ -21,12 +21,13 @@
 
 #ifndef DBGRAPH_H
 #define DBGRAPH_H
+
 #include "global.h"
 #include "ssnode.h"
 #include "dsnode.h"
-#include <deque>
 #include "essaMEM-master/sparseSA.hpp"
 
+#include <deque>
 
 // ============================================================================
 // CLASS PROTOTYPES
@@ -49,6 +50,45 @@ class NodePosPair;
 class NodeEndTable;
 class NodeEndRef;
 class LibraryContainer;
+
+// ============================================================================
+// GRAPH STATISTICS
+// ============================================================================
+
+class GraphStats
+{
+private:
+        size_t numNodes;        // number of (valid) nodes in the graph
+        size_t numArcs;         // number of (valid) arcs in the graph
+        size_t N50;             // N50 of the nodes
+        size_t totMargLength;   // total marginal length of all nodes
+public:
+        /**
+         * Default constructor
+         */
+        GraphStats() : numNodes(0), numArcs(0), N50(0), totMargLength(0) {}
+
+        /**
+         * Set the graph metrics
+         * @param numNodes Number of (valid) nodes in the graph
+         * @param numArcs Number of (valid) arcs in the graph
+         * @param N50 N50 of the nodes
+         * @param totMargLength Total marginal length of all nodes
+         */
+        void setMetrics(size_t numNodes_, size_t numArcs_,
+                        size_t N50_, size_t totMargLength_) {
+                numNodes = numNodes_;
+                numArcs = numArcs_;
+                N50 = N50_;
+                totMargLength = totMargLength_;
+        }
+
+        /**
+         * Write metrics to the stout
+         */
+        friend std::ostream &operator<<(std::ostream &out,
+                                        const GraphStats &stats);
+};
 
 // ============================================================================
 // GRAPH CLASS
@@ -209,49 +249,134 @@ public:
     size_t n50;
     size_t sizeOfGraph;
 
+        // ====================================================================
+        // CLIPSTIPS.CPP
+        // ====================================================================
+
+        /**
+         * Invalidate tips from a graph
+         * @param covCutoff Maximum coverage of a node to delete
+         * @param maxLength Maximum marginal length of a node to delete
+         * @return True if at least one node was removed
+         */
+        bool clipTips(double covCutoff, size_t maxMargLength);
+
+        /**
+         * Invalidate canonical bubbles (parallel paths of exactly length k)
+         * @param covCutoff Maximum coverage of a node to delete
+         * @return True if at least one node was removed
+         */
+        bool canonicalBubble(double covCutoff);
+
+        /**
+         * Concatentate linear paths
+         * @return True if at least one node was merged
+         **/
+        bool concatenateNodes();
+
+        /**
+         * Get the first and the last node of a path that can be deleted
+         * @param path Input path sequence
+         * @param first First node that can be deleted (output)
+         * @param last Last node that can be deleted (output)
+         */
+        void getUniquePath(const std::vector<NodeID>& path,
+                          size_t& first, size_t& last);
+
+        /**
+         * Get the average kmer coverage for a given path
+         * @param path The path under consideration
+         * @return The average kmer coverage
+         */
+        double getPathAvgKmerCov(const std::vector<NodeID>& path);
+
+        /**
+         * Given a node and a list of previous nodes, extract the path
+         * @param dstID Identifier of the last node
+         * @param prevNode Vector containing previous nodes
+         * @return A vector with nodeIDs from srcID to dstID
+         */
+        std::vector<NodeID> getPath(NodeID dstID,
+                                    const vector<NodeID>& prevNode) const;
+
+        /**
+         * Remove the nodes in a path
+         * @param path Vector containing nodeIDs to be removed
+         */
+        void removePath(const std::vector<NodeID>& path);
+
+        /**
+         * Given a seed node, find parallel paths that originate from this node
+         * @param srcID Node identifier for the seed node
+         * @param visited Empty vector to use as temporary storage
+         * @param prevNode Pre-allocated vector to use as temporary storage
+         * @param nodeColor Pre-allocated vector to use as temporary storage
+         * @param covCutoff Coverage cuttoff
+         * @param maxMargLength Maximum marginal search depth
+         * @param maxNodesVisited Maximum number of visited nodes
+         * @return True if at least one node was deleted
+         */
+        bool bubbleDetection(NodeID srcID, std::vector<NodeID>& visited,
+                             std::vector<NodeID>& prevNode,
+                             std::vector<NodeID>& nodeColor,
+                             double covCutoff,
+                             size_t maxMargLength, size_t maxNodesVisited);
+
+        /**
+         * Given two parallel paths, check if a bubble can be popped
+         * @param pathA Reference to the first path
+         * @param pathB Reference to the second path
+         * @return True if at least one node was deleted
+         */
+        bool handleParallelPaths(const vector<NodeID>& pathA,
+                                 const vector<NodeID>& pathB,
+                                 double covCutoff);
+
+        /**
+         * Generic bubble detection (parallel paths of arbitrary length)
+         * @param covCutoff Maximum coverage of a node to delete
+         * @param maxLength Maximum marginal length of a parallel path
+         * @return True if at least one node was removed
+         */
+        bool bubbleDetection(double covCutoff, size_t maxMargLength);
+
+        /**
+         * Generic bubble detection (parallel paths of arbitrary length)
+         * @param nodeID Node identifier
+         * @param covCutoff Maximum coverage of a node to delete
+         * @param maxLength Maximum marginal length of a parallel path
+         * @return True if at least one node was removed
+         */
+        bool bubbleDetection(NodeID nodeID, double covCutoff,
+                             size_t maxMargLength);
 
     /**
      * Careful concatenation, taking into account the estimated multiplicity
      */
     void initialize();
-/**
- *fucntion associated to bubble bubbleDetection
- *
- *
- */
-    bool bubbleDetection(int round);
+
     vector<pair<SSNode, SSNode> >  ExtractBubbles(SSNode rootNode,std::set<NodeID>& visitedNodes , std::set<Arc *>&visitedArc);
-    bool removeBubble(SSNode &prevFirstNode ,SSNode& extendFirstNode,size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel);
     void extractPath(NodeID currID, const vector<NodeID>& prevNode) const;
-    vector<NodeID> getPath(NodeID currID, const vector<NodeID>& prevNode) const;
-    bool removeNotSingleBubbles(  SSNode &prevFirstNode ,SSNode& extendFirstNode, size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel);
-    bool whichOneIsbubble(SSNode rootNode,bool &first, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle, double threshold);
-    bool whichOneIsbubble(SSNode rootNode,bool &first, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle);
-    bool nodeIsBubble(SSNode node, SSNode currNode);
-    vector<pair<vector<NodeID>, vector<NodeID>> >  searchForParallelNodes(SSNode node,vector<NodeID> &visited, vector<NodeID> &prevNode,vector<NodeID> &nodeColor, int depth);
-    vector<pair<vector<NodeID>, vector<NodeID>> > searchForParallelNodes(SSNode node, int depth);
     bool hasLowCovNode(SSNode root);
 
+        /**
+         * Get the graph statistics
+         * @return Graph statistics
+         */
+        GraphStats getGraphStats();
 
- /**
- *fucntion associated to graph graph Purification
- *
- *
- */
-    bool removeNode(SSNode &rootNode);
-    bool mergeSingleNodes(bool force);
-    void extractStatistic(int round);
-    bool checkNodeIsReliable(SSNode node);
-    bool deleteUnreliableNodes();
-    bool deleteExtraAttachedNodes();
-    bool connectSameMulNodes();
-    bool deleteSuspiciousNodes();
-    bool clipTips(int round);
+        /**
+         * Remove a node from the graph
+         * @param nodeID node identifier
+         **/
+        void removeNode(NodeID nodeID);
 
-
-
-
-    // void filterCoverage();
+        /**
+         * Get the first valid node
+         * @param seed Node identifier to start from
+         * @return Node identifier for first valid node, zero otherwise
+         */
+        NodeID getFirstValidNode(NodeID seed = 1);
 
     /**
      * Default constructor
@@ -275,9 +400,14 @@ public:
     // SOLUTIONCOMP.CPP PUBLIC
     // ====================================================================
 
-    void writeCytoscapeGraph(int ID);
-
-    void writeLocalCytoscapeGraph(int ID, NodeID nodeID,size_t maxDepth);
+    /**
+     * Write a cytoscape graph of the current graph
+     * @param filename Filename of the cytoscape graph
+     * @param seedNodeID Seed node identifier
+     * @param maxDepth Maximum depth (in terms of number of nodes)
+     */
+    void writeCytoscapeGraph(const std::string& filename,
+                             NodeID seedNodeID = 0, size_t maxDepth = 0);
 
     void readReferenceGenome();
 
@@ -309,8 +439,6 @@ public:
     /**
      * Filter the graph, based on coverage
      */
-    bool filterCoverage( float round);
-    void updateCutOffValue(int round);
     void plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > >& frequencyArray);
     void makeSampleReadFile(float num);
     size_t getLowestArcMultiplicity(NodeID left, NodeID right);
@@ -371,11 +499,6 @@ public:
     }
 
     /**
-     * Perform graph simplification
-     */
-    bool simplyfyGraph();
-
-    /**
      * Get a reference to a double stranded node, given the nodeID
      * @param nodeID Identifier for the node
      * @return Reference to the node
@@ -434,13 +557,6 @@ public:
                       const std::string& arcFilename,
                       const std::string& metaDataFilename);
 
-    size_t updateGraphSize();
-
-    /**
-     * Extract nodes from graph and write to file
-     */
-
-
 
     /**
      * Check a graph for consistency
@@ -448,11 +564,7 @@ public:
     void sanityCheck();
     bool removeIncorrectLink();
 
-    //comment by mahdi
-    //map<NodeID,set<int> > kmerToReadSearch;
     map<size_t, set<size_t> > kmerToReadMap;
-    //map<int,set<NodeID> >readToKmerSearch;
-    //the first argument is node multiplicity,in the second pair the first argumument is confidense ratio for this multiplicity and the second argument is for correctntss ratio of gueess
     typedef pair<int, pair<double, double> > pair_k;
     map<NodeID, pair_k> nodesExpMult;
     typedef multimap<NodeID, pair_k>::iterator mapIterator;
@@ -481,9 +593,6 @@ public:
      *
      */
     void writeGraphFasta() const;
-
-    void graphPurification(string trueMultFilename,
-                           const LibraryContainer& libraries);
 };
 
 #endif

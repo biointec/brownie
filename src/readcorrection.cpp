@@ -214,7 +214,7 @@ void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& n
         const SSNode node = dbg.getSSNode(curr);
 
         counter++;
-        if (counter > settings.getReadCorrDFSNodeLimit())
+        if (counter > (size_t)settings.getReadCorrDFSNodeLimit())
                 return;
 
         vector<DFSNode> dfsNode;

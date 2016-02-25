@@ -31,6 +31,23 @@ using namespace std;
 DSNode* SSNode::nodes = NULL;
 const DBGraph* DBGraph::graph = NULL;
 
+// ============================================================================
+// GRAPH STATISTICS
+// ============================================================================
+
+std::ostream &operator<<(std::ostream &out, const GraphStats &stats)
+{
+        out << "Number of nodes: " << stats.numNodes << "\n";
+        out << "Number of arcs: " << stats.numArcs << "\n";
+        out << "N50: " << stats.N50 << "\n";
+        out << "Total size (kmers): " << stats.totMargLength;
+
+        return out;
+}
+
+// ============================================================================
+// GRAPH CLASS
+// ============================================================================
 
 DBGraph::DBGraph(const Settings& settings) : table(NULL), settings(settings),
         nodes(NULL), arcs(NULL), numNodes(0), numArcs(0), mapType(SHORT_MAP) {
@@ -58,184 +75,41 @@ void DBGraph::initialize()
     cutOffvalue=redLineValueCov;
 }
 
-
-
-/**
- * this routine manipulate graph to detect erroneous nodes and delete them
- * the firs routine is filter coverage it removes nodes with coverage 1
- * then Tips will be deleted
- * then bubbles will be deleted
- * some Statistic will be calculated in evey round to find the multiplicity of nodes and our confidence about our guess
- * then Unreliable nodes will be detected based on our Statistic parameter in pre step
- * while loop continue until no changes would be possible
- * cut off value will be inreased by one to delete nodes with low coverage
- * if the size fo graph is lower than genome size modification stops
- *
- *
- */
-void DBGraph::graphPurification(string trueMultFilename,
-                                const LibraryContainer& libraries)
+void DBGraph::removeNode(NodeID nodeID)
 {
-        int round=1;
-        updateGraphSize();
-        size_t maxBubbleDepth=maxNodeSizeToDel;
-        size_t increamentDepth = readLength;
-        bool simplified = true;
-        while (simplified ) {// &&
-                //
-                //*******************************************************
-                updateCutOffValue(round);
-                bool tips=clipTips(round);
-                if(tips) {
-                        mergeSingleNodes(true);
-                        #ifdef DEBUG
-                        compareToSolution(trueMultFilename, false);
-                        #endif
-                }
-                //*******************************************************
-                bool bubble=false;
-                size_t depth=settings.getK();
-                #ifdef DEBUG
-                updateCutOffValue(round);
-                compareToSolution(trueMultFilename, false);
-                #endif
-                cout << endl << " ================= Bubble Detection ==================" << endl;
-                bubble= bubbleDetection(depth);
-                mergeSingleNodes(true);
-                bool continuEdit=true;
-                size_t maxDepth=(round)*increamentDepth>maxBubbleDepth?maxBubbleDepth:(round)*increamentDepth;
-                while(depth<maxDepth&& continuEdit){
-                        depth=depth+increamentDepth;
-                        cout << "Bubble depth: " << depth << endl;
-                        continuEdit= bubbleDetection(depth);
-                        if (continuEdit)
-                                mergeSingleNodes(true);
-                        bubble=false?continuEdit:bubble;
-                }
-                #ifdef DEBUG
-                compareToSolution(trueMultFilename,false);
-                updateCutOffValue(round);
-                #endif
-                extractStatistic(round);
-                cout << endl << " ============= Delete Unreliable Nodes  ==============" << endl;
-                bool deleted=deleteUnreliableNodes();
-                mergeSingleNodes(true);
-                continuEdit=deleted;
-                while(continuEdit){
-                        continuEdit=deleteUnreliableNodes();
-                        mergeSingleNodes(true);
-                        extractStatistic(round);
-                }
-                while(mergeSingleNodes(true));
-                #ifdef DEBUG
-                compareToSolution(trueMultFilename,false);
-                updateCutOffValue(round);
-                cout<<"estimated Kmer Coverage Mean: "<<estimatedKmerCoverage<<endl;
-                cout<<"estimated Kmer Coverage STD: "<<estimatedMKmerCoverageSTD<<endl;
-                #endif
-                simplified = tips    || deleted || bubble;
-                updateGraphSize();
-                round++;
-        }
-}
-
-/*This routine calculate the value of CutOff-cov in the first call,
- * based on cutOff value three other values will be updated in each round of calling. they increase in each round
- * cutOffvalue*.3< certainValue< cutOffvalue*.8 : the most conservative value , used to remove nodes only based on coverage
- * cutOffvalue*.7< safeValue <cutOffvalue  always lower than cutOff , used for remoing joined tips or isolated nodes.
- * cutOffvalue <redLineValue< cutOffvalue*1.5, increasing incrementally in while loop
- *
- *
- *
- */
-void DBGraph::updateCutOffValue(int round)
-{
-        #ifdef DEBUG
-        //this part are going to make plot
-        if (updateCutOffValueRound==1){
-
-                string command="rm "+settings.getTempDirectory() + "cov/*";
-                cout<<command<<endl;
-                system(command.c_str());
-                command = "mkdir " + settings.getTempDirectory() + "cov";
-                system(command.c_str());
-                cout<<command<<endl;
-        }
-        char roundStr[15];
-        sprintf(roundStr, "%d", round);
-        string strRound =string (roundStr);
-        vector<pair<double,pair<size_t , pair<bool, int> > > > allNodes;
-        vector<pair< pair< int , int> , pair<double,int> > > frequencyArray;
-        size_t validNodes=0;
-        for (NodeID i =1; i <= numNodes; i++) {
-                SSNode n = getSSNode(i);
-                if(!n.isValid())
+        SSNode node = getSSNode(nodeID);
+        for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
+                SSNode leftNode = getSSNode(it->getNodeID());
+                if (leftNode.getNodeID()==-node.getNodeID())
                         continue;
-                validNodes++;
-                double kmerCoverage=n.getNodeKmerCov();
-                int marginalLength=n.getMarginalLength();//+ settings.getK();
-                bool correctNode=false;
-                double nodeMultiplicityR=1;
-                #ifdef DEBUG
-                nodeMultiplicityR=trueMult[abs(n.getNodeID())];
-                if (nodeMultiplicityR>0)
-                        correctNode=true;
-                #endif
-
-                allNodes.push_back( make_pair(kmerCoverage, make_pair( nodeMultiplicityR, make_pair(correctNode,marginalLength)) ));
+                bool result = leftNode.deleteRightArc (node.getNodeID());
+                assert(result);
         }
-        std::sort (allNodes.begin(), allNodes.end());
-        unsigned int i=0;
-        double Interval=.1;
-        double  St=allNodes[0].first;
-        //frequencyArray.push_back(make_pair(make_pair(settings.getKmerCovOne(), 0) , make_pair(1,settings.getKmerCovOne())));
-        while (i<allNodes.size()-1) {
-                double intervalCount=0;
-                int sumOfMarginalLenght=0;
-                int correctNodeMarginalLength=0;
-                while (allNodes[i].first>=St && allNodes[i].first<St+Interval&& i<allNodes.size()-1) {
-                        intervalCount++;
-                        i++;
-                        sumOfMarginalLenght=sumOfMarginalLenght+allNodes[i].second.second.second ;
-                        if (allNodes[i].second.second.first)
-                                correctNodeMarginalLength=correctNodeMarginalLength+allNodes[i].second.second.second;
-                }
-                double representative=St+Interval/2;
-                if (intervalCount!=0)
-                        frequencyArray.push_back(make_pair(make_pair( sumOfMarginalLenght, correctNodeMarginalLength) , make_pair(representative,intervalCount)));
-                St=St+Interval;
-                if (St>estimatedKmerCoverage+estimatedMKmerCoverageSTD*3)
-                        break;
+
+        for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++) {
+                SSNode rightNode = getSSNode ( it->getNodeID() );
+                if (rightNode.getNodeID()==-node.getNodeID())
+                        continue;
+                bool result = rightNode.deleteLeftArc(node.getNodeID());
+                assert(result);
         }
-        if (frequencyArray.size()>0)
-                plotCovDiagram(frequencyArray);
-        #endif
-        /*............read line ...........*/
-        double ratio=1;
-        if (round<6)
-                ratio=ratio+(double)round/10;
-        this->redLineValueCov= this->cutOffvalue*ratio>this->redLineValueCov?this->cutOffvalue*ratio:this->redLineValueCov;
-        /*............safe value ...........*/
-        ratio=.7;
-        if (round<4)
-                ratio=ratio+(double)round/10;
-        else
-                ratio=1;
-        this->safeValueCov=this->cutOffvalue*ratio;
-        /*............certainValue ...........*/
-        ratio=.3;
-        if (round<3)
-                ratio=ratio+(double)round/10;
-        else
-                ratio=.5;
-        this->certainVlueCov=this->cutOffvalue*ratio;
 
-        this->updateCutOffValueRound++;
-
-        cout << "Certain value: " << this->certainVlueCov << endl;
-        cout << "Safe value: " << this->safeValueCov << endl;
-        cout << "Red line value: " << this->redLineValueCov << endl;
+        node.deleteAllRightArcs();
+        node.deleteAllLeftArcs();
+        node.invalidate();
 }
+
+NodeID DBGraph::getFirstValidNode(NodeID seed)
+{
+        for (NodeID id = seed; id <= numNodes; id++) {
+                if (id == 0)
+                        continue;
+                if (getSSNode(id).isValid())
+                        return id;
+        }
+        return 0;
+}
+
 void DBGraph::plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > >& frequencyArray){
 
         ofstream expcovFile;
@@ -363,30 +237,6 @@ bool DBGraph::getRightUniqueSSNode(const SSNode &node, SSNode &rightNode) const
 
     return true;
 }
-
-bool DBGraph::simplyfyGraph()
-{
-    // count the number of nodes
-    int numInitial = 0;
-    for (NodeID i = 1; i <= numNodes; i++) {
-
-        if (nodes[i].isValid())
-            numInitial++;
-    }
-    while (clipTips(false));
-
-    // count the number of clipped nodes
-    int numRemaining = 0;
-    for (NodeID i = 1; i <= numNodes; i++)
-        if (nodes[i].isValid())
-            numRemaining++;
-
-    size_t numClipped = numInitial - numRemaining;
-
-    cout << "Clipped " << numClipped << "/" << numInitial << " nodes." << endl;
-    return numClipped > 0;
-}
-
 
 void DBGraph::increaseCoverage(const NodeEndRef &left, const NodeEndRef &right)
 {
@@ -805,68 +655,49 @@ void DBGraph::loadGraphBin(const std::string& nodeFilename,
         arcFile.close();
 }
 
-size_t DBGraph::updateGraphSize()
+GraphStats DBGraph::getGraphStats()
 {
-    vector<size_t> nodeLengths;
+        vector<size_t> nodeLength;
 
-    sizeOfGraph=0;
-    size_t numExtractedNodes = 0, numExtractedArcs = 0;
-    for (NodeID id = 1; id <= numNodes; id++) {
-        SSNode node = getSSNode(id);
+        size_t numNodes = 0;            // number of (valid) nodes in the graph
+        size_t numArcs = 0;             // number of (valid) arcs in the graph
+        size_t N50 = 0;                 // N50 of the nodes
+        size_t totMargLength = 0;       // total marginal length of all nodes
+        size_t totLength = 0;           // total length of all nodes
 
-        if (!node.isValid())
-            continue;
+        for (NodeID id = 1; id <= this->numNodes; id++) {
+                SSNode node = getSSNode(id);
 
-        numExtractedNodes++;
-        //check later for adding kmerSize
-        sizeOfGraph=sizeOfGraph +node.getMarginalLength()+ Kmer::getK();
-        KmerOverlap ol;
-        for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
-            char c = getSSNode(it->getNodeID()).getRightKmer().peekNucleotideLeft();
-            ol.markLeftOverlap(c);
+                if (!node.isValid())
+                        continue;
+
+                numNodes++;
+
+                for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++)
+                        numArcs++;
+
+                for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++)
+                        numArcs++;
+
+                totMargLength += node.getMarginalLength();
+                totLength += node.getLength();
+                nodeLength.push_back(node.getLength());
         }
 
-        for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++) {
-            char c = getSSNode(it->getNodeID()).getLeftKmer().peekNucleotideRight();
-            ol.markRightOverlap(c);
+        sort(nodeLength.begin(), nodeLength.end());
+
+        size_t currLength = 0;
+        for (size_t i = 0; i < nodeLength.size(); i++) {
+                currLength += nodeLength[i];
+                if (currLength >= 0.5*totLength) {
+                        N50 = nodeLength[i];
+                        break;
+                }
         }
-        numExtractedArcs += ol.getNumLeftOverlap() + ol.getNumRightOverlap();
 
-        nodeLengths.push_back(node.getLength());
-    }
-
-
-#ifdef DEBUG
-    cout<<"size of graph: "<<sizeOfGraph<<endl;
-    cout<<"number of valid Node: "<<numExtractedNodes<<endl;
-    cout << "Extracted " << numExtractedNodes << " nodes and "
-         << numExtractedArcs << " arcs." << endl;
-#endif
-    sort(nodeLengths.begin(), nodeLengths.end());
-
-    size_t totalLength = 0;
-    for (size_t i = 0; i < nodeLengths.size(); i++)
-        totalLength += nodeLengths[i];
-    size_t currLength = 0;
-    size_t n50;
-    for (size_t i = 0; i < nodeLengths.size(); i++) {
-        currLength += nodeLengths[i];
-        if (currLength >= 0.5*totalLength) {
-#ifdef DEBUG
-            cout << endl << "N50 is " << nodeLengths[i] << " (total length: " << totalLength << ")" << endl;
-            cout << "This was found at node " << i << "/" << numNodes << endl;
-#endif
-            n50= nodeLengths[i];
-            this->n50=n50;
-            break;
-        }
-    }
-#ifdef DEBUG
-    cout << "The largest node contains " << nodeLengths.back() << " basepairs." << endl;
-    cout <<"N50:"<<n50<<endl;
-#endif
-    return sizeOfGraph;
-
+        GraphStats stats;
+        stats.setMetrics(numNodes, numArcs, N50, totMargLength);
+        return stats;
 }
 
 void DBGraph::populateTable() {

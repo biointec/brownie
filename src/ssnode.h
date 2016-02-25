@@ -85,8 +85,12 @@ public:
         double getExpMult() const {
                 return dsNode->getExpMult();
         }
-        //added by mahdi
-        double getNodeKmerCov(){
+
+        /**
+         * Get the avarge kmer coverage
+         * @return The average kmer coverage
+         */
+        double getAvgKmerCov(){
                 return (double)dsNode->getKmerCov()/(double)dsNode->getMarginalLength();
         }
 

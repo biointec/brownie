@@ -27,145 +27,57 @@ extern "C" {
 
 #include <iomanip>
 
-void DBGraph::writeCytoscapeGraph(int ID)
+void DBGraph::writeCytoscapeGraph(const std::string& filename,
+                                  NodeID seedNodeID, size_t maxDepth)
 {
-        int srcID=1;
-        int i=0;
+        // a map containing nodeIDs to handle + their depth
+        map<NodeID, size_t> nodeDepth;
+        // set of nodes that were handled
         set<NodeID> nodesHandled;
-        for (i =srcID ; i <= numNodes; i++)
-                if (getSSNode(i).isValid())
-                        break;
-                //const size_t maxDepth =150;    // maximium sequence depth (exclusive srcID length)
-                stringstream ss, ss2;   // create a stringstream
-                ss << ID;               // add number to the stream
-                ss2 << srcID;
-        cout << "Writing cytoscape graph files around node " << srcID << endl;
-        ofstream ofs(("cytArcs_" + ss2.str() + "_" +ss.str() + ".txt").c_str());
-        ofs << "Source node\tTarget node\tArc coverage"<< endl;
-        for (i = srcID ; i <= numNodes; i++){
-                if (!getSSNode(i).isValid())
-                        continue;
-                if (nodesHandled.find(i) != nodesHandled.end())
-                        continue;
-                if (nodesHandled.find(i) != nodesHandled.end())
-                        continue;
-                srcID=i;
 
-                multimap<size_t, NodeID> nodeDepth;     // map of all nodes in the local graph and its depth
-                nodeDepth.insert(pair<size_t, NodeID>(0, srcID));
-                // nodes that were already handled
-
-                while (!nodeDepth.empty()) {
-                        // get and erase the current node
-                        multimap<size_t, NodeID>::iterator
-                        e = nodeDepth.begin();
-                        size_t thisDepth = e->first;
-                        NodeID thisID = e->second;
-                        nodeDepth.erase(e);
-
-                        // if the node was already handled, skip
-                        if (nodesHandled.find(thisID) != nodesHandled.end())
+        // if default input values are provided, write the entire graph
+        if (seedNodeID == 0) {
+                for (NodeID id = -numNodes; id <= numNodes; id++) {
+                        if (id == 0)
                                 continue;
-                        if (nodesHandled.find(-thisID) != nodesHandled.end())
+                        if (!getSSNode(id).isValid())
                                 continue;
-
-
-                        // mark this node as handled
-                        nodesHandled.insert(thisID);
-
-                        // if we're too far in the graph, stop
-                        //if (thisDepth > maxDepth)
-                        //    continue;
-                        if (thisID== 10633) {
-                                int stop=0;
-                                stop++;
-                        }
-                        SSNode thisNode = getSSNode(thisID);
-                        for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
-                                SSNode rNode = getSSNode(it->getNodeID());
-                                if (!rNode.isValid())
-                                        continue;
-                                if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
-                                        continue;
-                                ofs << thisID << "\t" << it->getNodeID() << "\t" << it->getCoverage() << endl;
-                                nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
-                        }
-
-                        for (ArcIt it = thisNode.leftBegin(); it != thisNode.leftEnd(); it++) {
-                                SSNode lNode = getSSNode(it->getNodeID());
-                                if (!lNode.isValid())
-                                        continue;
-                                if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
-                                        continue;
-                                ofs << it->getNodeID() << "\t" << thisID << "\t" << it->getCoverage() << endl;
-                                nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
-                        }
+                        nodeDepth[id] = 0;
                 }
-        }
-        ofs.close();
-        //comment by mahdi , adding new parameter in output file
-        ofs.open(("cytNodes_" + ss2.str() + "_" +ss.str() + ".txt").c_str());
-        ofs << "Node ID\tTrue multiplicity\tKmer coverage\tMarginal length\tReadStCov\t Multiplicity\t MulCertaintyRatio\t correctnessRatio\t tSequence" << endl;
-        for (set<NodeID>::iterator it = nodesHandled.begin(); it != nodesHandled.end(); it++) {
-                SSNode node = getSSNode(*it);
-                double confidenceRatio=0;
-                double nodeMultiplicity=0;
-                double correctnessRatio=0;
-                if(nodesExpMult.size()>1) {
-                        pair<int, pair<double,double> >  result=nodesExpMult[abs( node.getNodeID())];
-                        nodeMultiplicity=result.first;
-                        confidenceRatio=result.second.first;
-                        correctnessRatio=result.second.second;
+        } else {        // else check if seedNode is valid
+                if ((abs(seedNodeID) > numNodes) || !getSSNode(seedNodeID).isValid()) {
+                        cerr << "WARNING: trying to use an invalid node as a "
+                                "seed in writeCytoscapeGraph!" << endl;
+                        return;
                 }
-                ofs << *it << "\t" << trueMult[abs(*it)] << "\t" << node.getNodeKmerCov() << "\t"
-                << node.getMarginalLength() << "\t"<<double(node.getReadStartCov()/node.getMarginalLength()) <<"\t"<<nodeMultiplicity<<"\t"<< confidenceRatio<<"\t"<< correctnessRatio <<"\t"<<node.getSequence() << endl;
+                nodeDepth[seedNodeID] = 0;
         }
-        ofs.close();
-}
 
-void DBGraph::writeLocalCytoscapeGraph(int ID, NodeID srcID, size_t maxDepth)
-{
-        //comment by Mahdi
-        //for (srcID = 1; srcID <= numNodes; srcID++)
-        //        if (getSSNode(srcID).isValid())
-        //                break;
+        // map of all nodes in the local graph and its depth
+        ofstream ofs((filename + ".arcs").c_str());
+        if (!ofs.good())
+                cerr << "Cannot open file " << filename + ".arcs" << " for writing" << endl;
+        ofs << "Source node\tTarget node\tArc coverage" << endl;
 
-        int i=0;
-        for (i =srcID ; i <= numNodes; i++)
-                if (getSSNode(i).isValid())
-                        break;
-                srcID=i;
-        //const size_t maxDepth =150;    // maximium sequence depth (exclusive srcID length)
-
-        stringstream ss, ss2;   // create a stringstream
-        ss << ID;               // add number to the stream
-        ss2 << srcID;
-        cout << "Writing cytoscape graph files around node " << srcID << endl;
-        ofstream ofs(("cytArcs_" + ss2.str() + "_" +ss.str() + ".txt").c_str());
-        ofs << "Source node\tTarget node\tArc coverage"<< endl;
-
-        multimap<size_t, NodeID> nodeDepth;     // map of all nodes in the local graph and its depth
-        nodeDepth.insert(pair<size_t, NodeID>(0, srcID));
-        set<NodeID> nodesHandled;               // nodes that were already handled
-
+        // A) write all arcs
         while (!nodeDepth.empty()) {
                 // get and erase the current node
-                multimap<size_t, NodeID>::iterator e = nodeDepth.begin();
-                size_t thisDepth = e->first;
-                NodeID thisID = e->second;
+                map<NodeID, size_t>::iterator e = nodeDepth.begin();
+                NodeID thisID = e->first;
+                size_t thisDepth = e->second;
                 nodeDepth.erase(e);
 
                 // if the node was already handled, skip
                 if (nodesHandled.find(thisID) != nodesHandled.end())
                         continue;
 
-                // mark this node as handled
-                nodesHandled.insert(thisID);
-
                 // if we're too far in the graph, stop
-                if (thisDepth > maxDepth)
+                if (thisDepth > maxDepth) {
+                        nodesHandled.insert(thisID);
                         continue;
+                }
 
+                // write the right arcs
                 SSNode thisNode = getSSNode(thisID);
                 for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
                         SSNode rNode = getSSNode(it->getNodeID());
@@ -173,38 +85,48 @@ void DBGraph::writeLocalCytoscapeGraph(int ID, NodeID srcID, size_t maxDepth)
                                 continue;
                         if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
                                 continue;
-                        ofs << thisID << "\t" << it->getNodeID() << "\t" << it->getCoverage() << endl;
-                        nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
+                        ofs << thisID << "\t" << it->getNodeID() << "\t" << it->getCoverage() << "\n";
+                        if (nodeDepth.find(it->getNodeID()) != nodeDepth.end())
+                                continue;
+                        nodeDepth[it->getNodeID()] = thisDepth + 1;
                 }
 
+                // write the left arcs
                 for (ArcIt it = thisNode.leftBegin(); it != thisNode.leftEnd(); it++) {
                         SSNode lNode = getSSNode(it->getNodeID());
                         if (!lNode.isValid())
                                 continue;
                         if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
                                 continue;
-                        ofs << it->getNodeID() << "\t" << thisID << "\t" << it->getCoverage() << endl;
-                        nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
+                        ofs << it->getNodeID() << "\t" << thisID << "\t" << it->getCoverage() << "\n";
+                        if (nodeDepth.find(it->getNodeID()) != nodeDepth.end())
+                                continue;
+                        nodeDepth[it->getNodeID()] = thisDepth + 1;
                 }
-        }
 
+                // mark this node as handled
+                nodesHandled.insert(thisID);
+
+        }
         ofs.close();
-        //comment by mahdi , adding new parameter in output file
-        ofs.open(("cytNodes_" + ss2.str() + "_" +ss.str() + ".txt").c_str());
-        ofs << "Node ID\tTrue multiplicity\tKmer coverage\tMarginal length\tReadStCov\t Multiplicity\t MulCertaintyRatio\t correctnessRatio\t tSequence" << endl;
+
+        // B) write all nodes
+        ofs.open((filename + ".nodes").c_str());
+        if (!ofs.good())
+                cerr << "Cannot open file " << filename + ".nodes" << " for writing" << endl;
+        ofs << "Node ID\tMarginal length\tTrue multiplicity\tEstimated multiplicity"
+               "\tKmer coverage\tRead start coverage\tSequence" << "\n";
         for (set<NodeID>::iterator it = nodesHandled.begin(); it != nodesHandled.end(); it++) {
                 SSNode node = getSSNode(*it);
-                double confidenceRatio=0;
-                double nodeMultiplicity=0;
-                double correctnessRatio=0;
-                if(nodesExpMult.size()>1) {
-                        pair<int, pair<double,double> >  result=nodesExpMult[abs( node.getNodeID())];
-                        nodeMultiplicity=result.first;
-                        confidenceRatio=result.second.first;
-                        correctnessRatio=result.second.second;
-                }
-                ofs << *it << "\t" << trueMult[abs(*it)] << "\t" << node.getNodeKmerCov() << "\t"
-                << node.getMarginalLength() << "\t"<<double(node.getReadStartCov()/node.getMarginalLength()) <<"\t"<<nodeMultiplicity<<"\t"<< confidenceRatio<<"\t"<< correctnessRatio <<"\t"<<node.getSequence() << endl;
+
+               // cout << *it << endl;
+                int thisTrueMult = (trueMult.empty()) ? 0 : trueMult[abs(*it)];
+
+                ofs << *it << "\t" << node.getMarginalLength() << "\t"
+                    << thisTrueMult << "\t" << "0" << "\t"
+                    << node.getAvgKmerCov() << "\t"
+                    << "\t" << double(node.getReadStartCov()/node.getMarginalLength())
+                    << "\t" << node.getSequence() << "\n";
         }
         ofs.close();
 }
@@ -275,18 +197,19 @@ void DBGraph::compareToSolution(const string& filename, bool load)
 
         cout << "\t===== DEBUG: quality report =====" << endl;
         cout << "\tNumber of nodes that exist: " << numCorrect << "/"
-        << numTotal << " (" << fixed << setprecision(2)
-        << Util::toPercentage(numCorrect, numTotal) << "%) -> ("
-        << Util::toPercentage(sizeCorrect, sizeTotal)
-        << "% of graph sequence content)" << endl;
+             << numTotal << " (" << fixed << setprecision(2)
+             << Util::toPercentage(numCorrect, numTotal) << "%) -> ("
+             << Util::toPercentage(sizeCorrect, sizeTotal)
+             << "% of graph sequence content)" << endl;
         cout << "\tNumber of nodes that do not exist: " << numIncorrect << "/"
-        << numTotal << " (" << fixed << setprecision(2)
-        << Util::toPercentage(numIncorrect, numTotal) << "%) -> ("
-        << Util::toPercentage(sizeIncorrect, sizeTotal)
-        << "% of graph sequence content)" << endl;
+             << numTotal << " (" << fixed << setprecision(2)
+             << Util::toPercentage(numIncorrect, numTotal) << "%) -> ("
+             << Util::toPercentage(sizeIncorrect, sizeTotal)
+             << "% of graph sequence content)" << endl;
         cout << "\tThe fraction of the genome that is covered: "
-        << fixed << setprecision(2)
-        << Util::toPercentage(sizeCorrect, sizeGenome) << "%" << endl;
+             << sizeCorrect << "/" << sizeGenome << " ("
+             << fixed << setprecision(2)
+             << Util::toPercentage(sizeCorrect, sizeGenome) << "%)" << endl;
         cout << "\t===== DEBUG: end =====" << endl;
 }
 
