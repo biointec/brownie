@@ -155,7 +155,7 @@ struct sparseSA {
                 indexSize += sizeof(kMerSize);
                 indexSize += sizeof(kMerTableSize);
                 indexSize += sizeof(nucleotidesOnly);
-                for(int i = 0; i < descr.size(); i++){
+                for(size_t i = 0; i < descr.size(); i++){
                         indexSize += descr[i].capacity();
                 }
                 indexSize += sizeof(startpos) + startpos.capacity()*sizeof(long);

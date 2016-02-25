@@ -174,7 +174,7 @@ void sparseSA::computeKmer() {
                                         if (curInterval.start >= right || right > curInterval.end)
                                                 right = CHILD[curInterval.start];
                                         //now left and right point to first child
-                                        newIndex = (curIndex << 2) | BITADD[S[SA[left]+curInterval.depth]];
+                                        newIndex = (curIndex << 2) | BITADD[(unsigned int)S[SA[left]+curInterval.depth]];
                                         if (newIndex < kMerTableSize) {
                                                 intervalStack.push(interval_t(left,right-1,curInterval.depth+1));
                                                 indexStack.push(newIndex);
@@ -183,7 +183,7 @@ void sparseSA::computeKmer() {
                                         //while has next L-index
                                         while (CHILD[right] > right && LCP[right] == LCP[CHILD[right]]) {
                                                 right = CHILD[right];
-                                                newIndex = (curIndex << 2) | BITADD[S[SA[left]+curInterval.depth]];
+                                                newIndex = (curIndex << 2) | BITADD[(unsigned int)S[SA[left]+curInterval.depth]];
                                                 if (newIndex < kMerTableSize) {
                                                         intervalStack.push(interval_t(left,right-1,curInterval.depth+1));
                                                         indexStack.push(newIndex);
@@ -191,7 +191,7 @@ void sparseSA::computeKmer() {
                                                 left = right;
                                         }
                                         //last interval
-                                        newIndex = (curIndex << 2) | BITADD[S[SA[left]+curInterval.depth]];
+                                        newIndex = (curIndex << 2) | BITADD[(unsigned int)S[SA[left]+curInterval.depth]];
                                         if (newIndex < kMerTableSize) {
                                                 intervalStack.push(interval_t(left,curInterval.end,curInterval.depth+1));
                                                 indexStack.push(newIndex);
@@ -463,8 +463,8 @@ void sparseSA::radixStep(int *t_new, int *SA, long &bucketNr, long *BucketBegin,
                 else {
                         // American flag sort of McIlroy et al. 1993. BucketBegin keeps
                         // track of current position where to add to bucket set.
-                        int tmp = SA[ BucketBegin[ S[ SA[pos]*K + h ] ] ];
-                        SA[ BucketBegin[ S[ SA[pos]*K + h] ]++ ] = SA[pos];        // Move bucket beginning to the right, and replace
+                        int tmp = SA[ BucketBegin[(unsigned int)S[ SA[pos]*K + h ] ] ];
+                        SA[ BucketBegin[ (unsigned int)S[ SA[pos]*K + h] ]++ ] = SA[pos];        // Move bucket beginning to the right, and replace
                         SA[ pos ] = tmp; // Save value at bucket beginning.
                         if (S[ SA[pos]*K + h ] == currentKey) pos++; // Advance to next position if the right character.
                 }
@@ -542,8 +542,8 @@ bool sparseSA::search(string const &P, long &start, long &end) const {
 void sparseSA::traverse(string const &P, long prefix, interval_t &cur, int min_len) const {
         if (hasKmer && cur.depth == 0 && min_len >= kMerSize) {//free match first bases
                 unsigned int index = 0;
-                for (size_t i = 0; i < kMerSize; i++)
-                                index = (index << 2 ) | BITADD[P[prefix + i]];
+                for (long int i = 0; i < kMerSize; i++)
+                                index = (index << 2 ) | BITADD[(unsigned int)P[prefix + i]];
                 if (index < kMerTableSize && KMR[index].right>0) {
                                 cur.depth = kMerSize;
                                 cur.start = KMR[index].left;
@@ -571,8 +571,8 @@ void sparseSA::traverse(string const &P, long prefix, interval_t &cur, int min_l
 void sparseSA::traverse_faster(const string &P,const long prefix, interval_t &cur, int min_len) const {
         if (hasKmer && cur.depth == 0 && min_len >= kMerSize) {//free match first bases
                 unsigned int index = 0;
-                for (size_t i = 0; i < kMerSize; i++)
-                        index = (index << 2 ) | BITADD[P[prefix + i]];
+                for (long int i = 0; i < kMerSize; i++)
+                        index = (index << 2 ) | BITADD[(unsigned int)P[prefix + i]];
                 if (index < kMerTableSize && KMR[index].right>0) {
                         cur.depth = kMerSize;
                         cur.start = KMR[index].left;
@@ -1073,7 +1073,7 @@ void sparseSA::MEM(string &P, vector<match_t> &matches, int min_len, bool print,
 void sparseSA::checkMatches(std::string const &P,
         std::vector<match_t> const &matches, int const min_len) const
 {
-        for ( int i = 0; i < matches.size(); ++i) {
+        for ( size_t i = 0; i < matches.size(); ++i) {
                 match_t m = matches[i];
                 std::string r = "";
                 for (int j = 0; j < m.len; ++j) {
