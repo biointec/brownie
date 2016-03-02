@@ -286,6 +286,20 @@ public:
      * @param filename Filename of file containing true multiplicities
      */
     void compareToSolution(const string& filename,bool load);
+    /**
+     * checking the continuity of kmers in the graph by
+     * looping over the kmers in the genome. and reporting breakpoints.
+     *
+     * */
+     void findBreakpoint();
+     /**
+      * Check if two nodes are connected in the graph
+      * @param curNode the current node
+      * @param preNode the previous node
+      * @return true if two nodes are connected, otherwise false
+      *
+      */
+     bool checkConnectivity(SSNode curNode, SSNode preNode);
 
     size_t findAllTrueOccurences(const string& str,
                                  std::vector<std::vector<size_t> >& pos,

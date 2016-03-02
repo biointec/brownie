@@ -22,6 +22,7 @@
 #include "graph.h"
 #include "readfile/fastafile.h"
 #include "settings.h"
+#include "kmernode.h"
 extern "C" {
 #include "suffix_tree.h"
 }
@@ -266,6 +267,7 @@ void DBGraph::compareToSolution(const string& filename, bool load)
                         ofs << trueMult[id] << "\n";
                 }
                 ofs.close();
+
         }
         size_t sizeCorrect = 0;
         size_t sizeIncorrect = 0;
@@ -308,10 +310,70 @@ void DBGraph::compareToSolution(const string& filename, bool load)
              << fixed << setprecision(2)
              << Util::toPercentage(sizeCorrect, sizeGenome) << "%" << endl;
         cout << "\t===== DEBUG: end =====" << endl;
+        findBreakpoint();
 
 #endif
 }
 
+
+void DBGraph::findBreakpoint(){
+
+        #ifdef DEBUG
+        populateTable();
+        size_t numOfKmers = 0;
+        size_t numOfFoundKmers = 0;
+        size_t numOfBreakPoint=0;
+        for (size_t refId = 0; refId < reference.size(); refId++){
+                string read = reference[refId];
+                NodeID preNodeID=0, curNodeID=0;
+                SSNode preNode, curNode;
+                for (KmerIt it(read); it.isValid(); it++) {
+                        Kmer kmer = it.getKmer();
+                        NodePosPair npp = getNodePosPair(kmer);
+                        numOfKmers++;
+                        if (!npp.isValid())
+                                continue;
+                        NodeID nodeID = npp.getNodeID();
+                        SSNode node = getSSNode(nodeID);
+                        if(!node.isValid())
+                                continue;
+                        numOfFoundKmers++;
+                        if (curNodeID != nodeID){
+                                preNodeID=curNodeID;
+                                preNode=curNode;
+                                curNodeID=nodeID;
+                                curNode=node;
+                        }
+                        //for the first time preNodeID is 0.
+                        if ( preNodeID != 0&&  !checkConnectivity(curNode , preNode))
+                                numOfBreakPoint++;
+                }
+        }
+        cout << "Percentage of kmers in the genome which are exist in the graph is:\t"
+             << numOfFoundKmers << "/" << numOfKmers
+             << "("<<double(numOfFoundKmers)*100/double(numOfKmers) << "%)" << endl;
+        cout << "Number of Break Points\t" << numOfBreakPoint<< endl;
+        depopulateTable();
+        #endif
+}
+bool DBGraph::checkConnectivity(SSNode curNode, SSNode preNode){
+
+        ArcIt it = preNode.rightBegin();
+        while(it != preNode.rightEnd()) {
+                SSNode right = getSSNode(it->getNodeID());
+                if (right.getNodeID()==curNode.getNodeID())
+                        return true;
+                it++;
+        }
+        it = preNode.leftBegin();
+        while(it != preNode.leftEnd()) {
+                SSNode left = getSSNode(it->getNodeID());
+                if (left.getNodeID()==curNode.getNodeID())
+                        return true;
+                it++;
+        }
+        return false;
+}
 size_t DBGraph::findAllTrueOccurences(const string& P,
                                       vector<vector<size_t> >& positions,
                                       vector<vector<size_t> >& positionsRC) const
