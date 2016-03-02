@@ -272,7 +272,7 @@ void Brownie::stageFour()
         graph.compareToSolution(getTrueMultFilename(3), true);
 #endif
         Util::startChrono();
-        graph.graphPurification(getTrueMultFilename(3), libraries);
+        graph.graphPurification(getTrueMultFilename(3));
 #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), false);
 #endif

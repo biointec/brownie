@@ -28,6 +28,7 @@
 #include "essaMEM-master/sparseSA.hpp"
 
 
+
 // ============================================================================
 // CLASS PROTOTYPES
 // ============================================================================
@@ -499,11 +500,31 @@ public:
      *
      */
     void writeGraphFasta() const;
+     /**
+      *  cleaning the initial graph from incorrect nodes
+      *  @param filename Filename of file containing true multiplicities
+      */
+    void graphPurification(string filename);
 
-    void graphPurification(string trueMultFilename,
-                           const LibraryContainer& libraries);
+    /**
+     *  find disjoint component in the graph and calls the the appropriate
+     *  functions to generate statistical reports about each component
+     */
+    void reportSta();
 
+
+    /**
+     * make a file which calculates the Nx of the graph. (x=10, 20, ...90)
+     *
+     */
+
+    void makeNxFileForGraph();
+
+   
 
 };
 
 #endif
+
+
+
