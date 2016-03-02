@@ -265,6 +265,7 @@ void Brownie::stageFour()
 
 #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), true);
+        graph.compareToSolution2(getTrueMultFilename(3), true);
 
         Util::startChrono();
         cout << "Writing cytoscape graph files..."; cout.flush();
@@ -286,11 +287,7 @@ void Brownie::stageFour()
        /* while (graph.canonicalBubble(30))
                 graph.concatenateNodes();
 
-        cout <<  graph.getGraphStats() << endl;
-        Util::startChrono();
-        cout << "Writing cytoscape graph files..."; cout.flush();
-        graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytAfterCanBubble", graph.getFirstValidNode(20), 10);
-        cout << "done (" << Util::stopChronoStr() << ")" << endl;*/
+        cout <<  graph.getGraphStats() << endl;*/
 
         // BUBBLE DETECTION
         while (graph.bubbleDetection(30, libraries.getAvgReadLength()))
@@ -303,18 +300,29 @@ void Brownie::stageFour()
         cout <<  graph.getGraphStats() << endl;
         Util::startChrono();
         cout << "Writing cytoscape graph files..."; cout.flush();
-        graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytFinal", graph.getFirstValidNode(20), 10);
+        graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytBubble", graph.getFirstValidNode(-659552), 10);
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
-
-        cout << " --------------- " << endl;
-      /*  while (graph.bubbleDetection(-479869, 10, libraries.getAvgReadLength()))
-                graph.concatenateNodes();*/
 
 #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(3), false);
+        graph.compareToSolution2(getTrueMultFilename(3), true);
 #endif
 
-        // graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4)); // FIXME !!
+        // DETACH NODES
+        while (graph.flowCorrection())
+                graph.concatenateNodes();
+
+        Util::startChrono();
+        cout << "Writing cytoscape graph files..."; cout.flush();
+        graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytFinal");
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+
+#ifdef DEBUG
+        graph.compareToSolution(getTrueMultFilename(3), false);
+        graph.compareToSolution2(getTrueMultFilename(3), true);
+#endif
+
+        graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4)); // FIXME !!
         //cout << "Graph correction completed in " << Util::stopChronoStr() << endl;
 
 #ifdef DEBUG
@@ -345,12 +353,6 @@ void Brownie::stageFive()
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << "Graph contains " << graph.getNumNodes() << " nodes and "
              << graph.getNumArcs() << " arcs" << endl;
-
-#ifdef DEBUG
-        graph.compareToSolution(getTrueMultFilename(4),true);
-        graph.getGraphStats();
-        graph.writeCytoscapeGraph(0);
-#endif
 
         Util::startChrono();
         ReadCorrectionHandler rcHandler(graph, settings);
@@ -398,7 +400,7 @@ int main(int argc, char** args)
                 brownie.stageTwo();
                 brownie.stageThree();
                 brownie.stageFour();
-                //brownie.stageFive();  // FIXME !!
+                brownie.stageFive();  // FIXME !!
                 brownie.writeGraphFasta();
         } catch (exception &e) {
                 cerr << "Fatal error: " << e.what() << endl;

@@ -30,7 +30,7 @@
 #include <deque>
 
 // ============================================================================
-// CLASS PROTOTYPES
+// ENUM TYPES
 // ============================================================================
 
 enum MapType { SHORT_MAP, LONG_MAP };
@@ -50,6 +50,12 @@ class NodePosPair;
 class NodeEndTable;
 class NodeEndRef;
 class LibraryContainer;
+
+// ============================================================================
+// SORT DECLARATIONS
+// ============================================================================
+
+bool sortNodeByLength(const NodeID& left, const NodeID& right);
 
 // ============================================================================
 // GRAPH STATISTICS
@@ -350,6 +356,18 @@ public:
         bool bubbleDetection(NodeID nodeID, double covCutoff,
                              size_t maxMargLength);
 
+        /**
+         * Graph correctoin based on flow conservation
+         * @param nodeID Identifier for the source node
+         * @param avgKmerCov Average k-mer coverage
+         */
+        bool flowCorrection(NodeID nodeID, double avgKmerCov);
+
+        /**
+         * Graph correction based on flow conservation
+         */
+        bool flowCorrection();
+
     /**
      * Careful concatenation, taking into account the estimated multiplicity
      */
@@ -370,6 +388,13 @@ public:
          * @param nodeID node identifier
          **/
         void removeNode(NodeID nodeID);
+
+        /**
+         * Detach two nodes
+         * @param leftID Identifier of the left node
+         * @param rightID Identifier of the right node
+         */
+        void detachNode(NodeID leftID, NodeID rightID);
 
         /**
          * Get the first valid node
@@ -416,6 +441,12 @@ public:
      * @param filename Filename of file containing true multiplicities
      */
     void compareToSolution(const string& filename,bool load);
+
+        /**
+         * Compare the current graph to the solution
+         * @param filename Filename of file containing true multiplicities
+         */
+        void compareToSolution2(const string& filename,bool load);
 
     size_t findAllTrueOccurences(const string& str,
                                  std::vector<std::vector<size_t> >& pos,

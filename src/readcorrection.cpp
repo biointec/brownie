@@ -407,7 +407,7 @@ void ReadCorrection::findSeedKmer(const std::string& read,
         // ----------- OUTPUT ------------
 }
 
-bool sortByLength(const Seed& a, const Seed& b) {
+bool sortSeedByLength(const Seed& a, const Seed& b) {
         return ((a.readEnd-a.readFirst) > (b.readEnd-b.readFirst));
 }
 
@@ -465,7 +465,7 @@ void ReadCorrection::findSeedMEM(const string& read,
         Seed::mergeSeeds(seeds, mergedSeeds);
 
         // sort seeds according to length
-        sort(mergedSeeds.begin(), mergedSeeds.end(), sortByLength);
+        sort(mergedSeeds.begin(), mergedSeeds.end(), sortSeedByLength);
 
         // retain only 10 largest seeds
         if (mergedSeeds.size() > 10)

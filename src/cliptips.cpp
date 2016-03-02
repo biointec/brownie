@@ -22,6 +22,7 @@
 #include "settings.h"
 
 #include <queue>
+#include <map>
 
 using namespace std;
 
@@ -115,7 +116,7 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
 
         cout << "Clipped " << numDeleted << "/" << numTotal << " nodes" << endl;
 #ifdef DEBUG
-        cout << "\t===== DEBUG: tip clipping report =====" << endl;
+      /*  cout << "\t===== DEBUG: tip clipping report =====" << endl;
         cout << "\tIsolated TP: " << tps << "\tTN: "<< tns << "\tFP: " << fps << "\tFN: "<< fns << endl;
         cout << "\tSensitivity: " << 100.0 * Util::getSensitivity(tps, fns) << "%" << endl;
         cout << "\tSpecificity: " << 100.0 * Util::getSpecificity(tns, fps) << "%" << endl;
@@ -127,7 +128,7 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
         cout << "\tTip TP: " << tp << "\tTN: " << tn << "\tFP: " << fp << "\tFN: " << fn << endl;
         cout << "\tSensitivity: " << 100.0 * Util::getSensitivity(tp, fn) << "%" << endl;
         cout << "\tSpecificity: " << 100.0 * Util::getSpecificity(tn, fp) << "%" << endl;
-        cout << "\t===== DEBUG: end =====" << endl;
+        cout << "\t===== DEBUG: end =====" << endl;*/
 #endif
 
         return  numDeleted > 0;
@@ -373,7 +374,7 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
         const double& lowCov = (covSubPathA < covSubPathB) ?
                 covSubPathA : covSubPathB;
 
-       /* cout << "Path A" << endl;
+        /*cout << "Path A" << endl;
         cout << pathA << endl;
         cout << "First: " << firstA << ", last: " << lastA << endl;
         cout << subPathA << endl;
@@ -398,14 +399,10 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
         double covFinalArcB = ((pathB.size() >= 2) && (lastB == pathB.size() - 2)) ?
                 getSSNode(pathB[lastB]).getRightArc(pathB[lastB+1])->getCoverage() : covCutoff + 1;
         if (min(covFinalArcA, covFinalArcB) <= covCutoff) {
-                cout << "Removing final arcs" << endl;
-                if (covFinalArcA < covFinalArcB) {
-                        getSSNode(pathA[lastA]).deleteRightArc(pathA[lastA+1]);
-                        getSSNode(pathA[lastA+1]).deleteLeftArc(pathA[lastA]);
-                } else {
-                        getSSNode(pathB[lastB]).deleteRightArc(pathB[lastB+1]);
-                        getSSNode(pathB[lastB+1]).deleteLeftArc(pathB[lastB]);
-                }
+                if (covFinalArcA < covFinalArcB)
+                        detachNode(pathA[lastA], pathA[lastA+1]);
+                else
+                        detachNode(pathB[lastB], pathB[lastB+1]);
                 return true;
         }
 
@@ -415,14 +412,10 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
         double covFirstArcB = ((pathB.size() >= 2) && (firstB == 1)) ?
                 getSSNode(pathB[0]).getRightArc(pathB[1])->getCoverage() : covCutoff + 1;
         if (min(covFirstArcA, covFirstArcB) <= covCutoff) {
-                cout << "Removing first arcs" << endl;
-                if (covFirstArcA < covFirstArcB) {
-                        getSSNode(pathA[0]).deleteRightArc(pathA[1]);
-                        getSSNode(pathA[1]).deleteLeftArc(pathA[0]);
-                } else {
-                        getSSNode(pathB[0]).deleteRightArc(pathB[1]);
-                        getSSNode(pathB[1]).deleteLeftArc(pathB[0]);
-                }
+                if (covFirstArcA < covFirstArcB)
+                        detachNode(pathA[0], pathA[1]);
+                else
+                        detachNode(pathB[0], pathB[1]);
                 return true;
         }
 
@@ -533,6 +526,85 @@ bool DBGraph::bubbleDetection(NodeID id, double covCutoff, size_t maxMargLength)
                                covCutoff, maxMargLength,
                                settings.getBubbleDFSNodeLimit()))
                 returnValue = true;
+
+        return returnValue;
+}
+
+bool DBGraph::flowCorrection(NodeID nodeID, double avgKmerCov)
+{
+        SSNode node = getSSNode(nodeID);
+        if (!node.isValid())
+                return false;
+
+        double expNodeMult = round(node.getAvgKmerCov() / avgKmerCov);
+        if (expNodeMult == 0)
+                return false;
+        //cout << "Multiplicity for node " << nodeID << ": " << node.getAvgKmerCov() / avgKmerCov << " (" << expNodeMult << ")" << endl;
+
+        double sumArcCov = 0;
+        for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++ )
+                sumArcCov += it->getCoverage();
+
+        // expected arc coverage for multiplicity one
+        double expArcCov = sumArcCov / expNodeMult;
+
+        vector<NodeID> toDetach;
+        for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++ ) {
+                double obsArcMult = round(it->getCoverage() / expArcCov);
+                //cout << "Right arc: " << it->getNodeID() << ": " << it->getCoverage() / expArcCov << "(" << obsArcMult << ")" << endl;
+
+                // don't detach right away as this will break the iterator
+                if (obsArcMult == 0)
+                        toDetach.push_back(it->getNodeID());
+        }
+
+        for (auto it : toDetach) {
+                detachNode(nodeID, it);
+                if ((getSSNode(it).getNumLeftArcs() == 0) &&
+                    (getSSNode(it).getNumRightArcs() == 0))
+                        getSSNode(it).invalidate();
+        }
+
+        return !toDetach.empty();
+}
+
+bool DBGraph::flowCorrection()
+{
+        // compute the average coverage of a unique node
+        vector<NodeID> sortedNodes;
+        sortedNodes.reserve(numNodes);
+        for ( NodeID id = 1; id <= numNodes; id++ ) {
+                if (!getSSNode(id).isValid())
+                        continue;
+                sortedNodes.push_back(id);
+        }
+
+        sort(sortedNodes.begin(), sortedNodes.end(), sortNodeByLength);
+        size_t numBigNodes = sortedNodes.size() * 0.1;
+        if (numBigNodes == 0)
+                numBigNodes = sortedNodes.size();
+
+        size_t totCoverage = 0, totSize = 0;
+        for (size_t i = 0; i < numBigNodes; i++) {
+                totCoverage += getSSNode(sortedNodes[i]).getKmerCov();
+                totSize += getSSNode(sortedNodes[i]).getMarginalLength();
+        }
+
+        double avgKmerCov = totCoverage / totSize;
+        cout << "Average kmer coverage: " << totCoverage / totSize << endl;
+
+        bool returnValue = false;
+        for (NodeID id = -numNodes; id <= numNodes; id++) {
+                if (id == 0)
+                        continue;
+                if (!getSSNode(id).isValid())
+                        continue;
+                if (getSSNode(id).getNumRightArcs() < 2)
+                        continue;
+
+                if (flowCorrection(id, avgKmerCov))
+                        returnValue = true;
+        }
 
         return returnValue;
 }

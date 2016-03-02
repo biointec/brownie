@@ -77,6 +77,11 @@ void DBGraph::initialize()
 
 void DBGraph::removeNode(NodeID nodeID)
 {
+#ifdef DEBUG
+        if (trueMult[abs(nodeID)] > 0)
+                cout << "Error removing node " << nodeID << endl;
+#endif
+
         SSNode node = getSSNode(nodeID);
         for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
                 SSNode leftNode = getSSNode(it->getNodeID());
@@ -99,11 +104,25 @@ void DBGraph::removeNode(NodeID nodeID)
         node.invalidate();
 }
 
+void DBGraph::detachNode(NodeID leftID, NodeID rightID)
+{
+#ifdef DEBUG
+        if ((trueMult[abs(leftID)] > 0) && (trueMult[abs(rightID)] > 0))
+                cout << "Error disconnecting nodes " << leftID << " and " << rightID << endl;
+#endif
+        getSSNode(leftID).deleteRightArc(rightID);
+        getSSNode(rightID).deleteLeftArc(leftID);
+}
+
 NodeID DBGraph::getFirstValidNode(NodeID seed)
 {
         for (NodeID id = seed; id <= numNodes; id++) {
                 if (id == 0)
                         continue;
+#ifdef DEBUG
+                if (trueMult[id] == 0)
+                        continue;
+#endif
                 if (getSSNode(id).isValid())
                         return id;
         }

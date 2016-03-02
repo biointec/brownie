@@ -113,16 +113,6 @@ void DBGraph::countNodeandArcFrequency(LibraryContainer &inputs)
 // PRIVATE NODE COVERAGE / MULTIPLICITY
 // ============================================================================
 
-//comment by mahdi
-
-
-bool cmssn(const SSNode& first, const SSNode & second ) {
-
-    return first.getMarginalLength()>second.getMarginalLength();
-
-
-}
-
 size_t DBGraph::getLowestArcMultiplicity ( NodeID left, NodeID right )
 {
         SSNode node = getSSNode ( right );
@@ -143,10 +133,10 @@ size_t DBGraph::getLowestArcMultiplicity ( NodeID left, NodeID right )
 // PRIVATE NODE COVERAGE ROUTINES
 // ============================================================================
 
-bool sortByLength ( const NodeID& left, const NodeID& right )
+bool sortNodeByLength(const NodeID& left, const NodeID& right)
 {
         return DBGraph::graph->getDSNode ( left ).getMarginalLength() >
-        DBGraph::graph->getDSNode ( right ).getMarginalLength();
+               DBGraph::graph->getDSNode ( right ).getMarginalLength();
 }
 
 double DBGraph::getInitialEstimateForCoverage ( const ReadLibrary& input,
@@ -162,7 +152,7 @@ double DBGraph::getInitialEstimateForCoverage ( const ReadLibrary& input,
         }
 
         DBGraph::graph = this;
-        sort ( sortedNodes.begin(), sortedNodes.end(), sortByLength );
+        sort ( sortedNodes.begin(), sortedNodes.end(), sortNodeByLength );
 
         size_t RL = input.getAvgReadLength();
         size_t k = Kmer::getK();

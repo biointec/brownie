@@ -19,6 +19,7 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
+#include "kmernode.h"
 #include "graph.h"
 #include "readfile/fastafile.h"
 extern "C" {
@@ -211,6 +212,60 @@ void DBGraph::compareToSolution(const string& filename, bool load)
              << fixed << setprecision(2)
              << Util::toPercentage(sizeCorrect, sizeGenome) << "%)" << endl;
         cout << "\t===== DEBUG: end =====" << endl;
+}
+
+void DBGraph::compareToSolution2(const string& filename, bool load)
+{
+        if (load) {
+                // read the reference genome (genome.fasta) from disk
+                populateTable();
+        }
+
+        FastAFile ass(false);
+        ass.open("genome.fasta");
+
+        size_t numKmers = 0, numFound = 0, numBreakpoints = 0;
+
+        string read;
+        NodePosPair prev;
+        while (ass.getNextRead (read)) {
+                for (KmerIt it(read); it.isValid(); it++) {
+                        Kmer kmer = it.getKmer();
+                        numKmers++;
+
+                        NodePosPair npp = getNodePosPair(kmer);
+                        if (!npp.isValid())
+                                continue;
+
+                        numFound++;
+
+                        if (prev.isValid()) {
+                                if (prev.getNodeID() == npp.getNodeID()) {
+                                        if (prev.getOffset()+1 != npp.getOffset()) {
+                                                numBreakpoints++;
+                                                cout << "Non-adjacent kmer in same node" << endl;
+                                        }
+                                } else {
+                                        if (getSSNode(prev.getNodeID()).getRightArc(npp.getNodeID()) == NULL) {
+                                                numBreakpoints++;
+                                                cout << "Non-adjacent kmer in different node" << endl;
+                                        }
+                                }
+                        }
+
+                        prev = npp;
+                }
+        }
+
+        ass.close();
+
+        double fracFound = 100.0*(double)numFound/(double) numKmers;
+
+        cout.precision(4);
+        cout << "Validation report: " << endl;
+        cout << "\tk-mers in table: " << numFound << "/" << numKmers
+             << "(" << fracFound << "%)" << endl;
+        cout << "\tnumber of breakpoints: " << numBreakpoints << endl;
 }
 
 size_t DBGraph::findAllTrueOccurences(const string& P,
