@@ -323,11 +323,10 @@ void DBGraph::findBreakpoint(){
         size_t numOfKmers = 0;
         size_t numOfFoundKmers = 0;
         size_t numOfBreakPoint=0;
-        for (size_t refId = 0; refId < reference.size(); refId++){
-                string read = reference[refId];
+         for(auto genome : reference){
                 NodeID preNodeID=0, curNodeID=0;
                 SSNode preNode, curNode;
-                for (KmerIt it(read); it.isValid(); it++) {
+                for (KmerIt it(genome); it.isValid(); it++) {
                         Kmer kmer = it.getKmer();
                         NodePosPair npp = getNodePosPair(kmer);
                         numOfKmers++;
@@ -360,15 +359,13 @@ bool DBGraph::checkConnectivity(SSNode curNode, SSNode preNode){
 
         ArcIt it = preNode.rightBegin();
         while(it != preNode.rightEnd()) {
-                SSNode right = getSSNode(it->getNodeID());
-                if (right.getNodeID()==curNode.getNodeID())
+                if (getSSNode(it->getNodeID()).getNodeID()==curNode.getNodeID())
                         return true;
                 it++;
         }
         it = preNode.leftBegin();
         while(it != preNode.leftEnd()) {
-                SSNode left = getSSNode(it->getNodeID());
-                if (left.getNodeID()==curNode.getNodeID())
+                if (getSSNode(it->getNodeID()).getNodeID()==curNode.getNodeID())
                         return true;
                 it++;
         }
