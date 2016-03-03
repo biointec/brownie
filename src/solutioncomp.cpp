@@ -125,7 +125,7 @@ void DBGraph::writeCytoscapeGraph(const std::string& filename,
 
                 ofs << *it << "\t" << node.getMarginalLength() << "\t"
                     << thisTrueMult << "\t" << "0" << "\t"
-                    << node.getAvgKmerCov() << "\t"
+                    << node.getAvgKmerCov()
                     << "\t" << double(node.getReadStartCov()/node.getMarginalLength())
                     << "\t" << node.getSequence() << "\n";
         }
