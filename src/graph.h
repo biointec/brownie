@@ -1,6 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2014, 2015 Jan Fostier (jan.fostier@intec.ugent.be)     *
- *   Copyright (C) 2014, 2015 Mahdi Heydari (mahdi.heydari@intec.ugent.be) *
+ *   Copyright (C) 2014 - 2015 Jan Fostier (jan.fostier@intec.ugent.be)    *
  *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -25,16 +24,9 @@
 #include "global.h"
 #include "ssnode.h"
 #include "dsnode.h"
-#include "essaMEM-master/sparseSA.hpp"
+#include "kmernpp.h"
 
-#include <deque>
-
-// ============================================================================
-// ENUM TYPES
-// ============================================================================
-
-enum MapType { SHORT_MAP, LONG_MAP };
-enum SearchResult { HAVE_SOLUTION, SEARCH_EXHAUSTED, NO_SOLUTION };
+#include <vector>
 
 // ============================================================================
 // CLASS PROTOTYPES
@@ -45,7 +37,6 @@ class ReadLibrary;
 class DSNode;
 class Arc;
 class Settings;
-class KmerNodeTable;
 class NodePosPair;
 class NodeEndTable;
 class NodeEndRef;
@@ -68,6 +59,7 @@ private:
         size_t numArcs;         // number of (valid) arcs in the graph
         size_t N50;             // N50 of the nodes
         size_t totMargLength;   // total marginal length of all nodes
+
 public:
         /**
          * Default constructor
@@ -103,157 +95,105 @@ public:
 class DBGraph {
 
 private:
-    KmerNodeTable* table;                   // kmer node table
+        // ====================================================================
+        // VARIABLES
+        // ====================================================================
 
-    /**
-     * Parse a buffer of reads and store kmers in temporary buffers per thread
-     * @param readBuffer Input read buffer
-     */
-    void parseReads(size_t thisThread,
-                    std::vector<std::string>& readBuffer);
+        const Settings &settings;       // settings object
 
-    /**
-     * Entry routine for worker thread
-     * @param myID Unique threadID
-     */
-    void workerThread(size_t myID, LibraryContainer* inputs);
+        DSNode *nodes;          // graph nodes
+        Arc *arcs;              // graph arcs
 
-    // ====================================================================
-    // COVERAGE.CPP PRIVATE
-    // ====================================================================
+        NodeID numNodes;        // number of nodes
+        NodeID numArcs;         // number of arcs
 
-    /**
-     * Count the number of kmer occurences per node for a certain readfile
-     * @param filename File name of the input read file
-     * @param table Table containing the kmer -> nodeID mapping
-     */
-    void countReadFrequency(const ReadLibrary& input,
-                            const KmerNodeTable &table);
-
-    /**
-     * Get an initial estimate for the node coverage, based on the
-     * 15% largest nodes
-     * @return An estimate for the coverage
-     * @param kmerFreq The number of kmers per node (output)
-     */
-    double getInitialEstimateForCoverage(const ReadLibrary& input,
-                                         vector<size_t> &kmerFreq) const;
-
-    /**
-     * Based on preset node multiplicities and node kmer occurences,
-     * estimate the expected kmer occurence (mu)
-     * @return The expected average occurence
-     */
-    double estimateReadStartCoverage(const ReadLibrary& input,
-                                     const vector<size_t> & kmerFreq) const;
-
-    // ====================================================================
-    // OTHER STUFF
-    // ====================================================================
+        KmerNodeTable nppTable;            // kmer node table
 
 
-    /**
-     * Get the unique node extending a given node to the left
-     * @param node Node to be extended (input)
-     * @param leftNode Node that left-overlaps with the given node (output)
-     * @return True if a unique left-overlapping node is found
-     */
-    bool getLeftUniqueSSNode(const SSNode &node, SSNode &leftNode) const;
+        /**
+         * Parse a buffer of reads and store kmers in temporary buffers per thread
+         * @param readBuffer Input read bufferp
+         */
+        void parseReads(size_t thisThread,
+                        std::vector<std::string>& readBuffer);
 
-    /**
-     * Get the unique node extending a given node to the right
-     * @param node Node to be extended (input)
-     * @param rightNode Node that right-overlaps with the given node (output)
-     * @return True if a unique right-overlapping node is found
-     */
-    bool getRightUniqueSSNode(const SSNode &node, SSNode &rightNode) const;
+        /**
+         * Entry routine for worker thread
+         * @param myID Unique threadID
+         */
+        void workerThread(size_t myID, LibraryContainer* inputs);
 
-    /**
-     * Increment the coverage of the arc that span two given kmers
-     * @param left Left kmer reference
-     * @param right Right kmer reference
-     */
-    void increaseCoverage(const NodeEndRef &left, const NodeEndRef &right);
+        // ====================================================================
+        // COVERAGE.CPP PRIVATE
+        // ====================================================================
 
-    /**
-     * Convert a vector of overlapping nodes to a string
-     * @param nodeSeq A deque of overlapping nodes
-     * @param output An stl string (output)
-     */
-    void convertNodesToString(const std::vector<NodeID> &nodeSeq,
-                              std::string &output);
+        /**
+         * Count the number of kmer occurences per node for a certain readfile
+         * @param filename File name of the input read file
+         * @param table Table containing the kmer -> nodeID mapping
+         */
+        void countReadFrequency(const ReadLibrary& input,
+                                const KmerNodeTable &table);
 
-    /**
-     * Convert a deque of overlapping nodes to a string
-     * @param nodeSeq A deque of overlapping nodes
-     * @param output An stl string (output)
-     */
-    void convertNodesToString(const std::deque<SSNode> &nodeSeq,
-                              std::string &output);
+        /**
+         * Get an initial estimate for the node coverage, based on the
+         * 15% largest nodes
+         * @return An estimate for the coverage
+         * @param kmerFreq The number of kmers per node (output)
+         */
+        double getInitialEstimateForCoverage(const ReadLibrary& input,
+                                             std::vector<size_t> &kmerFreq) const;
 
-    /**
-     *
-     *
-     */
-    void convertNodesToString(const std::vector<NodeID> &nodeSeq,
-                              int startPos, int stopPos,
-                              string &output);
+        /**
+         * Based on preset node multiplicities and node kmer occurences,
+         * estimate the expected kmer occurence (mu)
+         * @return The expected average occurence
+         */
+        double estimateReadStartCoverage(const ReadLibrary& input,
+                                         const std::vector<size_t> & kmerFreq) const;
 
-    /**
-     * Thread reads through nodes to obtain arc coverage
-     * @param filename File name of the input file
-     * @param numReads Number of reads in the input file
-     * @param table Node ends table
-     */
-    void threadThroughReads(const std::string& filename, size_t numReads,
-                            const NodeEndTable &table);
+        // ====================================================================
+        // OTHER STUFF
+        // ====================================================================
 
-    void markPairedArcs(const std::vector<NodeID>& seq);
+        /**
+         * Get the unique node extending a given node to the left
+         * @param node Node to be extended (input)
+         * @param leftNode Node that left-overlaps with the given node (output)
+         * @return True if a unique left-overlapping node is found
+         */
+        bool getLeftUniqueSSNode(const SSNode &node, SSNode &leftNode) const;
 
-    // ====================================================================
-    // VARIABLES
-    // ====================================================================
+        /**
+         * Get the unique node extending a given node to the right
+         * @param node Node to be extended (input)
+         * @param rightNode Node that right-overlaps with the given node (output)
+         * @return True if a unique right-overlapping node is found
+         */
+        bool getRightUniqueSSNode(const SSNode &node, SSNode &rightNode) const;
 
-    const Settings &settings;     // settings object
+        /**
+         * Increment the coverage of the arc that span two given kmers
+         * @param left Left kmer reference
+         * @param right Right kmer reference
+         */
+        void increaseCoverage(const NodeEndRef &left, const NodeEndRef &right);
 
-    DSNode *nodes;          // graph nodes
-    Arc *arcs;              // graph arcs
+        /**
+         * Convert a vector of overlapping nodes to a string
+         * @param nodeSeq A deque of overlapping nodes
+         * @param output An stl string (output)
+         */
+        void convertNodesToString(const std::vector<NodeID> &nodeSeq,
+                                  std::string &output);
 
-    NodeID numNodes;        // number of nodes
-    NodeID numArcs;         // number of arcs
-
-    MapType mapType;
-
-    double coverage;//=100;
-
-    double totalRAM;
-
-#ifdef DEBUG
-        std::vector<string> reference;
-        std::vector<void* > refST;
-        std::vector<int> trueMult;
-#endif
+        void markPairedArcs(const std::vector<NodeID>& seq);
 
 public:
 
-    static const DBGraph* graph;
-    double estimatedKmerCoverage;
-    double estimatedMKmerCoverageSTD;
-    double minCertainVlueCov;
-    double minSafeValueCov;
-    double minRedLineValueCov;
-    double certainVlueCov;
-    double safeValueCov;
-    double redLineValueCov;
-    double cutOffvalue;
+        static const DBGraph* graph;
 
-    double readLength;
-    //this variable shows the Maximum node size which can be deleted, which is calculated based on the read readLength
-    size_t maxNodeSizeToDel;
-    int updateCutOffValueRound;
-
-    size_t n50;
-    size_t sizeOfGraph;
+        bool isDoubleStranded() const;
 
         // ====================================================================
         // CLIPSTIPS.CPP
@@ -268,13 +208,6 @@ public:
         bool clipTips(double covCutoff, size_t maxMargLength);
 
         /**
-         * Invalidate canonical bubbles (parallel paths of exactly length k)
-         * @param covCutoff Maximum coverage of a node to delete
-         * @return True if at least one node was removed
-         */
-        bool canonicalBubble(double covCutoff);
-
-        /**
          * Concatentate linear paths
          * @return True if at least one node was merged
          **/
@@ -287,7 +220,7 @@ public:
          * @param last Last node that can be deleted (output)
          */
         void getUniquePath(const std::vector<NodeID>& path,
-                          size_t& first, size_t& last);
+                           size_t& first, size_t& last);
 
         /**
          * Get the average kmer coverage for a given path
@@ -303,7 +236,7 @@ public:
          * @return A vector with nodeIDs from srcID to dstID
          */
         std::vector<NodeID> getPath(NodeID dstID,
-                                    const vector<NodeID>& prevNode) const;
+                                    const std::vector<NodeID>& prevNode) const;
 
         /**
          * Remove the nodes in a path
@@ -334,8 +267,8 @@ public:
          * @param pathB Reference to the second path
          * @return True if at least one node was deleted
          */
-        bool handleParallelPaths(const vector<NodeID>& pathA,
-                                 const vector<NodeID>& pathB,
+        bool handleParallelPaths(const std::vector<NodeID>& pathA,
+                                 const std::vector<NodeID>& pathB,
                                  double covCutoff);
 
         /**
@@ -368,15 +301,6 @@ public:
          */
         bool flowCorrection();
 
-    /**
-     * Careful concatenation, taking into account the estimated multiplicity
-     */
-    void initialize();
-
-    vector<pair<SSNode, SSNode> >  ExtractBubbles(SSNode rootNode,std::set<NodeID>& visitedNodes , std::set<Arc *>&visitedArc);
-    void extractPath(NodeID currID, const vector<NodeID>& prevNode) const;
-    bool hasLowCovNode(SSNode root);
-
         /**
          * Get the graph statistics
          * @return Graph statistics
@@ -403,227 +327,211 @@ public:
          */
         NodeID getFirstValidNode(NodeID seed = 1);
 
-    /**
-     * Default constructor
-     */
-    DBGraph(const Settings& settings);
-
-    /**
-     * Destructor
-     */
-    ~DBGraph();
-
-    /**
-     * Get a const-reference to settings
-     * @return A const-reference to settings
-     */
-    const Settings& getSettings() const {
-        return settings;
-    }
-
-    // ====================================================================
-    // SOLUTIONCOMP.CPP PUBLIC
-    // ====================================================================
-
-    /**
-     * Write a cytoscape graph of the current graph
-     * @param filename Filename of the cytoscape graph
-     * @param seedNodeID Seed node identifier
-     * @param maxDepth Maximum depth (in terms of number of nodes)
-     */
-    void writeCytoscapeGraph(const std::string& filename,
-                             NodeID seedNodeID = 0, size_t maxDepth = 0);
-
-    void readReferenceGenome();
-
-    /**
-     * Compare the current graph to the solution
-     * @param filename Filename of file containing true multiplicities
-     */
-    void compareToSolution(const string& filename,bool load);
+        /**
+         * Default constructor
+         */
+        DBGraph(const Settings& settings);
 
         /**
-         * Compare the current graph to the solution
-         * @param filename Filename of file containing true multiplicities
+         * Destructor
          */
-        void compareToSolution2(const string& filename,bool load);
+        ~DBGraph();
 
-    size_t findAllTrueOccurences(const string& str,
-                                 std::vector<std::vector<size_t> >& pos,
-                                 std::vector<std::vector<size_t> >& posRC) const;
+        /**
+         * Get a const-reference to settings
+         * @return A const-reference to settings
+         */
+        const Settings& getSettings() const {
+                return settings;
+        }
 
-    // ====================================================================
-    // COVERAGE.CPP PUBLIC
-    // ====================================================================
+        // ====================================================================
+        // SOLUTIONCOMP.CPP PUBLIC
+        // ====================================================================
 
-    /**
-     * Count the number of kmer occurences for each node
-     */
-    void countReadFrequency(const ReadLibrary& input);
+        /**
+         * Write a cytoscape graph of the current graph
+         * @param filename Filename of the cytoscape graph
+         * @param seedNodeID Seed node identifier
+         * @param maxDepth Maximum depth (in terms of number of nodes)
+         */
+        void writeCytoscapeGraph(const std::string& filename,
+                                 NodeID seedNodeID = 0, size_t maxDepth = 0);
 
-    /**
-     * Set the node multiplicity based on an estimate for the coverage
-     * based on expectation-maximization (EM)
-     */
-    void countNodeandArcFrequency(LibraryContainer &inputs);
+        // ====================================================================
+        // COVERAGE.CPP PUBLIC
+        // ====================================================================
 
-    /**
-     * Filter the graph, based on coverage
-     */
-    void plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > >& frequencyArray);
-    void makeSampleReadFile(float num);
-    size_t getLowestArcMultiplicity(NodeID left, NodeID right);
+        /**
+          * Count the number of kmer occurences for each node
+          */
+        void countReadFrequency(const ReadLibrary& input);
 
-    // ====================================================================
-    // COVERAGE.CPP PUBLIC
-    // ====================================================================
+        /**
+         * Set the node multiplicity based on an estimate for the coverage
+         * based on expectation-maximization (EM)
+         */
+        void countNodeandArcFrequency(LibraryContainer &inputs);
 
-    /**
-     * Map reads to the graph
-     */
-    void mapReads();
+        // ====================================================================
+        // GRAPH CONSTRUCTION
+        // ====================================================================
 
-    // ====================================================================
-    // GRAPH CONSTRUCTION
-    // ====================================================================
+        /**
+         * Get the number of nodes
+         * @return The number of nodes
+         */
+        NodeID getNumNodes() const {
+                return numNodes;
+        }
 
-    /**
-     * Get the number of nodes
-     * @return The number of nodes
-     */
-    NodeID getNumNodes() const {
-        return numNodes;
-    }
+        /**
+         * Get the number of arcs
+         * @return The number of arcs
+         */
+        NodeID getNumArcs() const {
+                return numArcs;
+        }
 
-    /**
-     * Get the number of arcs
-     * @return The number of arcs
-     */
-    NodeID getNumArcs() const {
-        return numArcs;
-    }
+        /**
+         * Create a graph from file
+         * @param nodeFilename Filename for the nodes
+         * @param arcFilename Filename for the arcs
+         * @param metaDataFilename Filename for the metadata
+         */
+        void createFromFile(const std::string& nodeFilename,
+                            const std::string& arcFilename,
+                            const std::string& metaDataFilename);
 
-    /**
-     * Create a graph from file
-     * @param nodeFilename Filename for the nodes
-     * @param arcFilename Filename for the arcs
-     * @param metaDataFilename Filename for the metadata
-     */
-    void createFromFile(const std::string& nodeFilename,
+        /**
+         * Clear all nodes and arcs in this graph
+         */
+        void clear() {
+                delete [] nodes;
+                delete [] arcs;
+                nodes = NULL;
+                arcs = NULL;
+                numNodes = numArcs = 0;
+        }
+
+        /**
+         * Get a reference to a double stranded node, given the nodeID
+         * @param nodeID Identifier for the node
+         * @return Reference to the node
+         */
+        DSNode& getDSNode(NodeID nodeID) const {
+                assert(nodeID > 0 && nodeID <= numNodes);
+                return nodes[nodeID];
+        }
+
+        /**
+         * Get a single stranded node, given the nodeID
+         * @param nodeID Identifier for the node
+         * @return A Single Stranded node
+         */
+        const SSNode getSSNode(NodeID nodeID) const {
+                NodeID uNodeID = abs(nodeID);
+                assert(uNodeID != 0 && uNodeID <= numNodes);
+                return SSNode(nodes + uNodeID, nodeID);
+        }
+
+        /**
+         * Get a single stranded node, given the nodeID
+         * @param nodeID Identifier for the node
+         * @return A Single Stranded node
+         */
+        SSNode getSSNode(NodeID nodeID) {
+                NodeID uNodeID = abs(nodeID);
+                assert(uNodeID != 0 && uNodeID <= numNodes);
+                return SSNode(nodes + uNodeID, nodeID);
+        }
+
+        /**
+         * Simply write graph to file
+         */
+        void writeGraph(const std::string& nodeFilename,
                         const std::string& arcFilename,
                         const std::string& metaDataFilename);
 
-    /**
-     * Thread through the reads
-     */
-    void threadThroughReads();
+        /**
+         * Write graph to file (binary version)
+         * @param nodeFilename node filename
+         * @param arcFilename arc filename
+         * @param metaDataFilename Metadata filename
+         */
+        void writeGraphBin(const std::string& nodeFilename,
+                           const std::string& arcFilename,
+                           const std::string& metaDataFilename);
 
-    /**
-     * Clear all nodes and arcs in this graph
-     */
-    void clear() {
-        delete [] nodes;
-        delete [] arcs;
-        nodes = NULL;
-        arcs = NULL;
-        numNodes = numArcs = 0;
-    }
-
-    /**
-     * Get a reference to a double stranded node, given the nodeID
-     * @param nodeID Identifier for the node
-     * @return Reference to the node
-     */
-    DSNode& getDSNode(NodeID nodeID) const {
-        assert(nodeID > 0 && nodeID <= numNodes);
-        return nodes[nodeID];
-    }
-
-    /**
-     * Get a single stranded node, given the nodeID
-     * @param nodeID Identifier for the node
-     * @return A Single Stranded node
-     */
-    const SSNode getSSNode(NodeID nodeID) const {
-        NodeID uNodeID = abs(nodeID);
-        assert(uNodeID != 0 && uNodeID <= numNodes);
-        return SSNode(nodes + uNodeID, nodeID);
-    }
-
-    /**
-     * Get a single stranded node, given the nodeID
-     * @param nodeID Identifier for the node
-     * @return A Single Stranded node
-     */
-    SSNode getSSNode(NodeID nodeID) {
-        NodeID uNodeID = abs(nodeID);
-        assert(uNodeID != 0 && uNodeID <= numNodes);
-        return SSNode(nodes + uNodeID, nodeID);
-    }
-
-    /**
-     * Simply write graph to file
-     */
-    void writeGraph(const std::string& nodeFilename,
-                    const std::string& arcFilename,
-                    const std::string& metaDataFilename);
-
-    /**
-     * Write graph to file (binary version)
-     * @param nodeFilename node filename
-     * @param arcFilename arc filename
-     * @param metaDataFilename Metadata filename
-     */
-    void writeGraphBin(const std::string& nodeFilename,
-                       const std::string& arcFilename,
-                       const std::string& metaDataFilename);
-
-    /**
-     * Load graph to file (binary version)
-     * @param nodeFilename node filename
-     * @param arcFilename arc filename
-     * @param metaDataFilename Metadata filename
-     */
-    void loadGraphBin(const std::string& nodeFilename,
-                      const std::string& arcFilename,
-                      const std::string& metaDataFilename);
+        /**
+         * Load graph to file (binary version)
+         * @param nodeFilename node filename
+         * @param arcFilename arc filename
+         * @param metaDataFilename Metadata filename
+         */
+        void loadGraphBin(const std::string& nodeFilename,
+                          const std::string& arcFilename,
+                          const std::string& metaDataFilename);
 
 
-    /**
-     * Check a graph for consistency
-     */
-    void sanityCheck();
-    bool removeIncorrectLink();
+        /**
+         * Check a graph for consistency
+         */
+        void sanityCheck();
 
-    map<size_t, set<size_t> > kmerToReadMap;
-    typedef pair<int, pair<double, double> > pair_k;
-    map<NodeID, pair_k> nodesExpMult;
-    typedef multimap<NodeID, pair_k>::iterator mapIterator;
+        /**
+         * Populates the table as required by the ReadCorrection procedure
+         */
+        void populateTable();
 
-    /**
-     * Populates the table as required by the ReadCorrection procedure
-     */
-    void populateTable();
-    /**
-     * deletes the table again
-     */
-    void depopulateTable();
-    /**
-     * Find Kmer in the Kmernodetable
-     */
-    NodePosPair getNodePosPair(Kmer const &kmer) const;
-    /**
-     * Checks if the Kmer exists in the KmerNodeTable
-     */
-    bool kmerExistsInGraph(Kmer const &kmer) const;
-    /**
-     * get readLength
-     */
-    double getReadLength() const;
-    /*
-     *
-     */
-    void writeGraphFasta() const;
+        /**
+         * Populate a kmer node table
+         * @table Kmer node table to populate (output)
+         */
+        void populateTable(KmerNodeTable& table);
+
+        /**
+         * deletes the table again
+         */
+        void depopulateTable();
+
+        /*
+         *
+         */
+        void writeGraphFasta() const;
+
+        // ====================================================================
+        // KMER - NODE POSITON PAIR TABLE
+        // ====================================================================
+
+        /**
+         * Build a table to relate Kmers and NodePositionPairs
+         */
+        void buildKmerNPPTable();
+
+        /**
+         * Insert a < kmer , npp > tuple in the KmerNPP table
+         */
+        bool insertNPP(const Kmer& kmer, NodePosPair npp);
+
+        /**
+         * Find Kmer in the Kmernodetable
+         */
+        NodePosPair findNPP(Kmer const &kmer) const;
+
+        /**
+         * Reverse-complement a NodePosPair element
+         * @param npp NodePosPair element to reverse-complement
+         **/
+        void revCompNPP(NodePosPair& npp) const;
+
+        /**
+         * Check whether two NodePosPairs are consecutive in the graph
+         * @param left Left NodePosPair
+         * @param right Right NodePosPair
+         * @return True if the NodePosPairs are consecutive
+         */
+        bool consecutiveNPP(NodePosPair& left, NodePosPair& right) const;
 };
 
 #endif

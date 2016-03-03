@@ -79,27 +79,11 @@ public:
         }
 
         /**
-         * Get the expected multiplicity
-         * @return The expected multiplicity
-         */
-        double getExpMult() const {
-                return dsNode->getExpMult();
-        }
-
-        /**
          * Get the avarge kmer coverage
          * @return The average kmer coverage
          */
         double getAvgKmerCov(){
                 return (double)dsNode->getKmerCov()/(double)dsNode->getMarginalLength();
-        }
-
-        /**
-         * Set the expected multiplicity
-         * @param target Target multiplicity
-         */
-        void setExpMult(double target) {
-                dsNode->setExpMult(target);
         }
 
         /**
@@ -146,38 +130,6 @@ public:
          */
         void incKmerCov() {
                 dsNode->incKmerCov();
-        }
-
-        /**
-         * Get the multiplicity, rounded to the closest integer
-         * @return The multiplicity
-         */
-        size_t getRoundMult() const {
-                return dsNode->getRoundMult();
-        }
-
-        /**
-         * Get the low side estimation of the multiplicity
-         * @return The low side estimation of the multiplicity
-         */
-        size_t getLoExpMult() const {
-                return dsNode->getLoExpMult();
-        }
-
-        /**
-         * Get the high side estimation of the multiplicity
-         * @return The high side estimation of the multiplicity
-         */
-        size_t getHiExpMult() const {
-                return dsNode->getHiExpMult();
-        }
-
-        /**
-         * Check whether the multiplicity estimate is dubious
-         * @return True of false
-         */
-        bool multIsDubious() const {
-                return dsNode->multIsDubious();
         }
 
         /**
@@ -525,7 +477,7 @@ public:
          * @param pos Position in the sequence
          * @return Nucleotide at specified position
          */
-        char getNucleotide(PositionID pos) const {
+        char getNucleotide(NodePosition pos) const {
                 // check for out-of-bounds
                 if (pos >= getLength())
                         return '-';

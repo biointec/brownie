@@ -20,7 +20,6 @@
  ***************************************************************************/
 
 #include "graph.h"
-#include "kmernode.h"
 #include "settings.h"
 #include "library.h"
 
@@ -29,7 +28,7 @@ using namespace std;
 void DBGraph::parseReads(size_t thisThread,
                          vector<string>& readBuffer)
 {
-        for (size_t i = 0; i < readBuffer.size(); i++) {
+        /*for (size_t i = 0; i < readBuffer.size(); i++) {
                 const string& read = readBuffer[i];
 
                 KmerIt it(read);
@@ -68,7 +67,7 @@ void DBGraph::parseReads(size_t thisThread,
                         else
                                 prevID = 0;
                 }
-        }
+        }*/
 }
 
 void DBGraph::workerThread(size_t thisThread, LibraryContainer* inputs)
@@ -83,7 +82,7 @@ void DBGraph::workerThread(size_t thisThread, LibraryContainer* inputs)
 
 void DBGraph::countNodeandArcFrequency(LibraryContainer &inputs)
 {
-        const unsigned int& numThreads = settings.getNumThreads();
+        /*const unsigned int& numThreads = settings.getNumThreads();
 
         cout << "Populating table... ";
         cout.flush();
@@ -106,27 +105,7 @@ void DBGraph::countNodeandArcFrequency(LibraryContainer &inputs)
 
         inputs.joinIOThreads();
 
-        depopulateTable();
-}
-
-// ============================================================================
-// PRIVATE NODE COVERAGE / MULTIPLICITY
-// ============================================================================
-
-size_t DBGraph::getLowestArcMultiplicity ( NodeID left, NodeID right )
-{
-        SSNode node = getSSNode ( right );
-        int lowArcMult = node.getLoExpMult();
-
-        for ( ArcIt it = node.leftBegin(); it != node.leftEnd(); it++ ) {
-                if ( it->getNodeID() == left ) {
-                        continue;
-                }
-
-                lowArcMult -= getSSNode ( it->getNodeID() ).getHiExpMult();
-        }
-
-        return ( lowArcMult > 0 ) ? lowArcMult : 0;
+        depopulateTable();*/
 }
 
 // ============================================================================
@@ -174,7 +153,7 @@ double DBGraph::getInitialEstimateForCoverage ( const ReadLibrary& input,
 double DBGraph::estimateReadStartCoverage ( const ReadLibrary &input,
         const vector<size_t> &readFreq ) const
 {
-        size_t nom = 0, denom = 0;
+      /*  size_t nom = 0, denom = 0;
         size_t k = Kmer::getK();
         size_t RL = input.getAvgReadLength();
 
@@ -194,5 +173,6 @@ double DBGraph::estimateReadStartCoverage ( const ReadLibrary &input,
                 denom += ( MNL + RL - k )  * node.getRoundMult();
         }
 
-        return ( double ) nom / ( double ) denom;
+        return ( double ) nom / ( double ) denom;*/
+        return 0;
 }

@@ -139,8 +139,6 @@ private:
         ArcID rightID;          // ID of the first right arc or merged node
         Bitfield arcInfo;       // number of arcs at each node
 
-        double expMult;
-
         std::atomic<Coverage> readStartCov;
         std::atomic<Coverage> kmerCov;
 
@@ -156,24 +154,8 @@ public:
         /**
          * Default constructor
          */
-        DSNode() : leftID(0), rightID(0), expMult(0), readStartCov(0), kmerCov(0) {
+        DSNode() : leftID(0), rightID(0), readStartCov(0), kmerCov(0) {
                 arcInfo.up = 0;
-        }
-
-        /**
-         * Set the expected multiplicity
-         * @param target The target multiplicity
-         */
-        void setExpMult(double target) {
-                expMult = target;
-        }
-
-        /**
-         * Get the expected multiplicity
-         * @return The expected multiplicity
-         */
-        double getExpMult() const {
-                return expMult;
         }
 
         /**
@@ -220,40 +202,6 @@ public:
          */
         void incKmerCov() {
                 kmerCov++;
-        }
-
-        /**
-         * Get the multiplicity, rounded to the closest integer
-         * @return The multiplicity
-         */
-        size_t getRoundMult() const {
-                return (size_t)(expMult + 0.5);
-        }
-
-        /**
-         * Get the low side estimation of the multiplicity
-         * @return The low side estimation of the multiplicity
-         */
-        size_t getLoExpMult() const {
-                int loSi = (int)(expMult - MULT_SIGN_STD * readStartCov + 0.5);
-                return (loSi > 0) ? loSi : 0;
-        }
-
-        /**
-         * Get the high side estimation of the multiplicity
-         * @return The high side estimation of the multiplicity
-         */
-        size_t getHiExpMult() const {
-                int hiSi = (int)(expMult + MULT_SIGN_STD * readStartCov + 0.5);
-                return hiSi;
-        }
-
-        /**
-         * Check whether the multiplicity estimate is dubious
-         * @return True of false
-         */
-        bool multIsDubious() const {
-                return readStartCov < 1000;
         }
 
         /**
@@ -516,7 +464,7 @@ public:
          * @param pos Position in the sequence
          * @return Nucleotide at specified position
          */
-        char getNucleotide(PositionID pos) const {
+        char getNucleotide(NodePosition pos) const {
                 // check for out-of-bounds
                 if (pos >= getLength())
                         return '-';

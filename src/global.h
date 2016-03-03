@@ -81,7 +81,7 @@ const int32_t MAX_NODE_ID = 2147000000;
 
 typedef int32_t ArcID;  // max 2 billion arcs
 typedef uint32_t NodeLength;    // max length is 4 billion
-typedef NodeLength PositionID;    // position in a contig or read
+typedef NodeLength NodePosition;    // position in a contig or read
 typedef uint64_t NucleotideID;
 typedef uint32_t Coverage;       // coverage of an arc
 typedef uint8_t Multiplicity;   // multiplicity of a node, arc, etc

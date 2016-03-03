@@ -1,4 +1,4 @@
-add_executable(brownie  kmeroverlaptable.cpp readcorrection.cpp alignment.cpp bubble.cpp coverage.cpp library.cpp kmernode.cpp kmertable.cpp cliptips.cpp dsnode.cpp nucleotide.cpp nodeendstable.cpp settings.cpp util.cpp tstring.cpp kmeroverlap.cpp graph.cpp brownie.cpp solutioncomp.cpp suffix_tree.c)
+add_executable(brownie  kmeroverlaptable.cpp readcorrection.cpp alignment.cpp coverage.cpp library.cpp kmernpp.cpp kmertable.cpp cliptips.cpp dsnode.cpp nucleotide.cpp nodeendstable.cpp settings.cpp util.cpp tstring.cpp kmeroverlap.cpp graph.cpp brownie.cpp refcomp.cpp suffix_tree.c)
 
 target_link_libraries(brownie readfile essaMEM pthread)
 

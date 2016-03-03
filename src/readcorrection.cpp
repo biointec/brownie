@@ -24,7 +24,6 @@
 
 #include "library.h"
 #include "readcorrection.h"
-#include "kmernode.h"
 
 using namespace std;
 
@@ -121,7 +120,7 @@ void ReadCorrection::revCompl(vector< NodePosPair >& npp)
                         continue;
 
                 NodeID nodeID = npp[i].getNodeID();
-                size_t pos = npp[i].getOffset();
+                size_t pos = npp[i].getPosition();
                 const SSNode node = dbg.getSSNode(nodeID);
                 npp[i] = NodePosPair(-nodeID, node.getMarginalLength() - 1 - pos);
         }
@@ -131,7 +130,7 @@ void ReadCorrection::findNPPSlow(const string& read, vector<NodePosPair>& npp)
 {
         for (KmerIt it(read); it.isValid(); it++) {
                 Kmer kmer = it.getKmer();
-                NodePosPair result = dbg.getNodePosPair(kmer);
+                NodePosPair result = dbg.findNPP(kmer);
                 npp[it.getOffset()] = result;
         }
 }
@@ -140,7 +139,7 @@ void ReadCorrection::findNPPFast(const string& read, vector<NodePosPair>& nppv)
 {
         for (KmerIt it(read); it.isValid(); it++) {
                 Kmer kmer = it.getKmer();
-                NodePosPair npp = dbg.getNodePosPair(kmer);
+                NodePosPair npp = dbg.findNPP(kmer);
                 nppv[it.getOffset()] = npp;
 
                 if (!npp.isValid())
@@ -150,7 +149,7 @@ void ReadCorrection::findNPPFast(const string& read, vector<NodePosPair>& nppv)
                 const SSNode node = dbg.getSSNode(nodeID);
 
                 size_t readPos = it.getOffset() + Kmer::getK();
-                size_t nodePos = npp.getOffset() + Kmer::getK();
+                size_t nodePos = npp.getPosition() + Kmer::getK();
 
                 while ((readPos < read.size()) && (nodePos < node.getLength())) {
                         if (read[readPos] == node.getNucleotide(nodePos)) {
@@ -176,7 +175,7 @@ void ReadCorrection::extractSeeds(const vector<NodePosPair>& nppv,
                 // is it the first time we encounter a valid npp?
                 if (prev == nppv.size()) {
                         prev = i;
-                        seeds.push_back(Seed(nppv[i].getNodeID(), nppv[i].getOffset(), i, i + 1));
+                        seeds.push_back(Seed(nppv[i].getNodeID(), nppv[i].getPosition(), i, i + 1));
                         continue;
                 }
 
@@ -186,12 +185,12 @@ void ReadCorrection::extractSeeds(const vector<NodePosPair>& nppv,
 
                 // no, check for check for consistency
                 if (thisNode.getNodeID() == prevNode.getNodeID()) {
-                        if ((nppv[i].getOffset() - nppv[prev].getOffset()) == (i - prev))
+                        if ((nppv[i].getPosition() - nppv[prev].getPosition()) == (i - prev))
                                 consistent = true;
                 } else {                // we're in different nodes
                         if (prevNode.getRightArc(thisNode.getNodeID()) != NULL) {
-                                size_t thisPos = prevNode.getMarginalLength() + nppv[i].getOffset();
-                                if ((thisPos - nppv[prev].getOffset()) == (i - prev)) {
+                                size_t thisPos = prevNode.getMarginalLength() + nppv[i].getPosition();
+                                if ((thisPos - nppv[prev].getPosition()) == (i - prev)) {
                                         seeds.back().nodeID.push_back(thisNode.getNodeID());
                                         consistent = true;
                                 }
@@ -200,7 +199,7 @@ void ReadCorrection::extractSeeds(const vector<NodePosPair>& nppv,
 
                 prev = i;
                 if (!consistent) {
-                        seeds.push_back(Seed(nppv[i].getNodeID(), nppv[i].getOffset(), i, i + 1));
+                        seeds.push_back(Seed(nppv[i].getNodeID(), nppv[i].getPosition(), i, i + 1));
                 } else {
                         seeds.back().readEnd = i + 1;
                 }
@@ -304,8 +303,8 @@ void ReadCorrection::extendSeed(string& read, vector<NodePosPair>& npp,
         // try to extend to the seed to the right within the current node
         const SSNode node = dbg.getSSNode(npp[seedLast-1].getNodeID());
         while ((seedLast < getMarginalLength(read)) &&
-               (npp[seedLast - 1].getOffset() + 1 < node.getMarginalLength())) {
-                npp[seedLast] = NodePosPair(node.getNodeID(), npp[seedLast-1].getOffset() + 1);
+               (npp[seedLast - 1].getPosition() + 1 < node.getMarginalLength())) {
+                npp[seedLast] = NodePosPair(node.getNodeID(), npp[seedLast-1].getPosition() + 1);
                 seedLast++;
         }
 
@@ -325,8 +324,8 @@ void ReadCorrection::applyReadCorrection(string& read,
         size_t curr = seedFirst;
         while (curr < seedLast) {
                 SSNode node = dbg.getSSNode(npp[curr].getNodeID());
-                size_t strLen = min(node.getLength() - npp[curr].getOffset(), read.size() - curr);
-                string str = node.substr(npp[curr].getOffset(), strLen);
+                size_t strLen = min(node.getLength() - npp[curr].getPosition(), read.size() - curr);
+                string str = node.substr(npp[curr].getPosition(), strLen);
 
                 read.replace(curr, strLen, str);
                 curr += (strLen - Kmer::getK() + 1);
@@ -495,8 +494,8 @@ void ReadCorrection::findSeedMEM(const string& read,
 }
 
 int ReadCorrection::correctRead(const string& read,
-                                   string& bestCorrectedRead,
-                                   const vector<Seed>& seeds)
+                                string& bestCorrectedRead,
+                                const vector<Seed>& seeds)
 {
         int bestScore = -read.size();
 
@@ -530,7 +529,7 @@ int ReadCorrection::correctRead(const string& read,
 }
 
 void ReadCorrection::correctRead(ReadRecord& record,
-                                    AlignmentMetrics& metrics)
+                                 AlignmentMetrics& metrics)
 {
         bool correctedByMEM = false, readCorrected = false;
         string& read = record.getRead();
@@ -688,7 +687,7 @@ ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
 {
         Util::startChrono();
         cout << "Creating kmer lookup table... "; cout.flush();
-        dbg.populateTable();
+        //dbg.populateTable();
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
         Util::startChrono();
@@ -701,5 +700,5 @@ ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
 ReadCorrectionHandler::~ReadCorrectionHandler()
 {
         delete sa;
-        dbg.depopulateTable();
+        //dbg.depopulateTable();
 }

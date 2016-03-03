@@ -78,7 +78,7 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                 }
 
 #ifdef DEBUG
-                if (remove) {
+               /* if (remove) {
                         if (trueMult.size()>0&& trueMult[id] > 0) {
                                 if (isolated)
                                         fps++;
@@ -110,7 +110,7 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                                 else
                                         fn++;
                         }
-                }
+                }*/
 #endif
         }
 
@@ -129,66 +129,6 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
         cout << "\tSensitivity: " << 100.0 * Util::getSensitivity(tp, fn) << "%" << endl;
         cout << "\tSpecificity: " << 100.0 * Util::getSpecificity(tn, fp) << "%" << endl;
         cout << "\t===== DEBUG: end =====" << endl;*/
-#endif
-
-        return  numDeleted > 0;
-}
-
-bool DBGraph::canonicalBubble(double covCutoff)
-{
-        cout << endl << "=================== Canonical Bubble ===================" << endl;
-
-#ifdef DEBUG
-        size_t tp=0, tn=0, fp=0,fn=0;
-#endif
-
-        size_t numDeleted = 0, numTotal = 0;
-        cout << "Cut-off value for removing bubbles is: " << covCutoff << endl;
-
-        for (NodeID id = 1; id <= numNodes; id++) {
-                SSNode node = getSSNode(id);
-                if (!node.isValid())
-                        continue;
-                numTotal++;
-
-                // check for nodes of length k
-                if (node.getMarginalLength() != Kmer::getK())
-                        continue;
-                if (node.getNumLeftArcs() != 1)
-                        continue;
-                if (node.getNumRightArcs() != 1)
-                        continue;
-
-                bool remove = (node.getAvgKmerCov() <= covCutoff);
-                if (remove) {
-                        removeNode(id);
-                        numDeleted++;
-                }
-
-#ifdef DEBUG
-                if (remove) {
-                        if (trueMult.size()>0&& trueMult[id] > 0) {
-                                fp++;
-                        } else {
-                                tp++;
-                        }
-                } else {
-                        if (trueMult.size()>0&& trueMult[id] > 0) {
-                                tn++;
-                        } else {
-                                fn++;
-                        }
-                }
-#endif
-        }
-
-        cout << "Clipped " << numDeleted << "/" << numTotal << " nodes" << endl;
-#ifdef DEBUG
-        cout << "\t===== DEBUG: canonical bubble report =====" << endl;
-        cout << "\tCanonical bubble TP: " << tp << "\tTN: " << tn << "\tFP: " << fp << "\tFN: " << fn << endl;
-        cout << "\tSensitivity: " << 100.0 * Util::getSensitivity(tp, fn) << "%" << endl;
-        cout << "\tSpecificity: " << 100.0 * Util::getSpecificity(tn, fp) << "%" << endl;
-        cout << "\t===== DEBUG: end =====" << endl;
 #endif
 
         return  numDeleted > 0;
@@ -219,13 +159,13 @@ bool DBGraph::concatenateNodes()
                         continue;
 
 #ifdef DEBUG
-                if (!trueMult.empty()) {
+              /*  if (!trueMult.empty()) {
                         if (trueMult[abs(lID)] != trueMult[abs(rID)]) {
                                 numIncorrectConcatenations++;
                                 trueMult[abs(lID)]=0;
                                 trueMult[abs(rID)]=0;
                         }
-                }
+                }*/
 #endif
 
                 left.deleteRightArc(rID);
@@ -236,12 +176,12 @@ bool DBGraph::concatenateNodes()
                 right.invalidate();
                 numConcatentations++;
 
-                deque<SSNode> deq;
-                deq.push_back(left);
-                deq.push_back(right);
+                vector<NodeID> nodeList;
+                nodeList.push_back(lID);
+                nodeList.push_back(rID);
 
                 string str;
-                convertNodesToString(deq, str);
+                convertNodesToString(nodeList, str);
 
                 left.setSequence(str);
                 lID--;
@@ -336,15 +276,8 @@ double DBGraph::getPathAvgKmerCov(const vector<NodeID>& path)
 
 void DBGraph::removePath(const vector<NodeID>& pathA)
 {
-        for (auto it : pathA) {
-                //cout << "\tDeleted node " << it << endl;
-                if (trueMult[abs(it)] > 0) {
-                        cout << "Incorrectly DELETED NODE: " << it << endl;
-                        //writeCytoscapeGraph(settings.getTempDirectory() + "cytIncorrect", it, 10);
-                        //exit(0);
-                }
+        for (auto it : pathA)
                 removeNode(it);
-        }
 }
 
 bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,

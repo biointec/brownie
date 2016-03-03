@@ -27,6 +27,7 @@
 #include "kmeroverlaptable.h"
 #include "kmertable.h"
 #include "readcorrection.h"
+#include "refcomp.h"
 
 using namespace std;
 
@@ -35,77 +36,6 @@ Brownie::Brownie(int argc, char** args)
         settings.parseCommandLineArguments(argc, args, libraries);
         Kmer::setWordSize(settings.getK());
         RKmer::setWordSize(settings.getK() - KMERBYTEREDUCTION * 4);
-}
-
-void Brownie::printInFile()
-{
-        string konsole = settings.getTempDirectory()+ "/konsole.txt";
-        freopen(konsole.c_str(), "a", stdout);
-        cout << "-------------------------------------------------------------------------------" << endl;
-        time_t t;
-        time(&t);
-        cout << ctime(&t) << endl; // e.g., Fri May 02 17:57:14 2003
-        cout << "-------------------------------------------------------------------------------" << endl;
-        cout << "Welcome to Brownie\n" << endl;
-}
-
-void Brownie::parameterEstimationInStage4(DBGraph &graph){
-        cout << endl << " ================ Parameter Estimation ===============" << endl;
-        double  estimatedKmerCoverage = 0,
-                estimatedMKmerCoverageSTD = 0,
-                cutOffvalue = 0,
-                readLength = 0;
-        readLength = libraries.getAvgReadLength();
-        if (readLength <= settings.getK() || readLength > 500)
-                readLength = 150;
-        cout << "Loading test graph for initial parameter estimation" << endl;
-        DBGraph testgraph(settings);
-        testgraph.loadGraphBin(getBinNodeFilename(3),
-                               getBinArcFilename(3),
-                               getMetaDataFilename(3));
-        testgraph.readLength = readLength;
-        #ifdef DEBUG
-        testgraph.compareToSolution(getTrueMultFilename(3), true);
-        #endif
-      //  testgraph.clipTips(0);
-     //   testgraph.concatenateNodes(true);
-        //testgraph.filterCoverage(testgraph.cutOffvalue);
-        //testgraph.concatenateNodes(true);
-        //testgraph.extractStatistic(0);
-        cout << "Estimated Kmer coverage mean: " << testgraph.estimatedKmerCoverage << endl;
-        cout << "Estimated Kmer coverage std:  " << testgraph.estimatedMKmerCoverageSTD << endl;
-
-        estimatedKmerCoverage = testgraph.estimatedKmerCoverage;
-        estimatedMKmerCoverageSTD = testgraph.estimatedMKmerCoverageSTD;
-        double estimatedErroneousKmerCoverage = 1+ estimatedKmerCoverage/100;
-        double e = 2.718281;
-        double c = estimatedErroneousKmerCoverage/estimatedKmerCoverage;
-
-        if (settings.getCutOffValue() > 0)
-                cutOffvalue = settings.getCutOffValue();
-        else
-                cutOffvalue = (estimatedErroneousKmerCoverage-estimatedKmerCoverage)* (log(e)/log(c));
-        testgraph.getGraphStats();
-        testgraph.clear();
-           //initialize values for graph parameter based on test graph.
-        graph.estimatedKmerCoverage = estimatedKmerCoverage;
-        graph.estimatedMKmerCoverageSTD = estimatedMKmerCoverageSTD;
-        graph.cutOffvalue = cutOffvalue;
-        graph.readLength = readLength;
-        graph.maxNodeSizeToDel = readLength*4;
-        graph.redLineValueCov = cutOffvalue;
-        graph.certainVlueCov = cutOffvalue*.3;
-        graph.safeValueCov = cutOffvalue*.7;
-
-        cout << "Estimated Kmer coverage:        " << graph.estimatedKmerCoverage << endl;
-        cout << "Estimated MKmer coverage std:   " << graph.estimatedMKmerCoverageSTD << endl;
-        cout << "Cut-off value:                  " << graph.cutOffvalue << endl;
-        cout << "Read length:                    " << graph.readLength << endl;
-        cout << "Max node size to delete:        " << graph.maxNodeSizeToDel << endl;
-        cout << "Red line value cov:             " << graph.redLineValueCov << endl;
-        cout << "Certain value cov:              " << graph.certainVlueCov << endl;
-        cout << "Safe value cov:                 " << graph.safeValueCov << endl;
-        cout << "End of parameter estimation ... " << endl;
 }
 
 void Brownie::stageOne()
@@ -206,7 +136,7 @@ void Brownie::stageThree()
         cout << "Entering stage 3" << endl;
         cout << "================" << endl;
 
-       if (!stageThreeNecessary()) {
+        if (!stageThreeNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 3..." << endl << endl;
                 return;
@@ -245,49 +175,37 @@ void Brownie::stageFour()
         // ============================================================
         // STAGE 4 : GRAPH SIMPLIFICATION
         // ============================================================
+
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
+
         if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
-                "skipping stage 4..." << endl << endl;
-                 return;
+                        "skipping stage 4..." << endl << endl;
+                return;
         }
-        DBGraph graph(settings);
-        //parameterEstimationInStage4( graph );
 
+        DBGraph graph(settings);
         Util::startChrono();
         cout << "Creating graph... "; cout.flush();
         graph.loadGraphBin(getBinNodeFilename(3),
                            getBinArcFilename(3),
                            getMetaDataFilename(3));
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
-        cout <<  graph.getGraphStats() << endl;
+        cout << graph.getGraphStats() << endl;
 
 #ifdef DEBUG
-        graph.compareToSolution(getTrueMultFilename(3), true);
-        graph.compareToSolution2(getTrueMultFilename(3), true);
-
         Util::startChrono();
-        cout << "Writing cytoscape graph files..."; cout.flush();
-        graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytUncorrected", 3, 10);
+        cout << "Building kmer - node/position index... "; cout.flush();
+        graph.buildKmerNPPTable();              // build kmer-NPP index
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        RefComp refComp("genome.fasta");
+        refComp.validateGraph(graph);
 #endif
 
         // TIP CLIPPING
         while (graph.clipTips(30, libraries.getAvgReadLength()))
                 graph.concatenateNodes();
-
-        cout <<  graph.getGraphStats() << endl;
-        Util::startChrono();
-        cout << "Writing cytoscape graph files..."; cout.flush();
-        graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytAftertips", 656786, 10);
-        cout << "done (" << Util::stopChronoStr() << ")" << endl;
-
-        // CANONICAL BUBBLES
-       /* while (graph.canonicalBubble(30))
-                graph.concatenateNodes();
-
-        cout <<  graph.getGraphStats() << endl;*/
 
         // BUBBLE DETECTION
         while (graph.bubbleDetection(30, libraries.getAvgReadLength()))
@@ -296,17 +214,6 @@ void Brownie::stageFour()
         // TIP CLIPPING
         while (graph.clipTips(30, libraries.getAvgReadLength()))
                 graph.concatenateNodes();
-
-        cout <<  graph.getGraphStats() << endl;
-        Util::startChrono();
-        cout << "Writing cytoscape graph files..."; cout.flush();
-        graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytBubble", graph.getFirstValidNode(-659552), 10);
-        cout << "done (" << Util::stopChronoStr() << ")" << endl;
-
-#ifdef DEBUG
-        graph.compareToSolution(getTrueMultFilename(3), false);
-        graph.compareToSolution2(getTrueMultFilename(3), true);
-#endif
 
         // DETACH NODES
         while (graph.flowCorrection())
@@ -318,12 +225,11 @@ void Brownie::stageFour()
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
 #ifdef DEBUG
-        graph.compareToSolution(getTrueMultFilename(3), false);
-        graph.compareToSolution2(getTrueMultFilename(3), true);
+
 #endif
 
-        graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4)); // FIXME !!
-        //cout << "Graph correction completed in " << Util::stopChronoStr() << endl;
+        graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));
+        cout << "Graph correction completed in " << Util::stopChronoStr() << endl;
 
 #ifdef DEBUG
         graph.sanityCheck();
@@ -396,11 +302,13 @@ int main(int argc, char** args)
                 cout << " (release mode)" << endl;
 #endif
                 cout << "Today is " << Util::getDateTime() << endl;
+
                 brownie.stageOne();
                 brownie.stageTwo();
                 brownie.stageThree();
                 brownie.stageFour();
-                brownie.stageFive();  // FIXME !!
+                brownie.stageFive();
+
                 brownie.writeGraphFasta();
         } catch (exception &e) {
                 cerr << "Fatal error: " << e.what() << endl;
