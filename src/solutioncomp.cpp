@@ -323,7 +323,7 @@ void DBGraph::findBreakpoint(){
         size_t numOfKmers = 0;
         size_t numOfFoundKmers = 0;
         size_t numOfBreakPoint=0;
-         for(auto genome : reference){
+        for(const auto genome : reference){
                 NodeID preNodeID=0, curNodeID=0;
                 SSNode preNode, curNode;
                 for (KmerIt it(genome); it.isValid(); it++) {
@@ -350,7 +350,6 @@ void DBGraph::findBreakpoint(){
                                 if ( preNodeID != 0&&  !checkConnectivity(curNode , preNode))
                                         numOfBreakPoint++;
                         }
-
 
                 }
         }
