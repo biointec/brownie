@@ -330,22 +330,28 @@ void DBGraph::findBreakpoint(){
                         Kmer kmer = it.getKmer();
                         NodePosPair npp = getNodePosPair(kmer);
                         numOfKmers++;
-                        if (!npp.isValid())
+                        if (!npp.isValid()){
+                                numOfBreakPoint++;
                                 continue;
+                        }
                         NodeID nodeID = npp.getNodeID();
                         SSNode node = getSSNode(nodeID);
-                        if(!node.isValid())
+                        if(!node.isValid()){
+                                numOfBreakPoint++;
                                 continue;
+                        }
                         numOfFoundKmers++;
                         if (curNodeID != nodeID){
                                 preNodeID=curNodeID;
                                 preNode=curNode;
                                 curNodeID=nodeID;
                                 curNode=node;
+                                //for the first time preNodeID is 0.
+                                if ( preNodeID != 0&&  !checkConnectivity(curNode , preNode))
+                                        numOfBreakPoint++;
                         }
-                        //for the first time preNodeID is 0.
-                        if ( preNodeID != 0&&  !checkConnectivity(curNode , preNode))
-                                numOfBreakPoint++;
+
+
                 }
         }
         cout << "Percentage of kmers in the genome which are exist in the graph is:\t"
