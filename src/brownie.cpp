@@ -201,6 +201,8 @@ void Brownie::stageFour()
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         RefComp refComp("genome.fasta");
         refComp.validateGraph(graph);
+        vector<size_t> trueMult;
+        refComp.getNodeMultiplicity(graph, trueMult);
 #endif
 
         // TIP CLIPPING
@@ -225,7 +227,11 @@ void Brownie::stageFour()
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
 #ifdef DEBUG
-
+        Util::startChrono();
+        cout << "Building kmer - node/position index... "; cout.flush();
+        graph.buildKmerNPPTable();              // build kmer-NPP index
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        refComp.validateGraph(graph);
 #endif
 
         graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));

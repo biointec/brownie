@@ -21,20 +21,13 @@
 #include "kmernpp.h"
 #include "graph.h"
 #include "settings.h"
+#include "tstring.h"
 
 using namespace std;
 
 // ============================================================================
 // KMER - NODE POSITON PAIR TABLE
 // ============================================================================
-
-void DBGraph::revCompNPP(NodePosPair& npp) const
-{
-        NodeID nodeID = npp.getNodeID();
-        NodePosition pos = npp.getPosition();
-        const SSNode node = getSSNode(nodeID);
-        npp = NodePosPair(-nodeID, node.getMarginalLength() - 1 - pos);
-}
 
 void DBGraph::buildKmerNPPTable()
 {
@@ -47,8 +40,8 @@ void DBGraph::buildKmerNPPTable()
                 numKmers += node.getMarginalLength();
         }
         cout << "Number of kmers: " << numKmers << endl;
-        nppTable.clear();
-        nppTable.resize(numKmers);
+        kmerNPPTable.clear();
+        kmerNPPTable.resize(numKmers);
 
         // populate the table with kmers
         for (NodeID id = 1; id <= numNodes; id++) {
@@ -67,6 +60,11 @@ void DBGraph::buildKmerNPPTable()
         }
 }
 
+void DBGraph::destroyKmerNPPTable()
+{
+        kmerNPPTable.clear();
+}
+
 bool DBGraph::insertNPP(const Kmer& kmer, NodePosPair npp)
 {
         // chose a representative kmer
@@ -80,7 +78,7 @@ bool DBGraph::insertNPP(const Kmer& kmer, NodePosPair npp)
                 revCompNPP(npp);
 
         // insert value in table
-        auto it = nppTable.insert(pair<Kmer, NodePosPair>(reprKmer, npp));
+        auto it = kmerNPPTable.insert(pair<Kmer, NodePosPair>(reprKmer, npp));
 
         return it.second;
 }
@@ -94,10 +92,10 @@ NodePosPair DBGraph::findNPP(Kmer const &kmer) const
         bool reverse = (kmer != reprKmer);
 
         // find the kmer in the table
-        KmerNodeIt it = nppTable.find(reprKmer);
+        auto it = kmerNPPTable.find(reprKmer);
 
         // if it is not found, get out
-        if (it == nppTable.end())
+        if (it == kmerNPPTable.end())
                 return NodePosPair(0, 0);
 
         // if is found, check whether it needs to be reverse-complemented
@@ -106,6 +104,14 @@ NodePosPair DBGraph::findNPP(Kmer const &kmer) const
                 revCompNPP(npp);
 
         return npp;
+}
+
+void DBGraph::revCompNPP(NodePosPair& npp) const
+{
+        NodeID nodeID = npp.getNodeID();
+        NodePosition pos = npp.getPosition();
+        const SSNode node = getSSNode(nodeID);
+        npp = NodePosPair(-nodeID, node.getMarginalLength() - 1 - pos);
 }
 
 bool DBGraph::consecutiveNPP(NodePosPair& left, NodePosPair& right) const
@@ -129,5 +135,4 @@ bool DBGraph::consecutiveNPP(NodePosPair& left, NodePosPair& right) const
 
         // if so, make sure the right kmer is the first kmer in the right node
         return right.getPosition() == 0;
-
 }

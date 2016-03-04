@@ -33,6 +33,18 @@ const DBGraph* DBGraph::graph = NULL;
 // GRAPH STATISTICS
 // ============================================================================
 
+std::ostream &operator<<(std::ostream &out, const vector<NodeID> &path)
+{
+        for (auto& it : path)
+                out << it << " ";
+
+        return out;
+}
+
+// ============================================================================
+// GRAPH STATISTICS
+// ============================================================================
+
 std::ostream &operator<<(std::ostream &out, const GraphStats &stats)
 {
         out << "Number of nodes: " << stats.numNodes << "\n";
@@ -43,6 +55,12 @@ std::ostream &operator<<(std::ostream &out, const GraphStats &stats)
         return out;
 }
 
+bool sortNodeByLength(const NodeID& left, const NodeID& right)
+{
+        return DBGraph::graph->getDSNode(left).getMarginalLength() >
+               DBGraph::graph->getDSNode(right).getMarginalLength();
+}
+
 // ============================================================================
 // GRAPH CLASS
 // ============================================================================
@@ -50,45 +68,6 @@ std::ostream &operator<<(std::ostream &out, const GraphStats &stats)
 DBGraph::DBGraph(const Settings& settings) : settings(settings),
 nodes(NULL), arcs(NULL), numNodes(0), numArcs(0) {
         DBGraph::graph = this;
-}
-
-void DBGraph::removeNode(NodeID nodeID)
-{
-        #ifdef DEBUG
-/*        if (trueMult[abs(nodeID)] > 0)
-                cout << "Error removing node " << nodeID << endl;*/
-        #endif
-
-        SSNode node = getSSNode(nodeID);
-        for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
-                SSNode leftNode = getSSNode(it->getNodeID());
-                if (leftNode.getNodeID()==-node.getNodeID())
-                        continue;
-                bool result = leftNode.deleteRightArc (node.getNodeID());
-                assert(result);
-        }
-
-        for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++) {
-                SSNode rightNode = getSSNode ( it->getNodeID() );
-                if (rightNode.getNodeID()==-node.getNodeID())
-                        continue;
-                bool result = rightNode.deleteLeftArc(node.getNodeID());
-                assert(result);
-        }
-
-        node.deleteAllRightArcs();
-        node.deleteAllLeftArcs();
-        node.invalidate();
-}
-
-void DBGraph::detachNode(NodeID leftID, NodeID rightID)
-{
-        #ifdef DEBUG
-      /*  if ((trueMult[abs(leftID)] > 0) && (trueMult[abs(rightID)] > 0))
-                cout << "Error disconnecting nodes " << leftID << " and " << rightID << endl;*/
-        #endif
-        getSSNode(leftID).deleteRightArc(rightID);
-        getSSNode(rightID).deleteLeftArc(leftID);
 }
 
 NodeID DBGraph::getFirstValidNode(NodeID seed)
@@ -204,6 +183,177 @@ void DBGraph::increaseCoverage(const NodeEndRef &left, const NodeEndRef &right)
 
                         lNode.getRightArc(right.getNodeID())->incReadCov();
                 rNode.getLeftArc(left.getNodeID())->incReadCov();
+}
+
+void DBGraph::convertNodesToString(const vector<NodeID> &nodeSeq,
+                                   string &output)
+{
+        output.clear();
+
+        if (nodeSeq.empty())
+                return;
+
+        size_t size = 0;
+        for (size_t i = 0; i < nodeSeq.size(); i++)
+                size += getSSNode(nodeSeq[i]).getLength();
+        size -= (nodeSeq.size() - 1) * (Kmer::getK() - 1);
+
+        output = getSSNode(nodeSeq[0]).getSequence();
+        for (size_t i = 1; i < nodeSeq.size(); i++)
+                output.append(getSSNode(nodeSeq[i]).getSequence().substr(Kmer::getK() - 1));
+
+        assert(size == output.size());
+}
+
+
+
+GraphStats DBGraph::getGraphStats()
+{
+        vector<size_t> nodeLength;
+
+        size_t numNodes = 0;            // number of (valid) nodes in the graph
+        size_t numArcs = 0;             // number of (valid) arcs in the graph
+        size_t N50 = 0;                 // N50 of the nodes
+        size_t totMargLength = 0;       // total marginal length of all nodes
+        size_t totLength = 0;           // total length of all nodes
+
+        for (NodeID id = 1; id <= this->numNodes; id++) {
+                SSNode node = getSSNode(id);
+
+                if (!node.isValid())
+                        continue;
+
+                numNodes++;
+
+                for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++)
+                        numArcs++;
+
+                for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++)
+                        numArcs++;
+
+                totMargLength += node.getMarginalLength();
+                totLength += node.getLength();
+                nodeLength.push_back(node.getLength());
+        }
+
+        sort(nodeLength.begin(), nodeLength.end());
+
+        size_t currLength = 0;
+        for (size_t i = 0; i < nodeLength.size(); i++) {
+                currLength += nodeLength[i];
+                if (currLength >= 0.5*totLength) {
+                        N50 = nodeLength[i];
+                        break;
+                }
+        }
+
+        GraphStats stats;
+        stats.setMetrics(numNodes, numArcs, N50, totMargLength);
+        return stats;
+}
+
+void DBGraph::writeCytoscapeGraph(const std::string& filename,
+                                  NodeID seedNodeID, size_t maxDepth) const
+{
+        // a map containing nodeIDs to handle + their depth
+        map<NodeID, size_t> nodeDepth;
+        // set of nodes that were handled
+        set<NodeID> nodesHandled;
+
+        // if default input values are provided, write the entire graph
+        if (seedNodeID == 0) {
+                for (NodeID id = -numNodes; id <= numNodes; id++) {
+                        if (id == 0)
+                                continue;
+                        if (!getSSNode(id).isValid())
+                                continue;
+                        nodeDepth[id] = 0;
+                }
+        } else {        // else check if seedNode is valid
+                if ((abs(seedNodeID) > numNodes) || !getSSNode(seedNodeID).isValid()) {
+                        cerr << "WARNING: trying to use an invalid node as a "
+                                "seed in writeCytoscapeGraph!" << endl;
+                        return;
+                }
+                nodeDepth[seedNodeID] = 0;
+        }
+
+        // map of all nodes in the local graph and its depth
+        ofstream ofs((filename + ".arcs").c_str());
+        if (!ofs.good())
+                cerr << "Cannot open file " << filename + ".arcs" << " for writing" << endl;
+        ofs << "Source node\tTarget node\tArc coverage" << endl;
+
+        // A) write all arcs
+        while (!nodeDepth.empty()) {
+                // get and erase the current node
+                map<NodeID, size_t>::iterator e = nodeDepth.begin();
+                NodeID thisID = e->first;
+                size_t thisDepth = e->second;
+                nodeDepth.erase(e);
+
+                // if the node was already handled, skip
+                if (nodesHandled.find(thisID) != nodesHandled.end())
+                        continue;
+
+                // if we're too far in the graph, stop
+                if (thisDepth > maxDepth) {
+                        nodesHandled.insert(thisID);
+                        continue;
+                }
+
+                // write the right arcs
+                SSNode thisNode = getSSNode(thisID);
+                for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
+                        SSNode rNode = getSSNode(it->getNodeID());
+                        if (!rNode.isValid())
+                                continue;
+                        if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
+                                continue;
+                        ofs << thisID << "\t" << it->getNodeID() << "\t" << it->getCoverage() << "\n";
+                        if (nodeDepth.find(it->getNodeID()) != nodeDepth.end())
+                                continue;
+                        nodeDepth[it->getNodeID()] = thisDepth + 1;
+                }
+
+                // write the left arcs
+                for (ArcIt it = thisNode.leftBegin(); it != thisNode.leftEnd(); it++) {
+                        SSNode lNode = getSSNode(it->getNodeID());
+                        if (!lNode.isValid())
+                                continue;
+                        if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
+                                continue;
+                        ofs << it->getNodeID() << "\t" << thisID << "\t" << it->getCoverage() << "\n";
+                        if (nodeDepth.find(it->getNodeID()) != nodeDepth.end())
+                                continue;
+                        nodeDepth[it->getNodeID()] = thisDepth + 1;
+                }
+
+                // mark this node as handled
+                nodesHandled.insert(thisID);
+
+        }
+        ofs.close();
+
+        // B) write all nodes
+        ofs.open((filename + ".nodes").c_str());
+        if (!ofs.good())
+                cerr << "Cannot open file " << filename + ".nodes" << " for writing" << endl;
+        ofs << "Node ID\tMarginal length\tTrue multiplicity\tEstimated multiplicity"
+               "\tKmer coverage\tRead start coverage\tSequence" << "\n";
+        for (set<NodeID>::iterator it = nodesHandled.begin(); it != nodesHandled.end(); it++) {
+                SSNode node = getSSNode(*it);
+
+               // cout << *it << endl;
+             //   int thisTrueMult = (trueMult.empty()) ? 0 : trueMult[abs(*it)];
+
+           /*     ofs << *it << "\t" << node.getMarginalLength() << "\t"
+                    << thisTrueMult << "\t" << "0" << "\t"
+                    << node.getAvgKmerCov()
+                    << "\t" << double(node.getReadStartCov()/node.getMarginalLength())
+                    << "\t" << node.getSequence() << "\n";*/
+        }
+        ofs.close();
 }
 
 void DBGraph::createFromFile(const string& nodeFilename,
@@ -330,29 +480,9 @@ void DBGraph::createFromFile(const string& nodeFilename,
                 throw ios_base::failure("Mismatch between nodes and arc file.");
 }
 
-void DBGraph::convertNodesToString(const vector<NodeID> &nodeSeq,
-                                   string &output)
-{
-        output.clear();
-
-        if (nodeSeq.empty())
-                return;
-
-        size_t size = 0;
-        for (size_t i = 0; i < nodeSeq.size(); i++)
-                size += getSSNode(nodeSeq[i]).getLength();
-        size -= (nodeSeq.size() - 1) * (Kmer::getK() - 1);
-
-        output = getSSNode(nodeSeq[0]).getSequence();
-        for (size_t i = 1; i < nodeSeq.size(); i++)
-                output.append(getSSNode(nodeSeq[i]).getSequence().substr(Kmer::getK() - 1));
-
-        assert(size == output.size());
-}
-
 void DBGraph::writeGraph(const std::string& nodeFilename,
                          const std::string& arcFilename,
-                         const std::string& metaDataFilename)
+                         const std::string& metaDataFilename) const
 {
         ofstream nodeFile(nodeFilename.c_str());
         ofstream arcFile(arcFilename.c_str());
@@ -407,34 +537,6 @@ void DBGraph::writeGraph(const std::string& nodeFilename,
         << numExtractedArcs << " arcs." << endl;
 }
 
-void DBGraph::writeGraphBin(const std::string& nodeFilename,
-                            const std::string& arcFilename,
-                            const std::string& metaDataFilename)
-{
-        // A) Write node file
-        ofstream nodeFile(nodeFilename.c_str(), ios::binary);
-        for (NodeID id = 1; id <= numNodes; id++) {
-                DSNode& node = getDSNode(id);
-                // write the node contents
-                node.write(nodeFile);
-        }
-        nodeFile.close();
-
-        // B) Write arc file
-        ofstream arcFile(arcFilename.c_str(), ios::binary);
-        for (ArcID i = 0; i < numArcs+2; i++)
-                arcs[i].write(arcFile);
-        arcFile.close();
-
-        // C) Write metadata file
-        ofstream metadataFile(metaDataFilename.c_str());
-        metadataFile << numNodes << "\t" << numArcs << endl;
-        metadataFile.close();
-
-        cout << "Wrote " << numNodes << " nodes and "
-        << numArcs << " arcs" << endl;
-}
-
 void DBGraph::loadGraphBin(const std::string& nodeFilename,
                            const std::string& arcFilename,
                            const std::string& metaDataFilename)
@@ -477,61 +579,33 @@ void DBGraph::loadGraphBin(const std::string& nodeFilename,
         arcFile.close();
 }
 
-GraphStats DBGraph::getGraphStats()
+void DBGraph::writeGraphBin(const std::string& nodeFilename,
+                            const std::string& arcFilename,
+                            const std::string& metaDataFilename) const
 {
-        vector<size_t> nodeLength;
-
-        size_t numNodes = 0;            // number of (valid) nodes in the graph
-        size_t numArcs = 0;             // number of (valid) arcs in the graph
-        size_t N50 = 0;                 // N50 of the nodes
-        size_t totMargLength = 0;       // total marginal length of all nodes
-        size_t totLength = 0;           // total length of all nodes
-
-        for (NodeID id = 1; id <= this->numNodes; id++) {
-                SSNode node = getSSNode(id);
-
-                if (!node.isValid())
-                        continue;
-
-                numNodes++;
-
-                for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++)
-                        numArcs++;
-
-                for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++)
-                        numArcs++;
-
-                totMargLength += node.getMarginalLength();
-                totLength += node.getLength();
-                nodeLength.push_back(node.getLength());
+        // A) Write node file
+        ofstream nodeFile(nodeFilename.c_str(), ios::binary);
+        for (NodeID id = 1; id <= numNodes; id++) {
+                DSNode& node = getDSNode(id);
+                // write the node contents
+                node.write(nodeFile);
         }
+        nodeFile.close();
 
-        sort(nodeLength.begin(), nodeLength.end());
+        // B) Write arc file
+        ofstream arcFile(arcFilename.c_str(), ios::binary);
+        for (ArcID i = 0; i < numArcs+2; i++)
+                arcs[i].write(arcFile);
+        arcFile.close();
 
-        size_t currLength = 0;
-        for (size_t i = 0; i < nodeLength.size(); i++) {
-                currLength += nodeLength[i];
-                if (currLength >= 0.5*totLength) {
-                        N50 = nodeLength[i];
-                        break;
-                }
-        }
+        // C) Write metadata file
+        ofstream metadataFile(metaDataFilename.c_str());
+        metadataFile << numNodes << "\t" << numArcs << endl;
+        metadataFile.close();
 
-        GraphStats stats;
-        stats.setMetrics(numNodes, numArcs, N50, totMargLength);
-        return stats;
+        cout << "Wrote " << numNodes << " nodes and "
+             << numArcs << " arcs" << endl;
 }
-
-bool DBGraph::isDoubleStranded() const
-{
-        return settings.isDoubleStranded();
-}
-
-void DBGraph::populateTable() {
-        /*table = new KmerNodeTable(settings, numNodes);
-        table->populateTable(nodes);*/
-}
-
 
 void DBGraph::writeGraphFasta() const
 {
@@ -566,108 +640,4 @@ void DBGraph::writeGraphFasta() const
         }
 
         nodeFile.close();
-}
-
-void DBGraph::writeCytoscapeGraph(const std::string& filename,
-                                  NodeID seedNodeID, size_t maxDepth)
-{
-        // a map containing nodeIDs to handle + their depth
-        map<NodeID, size_t> nodeDepth;
-        // set of nodes that were handled
-        set<NodeID> nodesHandled;
-
-        // if default input values are provided, write the entire graph
-        if (seedNodeID == 0) {
-                for (NodeID id = -numNodes; id <= numNodes; id++) {
-                        if (id == 0)
-                                continue;
-                        if (!getSSNode(id).isValid())
-                                continue;
-                        nodeDepth[id] = 0;
-                }
-        } else {        // else check if seedNode is valid
-                if ((abs(seedNodeID) > numNodes) || !getSSNode(seedNodeID).isValid()) {
-                        cerr << "WARNING: trying to use an invalid node as a "
-                                "seed in writeCytoscapeGraph!" << endl;
-                        return;
-                }
-                nodeDepth[seedNodeID] = 0;
-        }
-
-        // map of all nodes in the local graph and its depth
-        ofstream ofs((filename + ".arcs").c_str());
-        if (!ofs.good())
-                cerr << "Cannot open file " << filename + ".arcs" << " for writing" << endl;
-        ofs << "Source node\tTarget node\tArc coverage" << endl;
-
-        // A) write all arcs
-        while (!nodeDepth.empty()) {
-                // get and erase the current node
-                map<NodeID, size_t>::iterator e = nodeDepth.begin();
-                NodeID thisID = e->first;
-                size_t thisDepth = e->second;
-                nodeDepth.erase(e);
-
-                // if the node was already handled, skip
-                if (nodesHandled.find(thisID) != nodesHandled.end())
-                        continue;
-
-                // if we're too far in the graph, stop
-                if (thisDepth > maxDepth) {
-                        nodesHandled.insert(thisID);
-                        continue;
-                }
-
-                // write the right arcs
-                SSNode thisNode = getSSNode(thisID);
-                for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
-                        SSNode rNode = getSSNode(it->getNodeID());
-                        if (!rNode.isValid())
-                                continue;
-                        if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
-                                continue;
-                        ofs << thisID << "\t" << it->getNodeID() << "\t" << it->getCoverage() << "\n";
-                        if (nodeDepth.find(it->getNodeID()) != nodeDepth.end())
-                                continue;
-                        nodeDepth[it->getNodeID()] = thisDepth + 1;
-                }
-
-                // write the left arcs
-                for (ArcIt it = thisNode.leftBegin(); it != thisNode.leftEnd(); it++) {
-                        SSNode lNode = getSSNode(it->getNodeID());
-                        if (!lNode.isValid())
-                                continue;
-                        if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
-                                continue;
-                        ofs << it->getNodeID() << "\t" << thisID << "\t" << it->getCoverage() << "\n";
-                        if (nodeDepth.find(it->getNodeID()) != nodeDepth.end())
-                                continue;
-                        nodeDepth[it->getNodeID()] = thisDepth + 1;
-                }
-
-                // mark this node as handled
-                nodesHandled.insert(thisID);
-
-        }
-        ofs.close();
-
-        // B) write all nodes
-        ofs.open((filename + ".nodes").c_str());
-        if (!ofs.good())
-                cerr << "Cannot open file " << filename + ".nodes" << " for writing" << endl;
-        ofs << "Node ID\tMarginal length\tTrue multiplicity\tEstimated multiplicity"
-               "\tKmer coverage\tRead start coverage\tSequence" << "\n";
-        for (set<NodeID>::iterator it = nodesHandled.begin(); it != nodesHandled.end(); it++) {
-                SSNode node = getSSNode(*it);
-
-               // cout << *it << endl;
-             //   int thisTrueMult = (trueMult.empty()) ? 0 : trueMult[abs(*it)];
-
-           /*     ofs << *it << "\t" << node.getMarginalLength() << "\t"
-                    << thisTrueMult << "\t" << "0" << "\t"
-                    << node.getAvgKmerCov()
-                    << "\t" << double(node.getReadStartCov()/node.getMarginalLength())
-                    << "\t" << node.getSequence() << "\n";*/
-        }
-        ofs.close();
 }

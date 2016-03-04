@@ -130,3 +130,31 @@ void RefComp::validateGraph(const DBGraph& dbg)
                 }
         }
 }
+
+void RefComp::getNodeMultiplicity(const DBGraph& dbg,
+                                  vector<size_t>& multiplicity)
+{
+        multiplicity.clear();
+        multiplicity.resize(dbg.getNumNodes()+1, 0);
+
+        // count the number of true kmers in each node
+        for (size_t refID = 0; refID < reference.size(); refID++) {
+
+                // for all kmers in the reference sequence
+                const string& refSeq = reference[refID];
+                for (KmerIt it(refSeq); it.isValid(); it++) {
+                        Kmer kmer = it.getKmer();
+                        NodePosPair npp = dbg.findNPP(kmer);
+
+                        // update kmer counters
+                        if (npp.isValid())
+                                multiplicity[abs(npp.getNodeID())]++;
+                }
+        }
+
+        // compute the multiplicity for each node
+        for (size_t i = 1; i <= dbg.getNumNodes(); i++) {
+                double ML = dbg.getSSNode(i).getMarginalLength();
+                multiplicity[i] = round((double)multiplicity[i]/ML);
+        }
+}

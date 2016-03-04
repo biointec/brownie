@@ -112,6 +112,14 @@ public:
          * @param dbg A const-ref to the de Bruijn graph
          */
         void validateGraph(const DBGraph& dbg);
+
+        /**
+         * Calculate the true node multiplicity
+         * @param dbg A const-ref to the de Bruijn graph
+         * @param multiplicity Multiplicity vector
+         */
+        void getNodeMultiplicity(const DBGraph& dbg,
+                                 std::vector<size_t>& multiplicity);
 };
 
 #endif

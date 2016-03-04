@@ -143,7 +143,7 @@ public:
          * Check if a node is invalidated
          * @return True or false
          */
-        bool isValid() {
+        bool isValid() const {
                 if (nodeID == 0)
                         return false;
                 return dsNode->isValid();
@@ -502,8 +502,8 @@ public:
          * Get the left kmer of this node
          * @return The left kmer of this node
          */
-        Kmer getLeftKmer() {
-                std::string seq = getSequence();
+        Kmer getLeftKmer() const {
+                const std::string& seq = getSequence();
                 return Kmer(seq);
         }
 
@@ -511,8 +511,8 @@ public:
          * Get the right kmer of this node
          * @return The right kmer of this node
          */
-        Kmer getRightKmer() {
-                std::string seq = getSequence();
+        Kmer getRightKmer() const {
+                const std::string& seq = getSequence();
                 return Kmer(seq, seq.size() - Kmer::getK());
         }
 

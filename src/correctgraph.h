@@ -18,54 +18,34 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#ifndef KMERNPP_H
-#define KMERNPP_H
+#ifndef CORRECTGRAPH_H
+#define CORRECTGRAPH_H
 
 #include "global.h"
 
 // ============================================================================
-// NODE POSITION PAIR CLASS
+// DIJKSTRA AUXILIARY CLASSES
 // ============================================================================
 
-class NodePosPair : public std::pair<NodeID, NodePosition>
-{
+class PathDFS {
 public:
-        /**
-         * Default constructor
-         */
-        NodePosPair() :
-                std::pair<NodeID, NodePosition>(0, 0) {}
+        NodeID nodeID;
+        size_t length;
 
         /**
          * Default constructor
-         * @param id Node identifier
-         * @param pos Position identifier
          */
-        NodePosPair(NodeID id, NodePosition pos) :
-                std::pair<NodeID, NodePosition>(id, pos) {}
+        PathDFS(NodeID nodeID, size_t length) :
+                nodeID(nodeID), length(length) {};
+};
+
+struct PathDFSComp {
 
         /**
-         * Get the node identifier
-         * @return Node identifier
+         * Compare two paths (by length)
          */
-        NodeID getNodeID() const {
-                return first;
-        }
-
-        /**
-         * Check whether the object points to valid position
-         * @return True of false
-         */
-        bool isValid() const {
-                return first != 0;
-        }
-
-        /**
-         * Get the offset position
-         * @return Offset position
-         */
-        NodePosition getPosition() const {
-                return second;
+        bool operator()(const PathDFS& f, const PathDFS& s) {
+                return f.length >= s.length;
         }
 };
 
