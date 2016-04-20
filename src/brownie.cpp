@@ -68,9 +68,9 @@ void Brownie::parameterEstimationInStage4(DBGraph &graph){
         testgraph.compareToSolution(getTrueMultFilename(3), true);
         #endif
         testgraph.clipTips(0);
-        testgraph.mergeSingleNodes(true);
+        testgraph.mergeSingleNodes();
         testgraph.filterCoverage(testgraph.cutOffvalue);
-        testgraph.mergeSingleNodes(true);
+        testgraph.mergeSingleNodes();
         testgraph.extractStatistic(0);
         cout << "Estimated Kmer coverage mean: " << testgraph.estimatedKmerCoverage << endl;
         cout << "Estimated Kmer coverage std:  " << testgraph.estimatedMKmerCoverageSTD << endl;
@@ -250,17 +250,15 @@ void Brownie::stageFour()
         if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                 "skipping stage 4..." << endl << endl;
-                 return;
+                return;
         }
         DBGraph graph(settings);
         parameterEstimationInStage4( graph );
-
         Util::startChrono();
         cout << "Creating graph... ";
         graph.loadGraphBin(getBinNodeFilename(3),
                            getBinArcFilename(3),
                            getMetaDataFilename(3));
-
 
         cout.flush();
         cout << "done (" << graph.getNumNodes() << " nodes, "
@@ -301,6 +299,7 @@ void Brownie::stageFive()
                 return;
         }
 
+
         // Build a DBG from stage 4 files on disk
         DBGraph graph(settings);
         Util::startChrono();
@@ -315,7 +314,7 @@ void Brownie::stageFive()
 #ifdef DEBUG
         graph.compareToSolution(getTrueMultFilename(4),true);
         graph.updateGraphSize();
-        graph.writeCytoscapeGraph(0);
+
 #endif
 
         Util::startChrono();
@@ -351,7 +350,7 @@ int main(int argc, char** args)
 {
         try {
                 Brownie brownie(argc, args);
-
+                //brownie.printInFile();
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
                      << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL;
 #ifdef DEBUG
