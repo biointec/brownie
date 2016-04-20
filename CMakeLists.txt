@@ -18,7 +18,11 @@ endif(NOT CMAKE_BUILD_TYPE)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # set some definitions
-add_definitions("-DMAXKMERLENGTH=31")
+if(MAXKMERLENGTH)
+        add_definitions("-DMAXKMERLENGTH=${MAXKMERLENGTH}")
+else(MAXKMERLENGTH)
+        add_definitions("-DMAXKMERLENGTH=31")
+endif(MAXKMERLENGTH)    
 add_definitions("-DCATEGORIES=2")
 add_definitions("-DBROWNIE_MAJOR_VERSION=${${PROJECT_NAME}_MAJOR_VERSION}")
 add_definitions("-DBROWNIE_MINOR_VERSION=${${PROJECT_NAME}_MINOR_VERSION}")
