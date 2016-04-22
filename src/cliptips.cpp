@@ -41,7 +41,7 @@ bool DBGraph::clipTips(int round)
         size_t Rtp=0, Rfp=0;
         #endif
 
-       /* for (NodeID id = 1; id <= numNodes; id++) {
+      for (NodeID id = 1; id <= numNodes; id++) {
                 double threshold = redLineValueCov;
                 SSNode node = getSSNode(id);
                 if (!node.isValid())
@@ -65,15 +65,16 @@ bool DBGraph::clipTips(int round)
                         #endif
                         removeNode(node);
                 }
-        }*/
+        }
 
         for (NodeID id = 1; id <= numNodes; id++) {
                 double threshold = redLineValueCov;
                 SSNode node = getSSNode(id);
-
-               if (!node.isValid())
+                if (!node.isValid())
                         continue;
                 numTotal++;
+                double cov=node.getNodeKmerCov();
+                string con=node.getSequence();
 
                 // check for dead ends
                 bool leftDE = (node.getNumLeftArcs() == 0);
@@ -84,18 +85,41 @@ bool DBGraph::clipTips(int round)
                 SSNode startNode = (rightDE) ? getSSNode(-id) : getSSNode(id);
                 bool isolated = rightDE && leftDE;
                 bool joinedTip = startNode.getNumRightArcs() > 1;
-                if (isolated||joinedTip)
+                if (isolated)
                         threshold=this->safeValueCov;
+                if (joinedTip)
+                        threshold=this->certainVlueCov;
                 bool remove = false;
+                if (startNode.getNumRightArcs()==1){
+                        bool alternativeExist=false;
+                        SSNode currNode = getSSNode(startNode.rightBegin()->getNodeID());
+                        int num=currNode.getNumLeftArcs();
+
+                        if (currNode.getNumLeftArcs()<=1)
+                                continue;
+                        ArcIt it = currNode.leftBegin();
+                        do{
+                                SSNode alternative = getSSNode(it->getNodeID());
+                                if (node.getNodeID()!=alternative.getNodeID() && alternative.getNodeKmerCov()<node.getNodeKmerCov()){
+                                        alternativeExist=true;
+                                        break;
+                                }
+                                it++;
+
+                        } while (it != currNode.leftEnd());
+                        if (alternativeExist)
+                                continue;
+                }
+
                 if ((startNode.getNodeKmerCov() <threshold))
                         remove = removeNode(startNode);
-
                 if (remove)
                         numDeleted++;
 
-#ifdef DEBUG
-                double cov=startNode.getNodeKmerCov();
-                string con=startNode.getSequence();
+                #ifdef DEBUG
+               cov=startNode.getNodeKmerCov();
+               con=startNode.getSequence();
+
                 if (remove) {
                         if (trueMult.size()>0&& trueMult[id] > 0) {
                                 if (isolated)
@@ -129,7 +153,7 @@ bool DBGraph::clipTips(int round)
                                         fn++;
                         }
                 }
-#endif
+                #endif
         }
 
         cout << "Clipped " << numDeleted << "/" << numTotal << " nodes" << endl;

@@ -140,8 +140,8 @@ void Brownie::stageOne()
         cout << "Writing kmer file...";
         cout.flush();
         Util::startChrono();
-        //readParser->writeAllKmers(getKmerFilename());
-        readParser->writeKmersWithCovGTOne(getKmerFilename());
+        readParser->writeAllKmers(getKmerFilename());
+        //readParser->writeKmersWithCovGTOne(getKmerFilename());
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
         delete readParser;
@@ -350,7 +350,7 @@ int main(int argc, char** args)
 {
         try {
                 Brownie brownie(argc, args);
-                //brownie.printInFile();
+                brownie.printInFile();
                 cout << "Welcome to Brownie v." << BROWNIE_MAJOR_VERSION << "."
                      << BROWNIE_MINOR_VERSION << "." << BROWNIE_PATCH_LEVEL;
 #ifdef DEBUG

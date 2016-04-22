@@ -285,11 +285,6 @@ bool DBGraph::deleteExtraAttachedNodes(){
         double tp=0, tn=0, fp=0,fn=0;
         size_t numOfDel=0;
         for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
-                if (abs(lID)==9714 ||abs(lID)==212640 || abs(lID)==359209 ){
-                        int stop=0;
-                        stop++;
-                }
-
                 if (lID % OUTPUT_FREQUENCY == 0)
                         (cout << "Extracting node -" <<numNodes<< "/ "<<lID<<" /"<<numNodes
                         << " from graph        \r").flush();
@@ -313,10 +308,6 @@ bool DBGraph::deleteExtraAttachedNodes(){
                         bool tip=currNode.getNumRightArcs()==0&&currNode.getNumLeftArcs()==1;
                         bool bubble=nodeIsBubble(node,currNode);
                         double threshold =redLineValueCov;
-                        if (tip || bubble) {
-                                if (estimatedKmerCoverage-estimatedMKmerCoverageSTD*2 >threshold)
-                                        threshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*2;
-                        }
                         bool nodeIsSingle=true;
                         if (currNode.getNumLeftArcs()>1 ||currNode.getNumRightArcs()>1)
                                 nodeIsSingle=false;
@@ -369,16 +360,9 @@ bool DBGraph::connectSameMulNodes(){
         size_t secondTP=0;
         size_t numOfDel=0;
         double threshold=this->redLineValueCov;
-        if (estimatedKmerCoverage-estimatedMKmerCoverageSTD*2 >threshold)
-                threshold=estimatedKmerCoverage-estimatedMKmerCoverageSTD*2;
         for ( NodeID lID =-numNodes; lID <= numNodes; lID++ ) {
                 if (lID==0)
                         continue;
-                if (lID==-9714 || lID ==347686)
-                {
-                        int stop=0;
-                        stop++;
-                }
                 SSNode node = getSSNode ( lID );
                 if(!node.isValid())
                         continue;
@@ -810,19 +794,22 @@ bool DBGraph::filterCoverage(float cutOff)
 
 bool DBGraph::removeNode(SSNode & rootNode) {
 
-      /*  if (rootNode.getSequence().find("CAATCTAACGCATCGCCAATGTAAATCCGGCCC") != std::string::npos || rootNode.getNodeID()==1149102)
+     /*if (rootNode.getSequence().find("ATCAGGCGTTGATGTCGGATGCGGCGTAAA") != std::string::npos || abs (rootNode.getNodeID())==879710)
         {
+                writeLocalCytoscapeGraph(4, rootNode.getNodeID(), 10);
                 cout<<rootNode.getSequence();
                 int stop =0;
                 stop++;
         }
-        if (rootNode.getSequence().find("TCTAACGCATCGCCAATGTAAATCCGGCCCGCCTATGGCGGGCC") != std::string::npos|| rootNode.getNodeID()==1149102)
+        if (rootNode.getSequence().find("TTTACGCCGCATCCGACATCAACGCCTGAT") != std::string::npos)
         {
                 cout<<rootNode.getSequence();
                 int stop =0;
                 stop++;
         }*/
-        if (rootNode.getMarginalLength()>maxNodeSizeToDel)
+
+
+      if (rootNode.getMarginalLength()>maxNodeSizeToDel)
                 return false;
         for ( ArcIt it2 = rootNode.leftBegin(); it2 != rootNode.leftEnd(); it2++ ) {
                 SSNode llNode = getSSNode ( it2->getNodeID() );
