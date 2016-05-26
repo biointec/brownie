@@ -319,22 +319,30 @@ void ReadCorrection::extendSeed(string& read, vector<NodePosPair>& npp,
 
 void ReadCorrection::applyReadCorrection(string& read,
                                             const vector<NodePosPair>& npp,
-                                            size_t seedFirst, size_t seedLast)
+                                            size_t seedFirst, size_t seedLast, string& nodeList)
 {
+
         // correct the seed
         size_t curr = seedFirst;
+        nodeList="";
+        size_t lastOffset=0, firtOffset=npp[seedFirst].getOffset();
         while (curr < seedLast) {
                 SSNode node = dbg.getSSNode(npp[curr].getNodeID());
+
                 size_t strLen = min(node.getLength() - npp[curr].getOffset(), read.size() - curr);
                 string str = node.substr(npp[curr].getOffset(), strLen);
-
                 read.replace(curr, strLen, str);
+                nodeList=nodeList+ to_string( node.getNodeID()) + "\t";
+
+                lastOffset=npp[curr].getOffset();
                 curr += (strLen - Kmer::getK() + 1);
         }
+
+        nodeList=nodeList+"\n" +to_string( firtOffset)+"\t"+to_string(lastOffset+Kmer::getK() - 1);
 }
 
 void ReadCorrection::correctRead(string& read, vector<NodePosPair> npp,
-                                    size_t& first, size_t& last)
+                                    size_t& first, size_t& last,string &nodeList )
 {
         // extend to the right
         extendSeed(read, npp, first, last);
@@ -357,7 +365,8 @@ void ReadCorrection::correctRead(string& read, vector<NodePosPair> npp,
 
         // reverse complement all data
         string original = read;
-        applyReadCorrection(read, npp, first, last);
+
+        applyReadCorrection(read, npp, first, last, nodeList);
 }
 
 void ReadCorrection::findSeedKmer(const std::string& read,
@@ -496,9 +505,10 @@ void ReadCorrection::findSeedMEM(const string& read,
 
 int ReadCorrection::correctRead(const string& read,
                                    string& bestCorrectedRead,
-                                   const vector<Seed>& seeds)
+                                   const vector<Seed>& seeds, string &bestNodeList)
 {
         int bestScore = -read.size();
+
 
         for (auto& it : seeds) {
                 size_t first = it.readFirst;
@@ -509,7 +519,8 @@ int ReadCorrection::correctRead(const string& read,
                 it.createNodePosition(dbg, npp);
 
                 string correctedRead = read;
-                correctRead(correctedRead, npp, first, last);
+                string nodeList="";
+                correctRead(correctedRead, npp, first, last,nodeList );
 
                 size_t correctedLength = Kmer::getK() - 1 + last - first;
                 size_t uncorrectedLength = read.size() - correctedLength;
@@ -523,6 +534,7 @@ int ReadCorrection::correctRead(const string& read,
                 if (score > bestScore) {
                         bestCorrectedRead = correctedRead;
                         bestScore = score;
+                        bestNodeList=nodeList;
                 }
         }
 
@@ -543,12 +555,14 @@ void ReadCorrection::correctRead(ReadRecord& record,
         findSeedKmer(read, seeds);
 
         string bestCorrectedRead;
-        int bestScore = correctRead(read, bestCorrectedRead, seeds);
+        string bestNodeList="";
+        int bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeList);
 
         if (bestScore <= ((int)read.size() / 2)) {
                 correctedByMEM = true;
                 findSeedMEM(read, seeds);
-                bestScore = correctRead(read, bestCorrectedRead, seeds);
+
+                bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeList);
         }
 
         /*alignment.align(read, bestCorrectedRead);
@@ -558,6 +572,8 @@ void ReadCorrection::correctRead(ReadRecord& record,
         size_t numSubstitutions = 0;
         if (bestScore > ((int)read.size() / 2)) {
                 read = bestCorrectedRead;
+                read+="\n"+bestNodeList;
+                //cout<<bestNodeList<<endl;
                 readCorrected = true;
                 numSubstitutions = (read.length() - bestScore)/2;
         }
