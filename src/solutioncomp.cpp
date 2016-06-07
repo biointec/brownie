@@ -312,7 +312,7 @@ void DBGraph::compareToSolution(const string& filename, bool load)
              << fixed << setprecision(2)
              << Util::toPercentage(sizeCorrect, sizeGenome) << "%" << endl;
         cout << "\t===== DEBUG: end =====" << endl;
-       // findBreakpoint();
+        findBreakpoint();
 
 #endif
 }

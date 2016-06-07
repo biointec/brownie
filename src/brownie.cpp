@@ -228,14 +228,22 @@ void Brownie::stageThree()
         graph.countNodeandArcFrequency(libraries);
         cout << "Done counting multiplicity (" << Util::stopChronoStr() << ")" << endl;
 
+
+
+#ifdef DEBUG
+        graph.sanityCheck();
+        graph.compareToSolution(getTrueMultFilename(3), true);
+        graph.updateGraphSize();
+        cout << "Graph size: " << graph.sizeOfGraph << " bp" << endl;
+        cout<<"N50 is: "<<graph.n50<<endl;
+        cout << "Graph correction completed in "
+             << Util::stopChrono() << "s." << endl;
+
+#endif
         cout << "Extracting graph..." << endl;
         graph.writeGraphBin(getBinNodeFilename(3),
                             getBinArcFilename(3),
                             getMetaDataFilename(3));
-
-#ifdef DEBUG
-        graph.sanityCheck();
-#endif
         graph.clear();
         cout << "Stage 3 finished.\n" << endl;
 }
@@ -363,7 +371,7 @@ int main(int argc, char** args)
                 brownie.stageTwo();
                 brownie.stageThree();
                 brownie.stageFour();
-                brownie.stageFive();
+                //brownie.stageFive();
                 brownie.writeGraphFasta();
         } catch (exception &e) {
                 cerr << "Fatal error: " << e.what() << endl;
