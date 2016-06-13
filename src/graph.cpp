@@ -24,6 +24,8 @@
 #include "nodeendstable.h"
 #include "library.h"
 
+#include <queue>
+
 using namespace std;
 
 DSNode* SSNode::nodes = NULL;
@@ -57,7 +59,7 @@ std::ostream &operator<<(std::ostream &out, const GraphStats &stats)
 
 bool sortNodeByLength(const NodeID& left, const NodeID& right)
 {
-        return DBGraph::graph->getDSNode(left).getMarginalLength() >
+        return DBGraph::graph->getDSNode(left).getMarginalLength() <
                DBGraph::graph->getDSNode(right).getMarginalLength();
 }
 
@@ -256,7 +258,7 @@ void DBGraph::writeCytoscapeGraph(const std::string& filename,
                                   NodeID seedNodeID, size_t maxDepth) const
 {
         // a map containing nodeIDs to handle + their depth
-        map<NodeID, size_t> nodeDepth;
+        priority_queue<PathDFS, vector<PathDFS>, PathDFSComp> nodeDepth;
         // set of nodes that were handled
         set<NodeID> nodesHandled;
 
@@ -267,7 +269,7 @@ void DBGraph::writeCytoscapeGraph(const std::string& filename,
                                 continue;
                         if (!getSSNode(id).isValid())
                                 continue;
-                        nodeDepth[id] = 0;
+                        nodeDepth.push(PathDFS(id, 0));
                 }
         } else {        // else check if seedNode is valid
                 if ((abs(seedNodeID) > numNodes) || !getSSNode(seedNodeID).isValid()) {
@@ -275,7 +277,7 @@ void DBGraph::writeCytoscapeGraph(const std::string& filename,
                                 "seed in writeCytoscapeGraph!" << endl;
                         return;
                 }
-                nodeDepth[seedNodeID] = 0;
+                nodeDepth.push(PathDFS(seedNodeID, 0));
         }
 
         // map of all nodes in the local graph and its depth
@@ -287,10 +289,10 @@ void DBGraph::writeCytoscapeGraph(const std::string& filename,
         // A) write all arcs
         while (!nodeDepth.empty()) {
                 // get and erase the current node
-                map<NodeID, size_t>::iterator e = nodeDepth.begin();
-                NodeID thisID = e->first;
-                size_t thisDepth = e->second;
-                nodeDepth.erase(e);
+                PathDFS currTop = nodeDepth.top();
+                nodeDepth.pop();
+                NodeID thisID = currTop.nodeID;
+                size_t thisDepth = currTop.length;
 
                 // if the node was already handled, skip
                 if (nodesHandled.find(thisID) != nodesHandled.end())
@@ -311,9 +313,8 @@ void DBGraph::writeCytoscapeGraph(const std::string& filename,
                         if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
                                 continue;
                         ofs << thisID << "\t" << it->getNodeID() << "\t" << it->getCoverage() << "\n";
-                        if (nodeDepth.find(it->getNodeID()) != nodeDepth.end())
-                                continue;
-                        nodeDepth[it->getNodeID()] = thisDepth + 1;
+                        PathDFS nextTop(it->getNodeID(), thisDepth + 1);
+                        nodeDepth.push(nextTop);
                 }
 
                 // write the left arcs
@@ -324,9 +325,8 @@ void DBGraph::writeCytoscapeGraph(const std::string& filename,
                         if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
                                 continue;
                         ofs << it->getNodeID() << "\t" << thisID << "\t" << it->getCoverage() << "\n";
-                        if (nodeDepth.find(it->getNodeID()) != nodeDepth.end())
-                                continue;
-                        nodeDepth[it->getNodeID()] = thisDepth + 1;
+                        PathDFS nextTop(it->getNodeID(), thisDepth + 1);
+                        nodeDepth.push(nextTop);
                 }
 
                 // mark this node as handled
@@ -339,19 +339,23 @@ void DBGraph::writeCytoscapeGraph(const std::string& filename,
         ofs.open((filename + ".nodes").c_str());
         if (!ofs.good())
                 cerr << "Cannot open file " << filename + ".nodes" << " for writing" << endl;
-        ofs << "Node ID\tMarginal length\tTrue multiplicity\tEstimated multiplicity"
+        ofs << "Node ID\tMarginal length\tNum left arcs\tNum right arcs\tTrue multiplicity\tEstimated multiplicity"
                "\tKmer coverage\tRead start coverage\tSequence" << "\n";
         for (set<NodeID>::iterator it = nodesHandled.begin(); it != nodesHandled.end(); it++) {
                 SSNode node = getSSNode(*it);
 
-               // cout << *it << endl;
-             //   int thisTrueMult = (trueMult.empty()) ? 0 : trueMult[abs(*it)];
+#ifdef DEBUG
+                int thisTrueMult = (trueMult.empty()) ? 0 : trueMult[abs(*it)];
+#else
+                int thisTrueMult = 0;
+#endif
 
-           /*     ofs << *it << "\t" << node.getMarginalLength() << "\t"
+                ofs << *it << "\t" << node.getMarginalLength() << "\t"
+                    << (int)node.getNumLeftArcs() << "\t" << (int)node.getNumRightArcs() << "\t"
                     << thisTrueMult << "\t" << "0" << "\t"
                     << node.getAvgKmerCov()
                     << "\t" << double(node.getReadStartCov()/node.getMarginalLength())
-                    << "\t" << node.getSequence() << "\n";*/
+                    << "\t" << node.getSequence() << "\n";
         }
         ofs.close();
 }

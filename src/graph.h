@@ -56,6 +56,32 @@ typedef google::sparse_hash_map<Kmer, NodePosPair, KmerHash> KmerNodeTable;
 bool sortNodeByLength(const NodeID& left, const NodeID& right);
 
 // ============================================================================
+// DIJKSTRA AUXILIARY CLASSES
+// ============================================================================
+
+class PathDFS {
+public:
+        NodeID nodeID;
+        size_t length;
+
+        /**
+         * Default constructor
+         */
+        PathDFS(NodeID nodeID, size_t length) :
+                nodeID(nodeID), length(length) {};
+};
+
+struct PathDFSComp {
+
+        /**
+         * Compare two paths (by length)
+         */
+        bool operator()(const PathDFS& f, const PathDFS& s) {
+                return f.length >= s.length;
+        }
+};
+
+// ============================================================================
 // GRAPH STATISTICS
 // ============================================================================
 
@@ -116,6 +142,10 @@ private:
 
         KmerNodeTable kmerNPPTable;         // kmer node table
 
+#ifdef DEBUG
+        std::vector<size_t> trueMult;
+#endif
+
         // ====================================================================
         // OTHER STUFF
         // ====================================================================
@@ -155,7 +185,6 @@ private:
 
 public:
         static const DBGraph* graph;
-
 
         /**
          * Get the graph statistics
@@ -429,6 +458,16 @@ public:
          */
         bool flowCorrection();
 
+#ifdef DEBUG
+        /**
+         * Set the true node multiplicity
+         * @param trueMult_ The true node multiplicity vector
+         */
+        void setTrueNodeMultiplicity(const std::vector<size_t> trueMult_) {
+                trueMult = trueMult_;
+        }
+#endif
+
         // ====================================================================
         // COVERAGE.CPP (STAGE 3 ROUTINES)
         // ====================================================================
@@ -447,12 +486,38 @@ private:
          */
         void workerThread(size_t myID, LibraryContainer* inputs);
 
+        /**
+         * Compute the kmer coverage of all nodes that have a probability
+         * less than p of belonging to a Poisson error model
+         * @param errLambda Error model lambda (Poisson model)
+         * @param p Desired probability
+         * @return Average k-mer coverage estimate
+         */
+        double getInitialKmerCovEstimate(double errLambda = 2,
+                                         double p = 0.01) const;
+
+        /**
+         * Based on the set node multiplicity, compute the average kmer coverage
+         */
+        double getAvgKmerCov() const;
+
 public:
         /**
          * Count the node (kmer and nodestart) and arc multiplicity
          * @param inputs Container with input libraries
          */
         void countNodeandArcFrequency(LibraryContainer &inputs);
+
+        /**
+         * Fit a mixture model to the kmer spectrum
+         */
+        void fitKmerSpectrum(const std::string& tempdir);
+
+        /**
+         * Write a node file containing length and kmer coverage
+         * @param filename Output filename
+         */
+        void writeNodeFile(const std::string& filename) const;
 
         // ====================================================================
         // KMERNPP.CPP (KMER - NODE-POSITON PAIR TABLE)

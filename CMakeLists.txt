@@ -30,6 +30,8 @@ if (MSVC)
         add_definitions("-D_CRT_SECURE_NO_WARNINGS")
 endif (MSVC)
 
+# add_definitions(-DDEBUG)        # FIXME: remove !!
+
 # set g++ specific flags
 if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_GNUCC)
         set(CMAKE_CXX_FLAGS "-Wno-deprecated -std=c++11 -fopenmp")

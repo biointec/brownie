@@ -26,6 +26,8 @@
 #include <chrono>
 #include <ctime>
 #include <fstream>
+#include <vector>
+#include <map>
 #define MAX_TIMERS 16
 
 /**
@@ -100,10 +102,61 @@ public:
         /**
          * Compute the probability p(k) from a Poisson distribution with mean mu
          * @param k Number of observations
-         * @param mu Expected number of observation (mean of distribution)
+         * @param mu Average
          * @return The probability p(k)
          */
         static double poissonPDF(unsigned int k, double mu);
+
+        /**
+         * Compute the probability ratio p(k, mu1) / p(k, mu2)
+         * @param k Number of observations
+         * @param mu1 Expected number of observation (mean of distribution)
+         * @param mu2 Expected number of observation (mean of distribution)
+         * @return The probability p(k)
+         */
+        static double poissonPDFratio(unsigned int k, double mu1, double mu2);
+
+        /**
+         * Compute the probability p(k) from a negative bionomial(mu, var)
+         * @param k Number of observations
+         * @param mu Average
+         * @param var Variance
+         * @return The probability p(k)
+         */
+        static double negbinomialPDF(unsigned int k, double mu, double var);
+
+        /**
+         * Compute the probability ratio p(k, mu1) / p(k, mu2)
+         * @param k Number of observations
+         * @param mu1 Mean of the distribution
+         * @param var1 Variance of the first distribution
+         * @param mu2 Mean of the second distribution
+         * @param var2 Variance of the second distribution
+         * @return The probability p(k)
+         */
+        static double negbinomialPDFratio(unsigned int k,
+                                          double mu1, double var1,
+                                          double mu2, double var2);
+
+        /**
+         * Compute the probability p(k) for the geometric distribution
+         * @param k Number of observations
+         * @param mu Mean of the distribution
+         * @param mu2 Variance of the distribution
+         * @return The probability p(k)
+         */
+        static double geometricPDF(unsigned int k, double mu);
+
+        /**
+         * Compute the probability ratio p(mu1) / p(k, mu2)
+         * @param k Number of observations
+         * @param mu1 Mean of the geometric distribution
+         * @param mu2 Mean of the negative bionomial distribution
+         * @param var2 Variance of the negative bionomial distribution
+         * @return The probability p(k)
+         */
+        static double geometricnegbinomialPDFratio(unsigned int k, double mu1,
+                                                   double mu2, double var2);
 
         /**
          * Compute the percentage of two size_t numbers
@@ -114,6 +167,12 @@ public:
         static double toPercentage(size_t nom, size_t den) {
                 return 100.0 * double(nom) / double(den);
         }
+
+        static void binomialMixtureEM(const std::map<unsigned int, double>& data,
+                                      std::vector<double>& mu,
+                                      std::vector<double>& sigma2,
+                                      std::vector<double>& MC,
+                                      int maxIterations = 20);
 };
 
 #endif

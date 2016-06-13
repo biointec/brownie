@@ -1,6 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2014, 2015 Jan Fostier (jan.fostier@intec.ugent.be)     *
- *   Copyright (C) 2014, 2015 Mahdi Heydari (mahdi.heydari@intec.ugent.be) *
+ *   Copyright (C) 2014 - 2016 Jan Fostier (jan.fostier@intec.ugent.be)    *
  *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -74,6 +73,11 @@ void Brownie::stageOne()
         readParser->writeKmersWithCovGTOne(getKmerFilename());
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
+        // write #kmers with cov == 1
+        ofstream ofs(settings.getTempDirectory() + "numkmers.stage1");
+        ofs << readParser->getNumKmers() - readParser->getNumKmersCovGTOne() << endl;
+        ofs.close();
+
         delete readParser;
 
         // write metadata for all libraries
@@ -130,7 +134,7 @@ void Brownie::stageTwo()
 void Brownie::stageThree()
 {
         // ============================================================
-        // STAGE 3 : MULTIPLICITY COUNTING
+        // STAGE 3 : MULTIPLICITY COUNTING - KMER SPECTRUM FITTING
         // ============================================================
 
         cout << "Entering stage 3" << endl;
@@ -187,6 +191,7 @@ void Brownie::stageFour()
 
         DBGraph graph(settings);
         Util::startChrono();
+        Util::startChrono();
         cout << "Creating graph... "; cout.flush();
         graph.loadGraphBin(getBinNodeFilename(3),
                            getBinArcFilename(3),
@@ -194,8 +199,10 @@ void Brownie::stageFour()
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << graph.getGraphStats() << endl;
 
+        graph.fitKmerSpectrum(settings.getTempDirectory());
+
 #ifdef DEBUG
-        Util::startChrono();
+        /*Util::startChrono();
         cout << "Building kmer - node/position index... "; cout.flush();
         graph.buildKmerNPPTable();              // build kmer-NPP index
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
@@ -203,10 +210,14 @@ void Brownie::stageFour()
         refComp.validateGraph(graph);
         vector<size_t> trueMult;
         refComp.getNodeMultiplicity(graph, trueMult);
+        graph.setTrueNodeMultiplicity(trueMult);*/
 #endif
+       // graph.writeCytoscapeGraph(settings.getTempDirectory() + "Initial", -1, 20);
+
+
 
         // TIP CLIPPING
-        while (graph.clipTips(30, libraries.getAvgReadLength()))
+     /*   while (graph.clipTips(30, libraries.getAvgReadLength()))
                 graph.concatenateNodes();
 
         // BUBBLE DETECTION
@@ -217,28 +228,35 @@ void Brownie::stageFour()
         while (graph.clipTips(30, libraries.getAvgReadLength()))
                 graph.concatenateNodes();
 
-        // DETACH NODES
+      // graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytDebug3", -774414, 5);
+       // graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytDebug2", -763016, 5);
+
+        // FLOW CORRECTION
         while (graph.flowCorrection())
                 graph.concatenateNodes();
+
+        graph.setNodeMultiplicityEM();
 
         Util::startChrono();
         cout << "Writing cytoscape graph files..."; cout.flush();
         graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytFinal");
-        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;*/
+
+        exit(EXIT_SUCCESS);
 
 #ifdef DEBUG
-        Util::startChrono();
+      /*  Util::startChrono();
         cout << "Building kmer - node/position index... "; cout.flush();
         graph.buildKmerNPPTable();              // build kmer-NPP index
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
-        refComp.validateGraph(graph);
+        refComp.validateGraph(graph);*/
 #endif
 
         graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));
         cout << "Graph correction completed in " << Util::stopChronoStr() << endl;
 
 #ifdef DEBUG
-        graph.sanityCheck();
+        //graph.sanityCheck();
 #endif
         graph.clear();
         cout << "Stage 4 finished.\n" << endl;
@@ -313,7 +331,7 @@ int main(int argc, char** args)
                 brownie.stageTwo();
                 brownie.stageThree();
                 brownie.stageFour();
-                brownie.stageFive();
+               // brownie.stageFive();
 
                 brownie.writeGraphFasta();
         } catch (exception &e) {

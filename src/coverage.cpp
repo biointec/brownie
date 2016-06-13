@@ -83,6 +83,38 @@ void DBGraph::workerThread(size_t thisThread, LibraryContainer* inputs)
                 parseReads(thisThread, myReadBuf);
 }
 
+double DBGraph::getInitialKmerCovEstimate(double errLambda, double p) const
+{
+        // sanity checks
+        assert(errLambda > 0.0);
+        assert(p > 0.0);
+        assert(p < 1.0);
+
+        // Given a Poisson distribution for the error model, find a cutoff
+        // value for the coverage for which the probability of observing
+        // a coverage is less than p under this error model
+        double cutoff = ceil(errLambda);
+        for ( ; cutoff < 10.0 * errLambda; cutoff++)
+                if (Util::poissonPDF((unsigned int)cutoff, errLambda) < p)
+                        break;
+
+        size_t totCoverage = 0, totSize = 0;
+        for ( NodeID id = 1; id <= numNodes; id++ ) {
+                SSNode node = getSSNode(id);
+                if (!node.isValid())
+                        continue;
+                if (node.getAvgKmerCov() < cutoff)
+                        continue;
+                totCoverage += node.getKmerCov();
+                totSize += node.getMarginalLength();
+        }
+
+        if (totSize > 0)
+                return (double)totCoverage / (double)totSize;
+        else
+                return 2.0 * errLambda;      // pathological case
+}
+
 // ============================================================================
 // PUBLIC COVERAGE.CPP (STAGE 3)
 // ============================================================================
@@ -112,4 +144,115 @@ void DBGraph::countNodeandArcFrequency(LibraryContainer &inputs)
         inputs.joinIOThreads();
 
         destroyKmerNPPTable();
+}
+
+void DBGraph::fitKmerSpectrum(const string& tempdir)
+{
+        double avgKmerCov = getInitialKmerCovEstimate(2.0, 0.01);
+        cout << "Initial coverage estimate: " << avgKmerCov << endl;
+
+        size_t numComponents = 3;
+        double xMax = numComponents * avgKmerCov;
+
+        map<unsigned int, double> data;
+        for ( NodeID id = 1; id <= numNodes; id++ ) {
+                SSNode node = getSSNode(id);
+                if (!node.isValid())
+                        continue;
+                if (node.getAvgKmerCov() > xMax)
+                        continue;
+
+                data[round(node.getAvgKmerCov())] += node.getMarginalLength();
+        }
+
+        // also add the number of unique k-mers to the model
+        double temp;
+        ifstream ifs((tempdir + "numkmers.stage1").c_str());
+        ifs >> temp;
+        ifs.close();
+        data[1] = temp;
+
+        vector<double> mu(numComponents), var(numComponents), MC(numComponents);
+
+        for (size_t i = 0; i < numComponents; i++) {
+                mu[i] = i * avgKmerCov + 2.0;
+                var[i] = 1.01 * mu[i];
+                MC[i] = 1.0;
+        }
+
+        Util::binomialMixtureEM(data, mu, var, MC, 50);
+
+        double yMax = 1.2 * MC[1] * Util::negbinomialPDF(mu[1], mu[1], var[1]);
+
+        for (int j = 0; j < numComponents; j++) {
+                cout << "Average of component " << j << ": " << mu[j] << endl;
+                cout << "Mixing coefficient of component " << j << ": " << MC[j] << endl;
+                cout << "Variance of component " << j << ": " << var[j] << endl;
+        }
+
+        // estimate the genome size
+        size_t genomeSize = 0;
+        for (int j = 1; j <= numComponents; j++)
+                genomeSize += j * MC[j];
+        cout << "Estimated genome size: " << genomeSize << endl;
+
+        ofstream ofs((tempdir + "spectrum.txt").c_str());
+        for (const auto& it : data) {
+                double fit = MC[0] * Util::geometricPDF(it.first, mu[0]);
+                for (size_t i = 1; i < numComponents; i++)
+                        fit += MC[i] * Util::negbinomialPDF(it.first, mu[i], var[i]);
+                ofs << it.first << "\t" << it.second << "\t" << fit << endl;
+        }
+        ofs.close();
+
+        ofs.open((tempdir + "spectrum.gnu").c_str());
+        ofs << "set output \"spectrum.ps\"" << endl;
+        ofs << "set terminal postscript landscape" << endl;
+        ofs << "set xrange [0:" << (size_t)xMax << "]" << endl;
+        ofs << "set yrange [0:" << (size_t)yMax << "]" << endl;
+        //ofs << "set style line 1 lt 2 lc rgb \"black\" lw 3" << endl;
+        //ofs << "set style line 2 lt 2 lc rgb \"red\" lw 3" << endl;
+        ofs << "plot \"spectrum.txt\" using 1:2 title \'k-mer spectrum\' with lines, ";
+        ofs << "\"spectrum.txt\" using 1:3 title \'fitted model\' with lines lt 3 lw 3 lc 3" << endl;
+        ofs.close();
+
+        // figure out how many of the nodes are correctly flagged as erroneous
+       /* double fp = 0, tp = 0, tn = 0, fn = 0;
+        for (NodeID id = 1; id <= numNodes; id++) {
+                SSNode node = getSSNode(id);
+                if (!node.isValid())
+                        continue;
+                bool actual = (trueMult[id] >= 1);
+                bool predicted = (node.getExpMult(avgKmerCov) >= 1);
+
+                //cout << actual << " " << predicted << endl;
+                if (actual && predicted)
+                        tp++;
+                if (!actual && predicted)
+                        fp++;
+                if (actual && !predicted)
+                        fn++;
+                if (!actual && !predicted)
+                        tn++;
+        }
+
+        double prec = tp / (tp + fp);
+        double rec = tp / (tp + fn);
+        double F1 = 2 * prec * rec / (prec + rec);
+
+        cout << "Precision: " << prec << endl;
+        cout << "Recall: " << rec << endl;
+        cout << "F1 score: " << F1 << endl;*/
+}
+
+void DBGraph::writeNodeFile(const std::string& filename) const
+{
+        ofstream ofs(filename.c_str());
+        for ( NodeID id = 1; id <= numNodes; id++ ) {
+                        SSNode node = getSSNode(id);
+                        if (!node.isValid())
+                                continue;
+                        ofs << id << "\t" << node.getMarginalLength() << "\t" << node.getAvgKmerCov() << "\t" << node.getReadStartCov() << endl;
+        }
+        ofs.close();
 }

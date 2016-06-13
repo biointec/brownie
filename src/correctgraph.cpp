@@ -34,8 +34,8 @@ using namespace std;
 void DBGraph::removeNode(NodeID nodeID)
 {
         #ifdef DEBUG
-/*        if (trueMult[abs(nodeID)] > 0)
-                cout << "Error removing node " << nodeID << endl;*/
+        if (trueMult[abs(nodeID)] > 0)
+                cout << "Error removing node " << nodeID << endl;
         #endif
 
         SSNode node = getSSNode(nodeID);
@@ -63,8 +63,8 @@ void DBGraph::removeNode(NodeID nodeID)
 void DBGraph::detachNode(NodeID leftID, NodeID rightID)
 {
         #ifdef DEBUG
-      /*  if ((trueMult[abs(leftID)] > 0) && (trueMult[abs(rightID)] > 0))
-                cout << "Error disconnecting nodes " << leftID << " and " << rightID << endl;*/
+        if ((trueMult[abs(leftID)] > 0) && (trueMult[abs(rightID)] > 0))
+                cout << "Error detaching nodes " << leftID << " and " << rightID << endl;
         #endif
         getSSNode(leftID).deleteRightArc(rightID);
         getSSNode(rightID).deleteLeftArc(leftID);
@@ -296,7 +296,7 @@ bool DBGraph::flowCorrection(NodeID nodeID, double avgKmerCov)
         double expNodeMult = round(node.getAvgKmerCov() / avgKmerCov);
         if (expNodeMult == 0)
                 return false;
-        //cout << "Multiplicity for node " << nodeID << ": " << node.getAvgKmerCov() / avgKmerCov << " (" << expNodeMult << ")" << endl;
+       // cout << "Multiplicity for node " << nodeID << ": " << node.getAvgKmerCov() / avgKmerCov << " (" << expNodeMult << ")" << endl;
 
         double sumArcCov = 0;
         for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++ )
@@ -308,7 +308,7 @@ bool DBGraph::flowCorrection(NodeID nodeID, double avgKmerCov)
         vector<NodeID> toDetach;
         for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++ ) {
                 double obsArcMult = round(it->getCoverage() / expArcCov);
-                //cout << "Right arc: " << it->getNodeID() << ": " << it->getCoverage() / expArcCov << "(" << obsArcMult << ")" << endl;
+               // cout << "Right arc: " << it->getNodeID() << ": " << it->getCoverage() / expArcCov << "(" << obsArcMult << ")" << endl;
 
                 // don't detach right away as this will break the iterator
                 if (obsArcMult == 0)
@@ -321,6 +321,9 @@ bool DBGraph::flowCorrection(NodeID nodeID, double avgKmerCov)
                     (getSSNode(it).getNumRightArcs() == 0))
                         getSSNode(it).invalidate();
         }
+
+       // if (nodeID == -763016)
+        //        exit(0);
 
         return !toDetach.empty();
 }
@@ -365,7 +368,7 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                 }
 
 #ifdef DEBUG
-               /* if (remove) {
+                if (remove) {
                         if (trueMult.size()>0&& trueMult[id] > 0) {
                                 if (isolated)
                                         fps++;
@@ -397,13 +400,13 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                                 else
                                         fn++;
                         }
-                }*/
+                }
 #endif
         }
 
         cout << "Clipped " << numDeleted << "/" << numTotal << " nodes" << endl;
 #ifdef DEBUG
-      /*  cout << "\t===== DEBUG: tip clipping report =====" << endl;
+        /*cout << "\t===== DEBUG: tip clipping report =====" << endl;
         cout << "\tIsolated TP: " << tps << "\tTN: "<< tns << "\tFP: " << fps << "\tFN: "<< fns << endl;
         cout << "\tSensitivity: " << 100.0 * Util::getSensitivity(tps, fns) << "%" << endl;
         cout << "\tSpecificity: " << 100.0 * Util::getSpecificity(tns, fps) << "%" << endl;
@@ -446,13 +449,20 @@ bool DBGraph::concatenateNodes()
                         continue;
 
 #ifdef DEBUG
-              /*  if (!trueMult.empty()) {
-                        if (trueMult[abs(lID)] != trueMult[abs(rID)]) {
+                if (!trueMult.empty()) {
+                        size_t lMult = trueMult[abs(lID)];
+                        size_t rMult = trueMult[abs(rID)];
+                        if (lMult != rMult) {
+                                /*cout << "\tConcatenating " << lID << " (cov = "
+                                     << left.getAvgKmerCov() << ", " << lMult
+                                     << ") and " << rID << " (cov = "
+                                     << right.getAvgKmerCov() << ", " << rMult
+                                     << ")" << endl;*/
                                 numIncorrectConcatenations++;
-                                trueMult[abs(lID)]=0;
-                                trueMult[abs(rID)]=0;
+                                trueMult[abs(lID)] = max(lMult, rMult);
+                                trueMult[abs(rID)] = max(lMult, rMult);
                         }
-                }*/
+                }
 #endif
 
                 left.deleteRightArc(rID);
@@ -514,28 +524,9 @@ bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
 
 bool DBGraph::flowCorrection()
 {
-        // compute the average coverage of a unique node
-        vector<NodeID> sortedNodes;
-        sortedNodes.reserve(numNodes);
-        for ( NodeID id = 1; id <= numNodes; id++ ) {
-                if (!getSSNode(id).isValid())
-                        continue;
-                sortedNodes.push_back(id);
-        }
+        cout << endl << "=================== Flow correction ===================" << endl;
 
-        sort(sortedNodes.begin(), sortedNodes.end(), sortNodeByLength);
-        size_t numBigNodes = sortedNodes.size() * 0.1;
-        if (numBigNodes == 0)
-                numBigNodes = sortedNodes.size();
-
-        size_t totCoverage = 0, totSize = 0;
-        for (size_t i = 0; i < numBigNodes; i++) {
-                totCoverage += getSSNode(sortedNodes[i]).getKmerCov();
-                totSize += getSSNode(sortedNodes[i]).getMarginalLength();
-        }
-
-        double avgKmerCov = totCoverage / totSize;
-        cout << "Average kmer coverage: " << totCoverage / totSize << endl;
+        double avgKmerCov = getInitialKmerCovEstimate(0.10);
 
         bool returnValue = false;
         for (NodeID id = -numNodes; id <= numNodes; id++) {

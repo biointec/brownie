@@ -210,9 +210,9 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                 exit(EXIT_FAILURE);
         }
 
-        for (int i = 0; i < argc-1; i++)
-                ofs << argc << " ";
-        ofs << args[argc-1] << endl;
+        for (int i = 0; i < argc; i++)
+                ofs << args[i] << " ";
+        ofs << endl;
 
         ofs.close();
 

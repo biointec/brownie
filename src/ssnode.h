@@ -95,10 +95,18 @@ public:
         }
 
         /**
+         * Get the expected multiplicity for this node
+         * @param avgKmerCov Global average kmer coverage
+         */
+        int getExpMult(double avgKmerCov) {
+                return round(getAvgKmerCov() / avgKmerCov);
+        }
+
+        /**
          * Get the read start coverage
          * @return The read start coverage
          */
-        Coverage getReadStartCov() const {
+        size_t getReadStartCov() const {
                 return dsNode->getReadStartCov();
         }
 
@@ -121,7 +129,7 @@ public:
          * Get the kmer coverage
          * @return The kmer coverage
          */
-        Coverage getKmerCov() const {
+        size_t getKmerCov() const {
                 return dsNode->getKmerCov();
         }
 

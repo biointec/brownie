@@ -64,6 +64,7 @@ typedef uint32_t KmerLSB;       // set to uint16_t and all hell will break loose
 #define MAX_THRESHOLD 1
 #define MULT_SIGN_STD 3
 
+#define FLOAT_SMALL 1E-6
 #define DOUBLE_SMALL 1E-15
 
 #define SCAFFOLD_SNAP_LINK 5

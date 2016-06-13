@@ -1,5 +1,5 @@
 include_directories(gtest/include ../src)
-add_executable(unittest utiltest.cpp alignmenttest.cpp scaffoldtest.cpp readfiletest.cpp
+add_executable(unittest mmtest.cpp utiltest.cpp alignmenttest.cpp scaffoldtest.cpp readfiletest.cpp
         nucleotidetest.cpp kmermdtest.cpp kmertest.cpp tstringtest.cpp
         ../src/tstring.cpp ../src/nucleotide.cpp ../src/kmeroverlap.cpp ../src/alignment.cpp
         ../src/util.cpp)

@@ -23,30 +23,5 @@
 
 #include "global.h"
 
-// ============================================================================
-// DIJKSTRA AUXILIARY CLASSES
-// ============================================================================
-
-class PathDFS {
-public:
-        NodeID nodeID;
-        size_t length;
-
-        /**
-         * Default constructor
-         */
-        PathDFS(NodeID nodeID, size_t length) :
-                nodeID(nodeID), length(length) {};
-};
-
-struct PathDFSComp {
-
-        /**
-         * Compare two paths (by length)
-         */
-        bool operator()(const PathDFS& f, const PathDFS& s) {
-                return f.length >= s.length;
-        }
-};
 
 #endif

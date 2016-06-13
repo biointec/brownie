@@ -687,7 +687,7 @@ ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
 {
         Util::startChrono();
         cout << "Creating kmer lookup table... "; cout.flush();
-        //dbg.populateTable();
+        dbg.buildKmerNPPTable();
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
         Util::startChrono();
@@ -700,5 +700,5 @@ ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
 ReadCorrectionHandler::~ReadCorrectionHandler()
 {
         delete sa;
-        //dbg.depopulateTable();
+        dbg.destroyKmerNPPTable();
 }

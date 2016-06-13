@@ -39,7 +39,7 @@ void DBGraph::buildKmerNPPTable()
                         continue;
                 numKmers += node.getMarginalLength();
         }
-        cout << "Number of kmers: " << numKmers << endl;
+
         kmerNPPTable.clear();
         kmerNPPTable.resize(numKmers);
 
@@ -85,7 +85,7 @@ bool DBGraph::insertNPP(const Kmer& kmer, NodePosPair npp)
 
 NodePosPair DBGraph::findNPP(Kmer const &kmer) const
 {
-        // chose a representative kmer
+        // choose a representative kmer
         Kmer reprKmer = settings.isDoubleStranded() ?
                 kmer.getRepresentative() : kmer;
 

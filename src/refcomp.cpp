@@ -153,7 +153,7 @@ void RefComp::getNodeMultiplicity(const DBGraph& dbg,
         }
 
         // compute the multiplicity for each node
-        for (size_t i = 1; i <= dbg.getNumNodes(); i++) {
+        for (NodeID i = 1; i <= dbg.getNumNodes(); i++) {
                 double ML = dbg.getSSNode(i).getMarginalLength();
                 multiplicity[i] = round((double)multiplicity[i]/ML);
         }

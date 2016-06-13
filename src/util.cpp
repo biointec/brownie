@@ -1,6 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2014, 2015 Jan Fostier (jan.fostier@intec.ugent.be)     *
- *   Copyright (C) 2014, 2015 Mahdi Heydari (mahdi.heydari@intec.ugent.be) *
+ *   Copyright (C) 2014 - 2016 Jan Fostier (jan.fostier@intec.ugent.be)    *
  *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -24,6 +23,8 @@
 #include <ctime>
 #include <sstream>
 #include <cmath>
+#include <cstdlib>
+#include <iostream>
 
 using namespace std;
 using namespace std::chrono;
@@ -87,4 +88,127 @@ string Util::getDateTime()
 double Util::poissonPDF(unsigned int k, double mu)
 {
         return exp(k*log(mu)-mu-lgamma(k+1));
+}
+
+double Util::poissonPDFratio(unsigned int k, double mu1, double mu2)
+{
+        return exp(k*log(mu1) - mu1 - k*log(mu2) + mu2);
+}
+
+double Util::negbinomialPDF(unsigned int k, double mu, double sigma2)
+{
+        double p = (sigma2 - mu)/sigma2;
+        double r = mu*mu/(sigma2 - mu);
+        return exp(lgamma(k + r) - lgamma(k+1) - lgamma(r) + r*log(1-p) + k*log(p));
+}
+
+double Util::negbinomialPDFratio(unsigned int k, double mu1, double sigma21,
+                                 double mu2, double sigma22)
+{
+        double p1 = (sigma21 - mu1)/sigma21;
+        double r1 = mu1*mu1/(sigma21 - mu1);
+        double p2 = (sigma22 - mu2)/sigma22;
+        double r2 = mu2*mu2/(sigma22 - mu2);
+        return exp(lgamma(k + r1) - lgamma(r1) + r1*log(1-p1) + k*log(p1) -
+                   lgamma(k + r2) + lgamma(r2) - r2*log(1-p2) - k*log(p2));
+}
+
+double Util::geometricPDF(unsigned int k, double mu)
+{
+        double p = 1.0 / mu;
+        return p * pow(1 - p, k-1);
+}
+
+double Util::geometricnegbinomialPDFratio(unsigned int k, double mu1,
+                                          double mu2, double var2)
+{
+        double p1 = 1.0 / mu1;
+        double p2 = (var2 - mu2)/var2;
+        double r2 = mu2*mu2/(var2 - mu2);
+        return exp(log(p1) + (k-1)*log(1.0-p1) - lgamma(k + r2) + lgamma(k+1) +
+                   lgamma(r2) - r2*log(1.0-p2) - k*log(p2));
+}
+
+void Util::binomialMixtureEM(const map<unsigned int, double>& data,
+                             vector<double>& mu, vector<double> &var,
+                             vector<double>& MC, int maxIterations)
+{
+        // sanity check
+        assert(var.size() == mu.size());
+
+        // shortcuts
+        size_t size = data.size();
+        int numComponents = mu.size();
+        double avgKmerCov = mu[1];
+
+        // initialize weights
+        map<unsigned int, double> *weight = new map<unsigned int, double>[numComponents];
+
+        for (int itCount = 0; itCount < maxIterations; itCount++) {
+
+                // compute weights
+                for (const auto& element : data) {
+                        unsigned int x = element.first;
+
+                        // compute the weights corresponding to the negative binomials
+                        for (int j = 1; j < numComponents; j++) {
+                                double nom = 1.0 + MC[0]/MC[j] * geometricnegbinomialPDFratio(x, mu[0], mu[j], var[j]);
+                                for (int k = 1; k < numComponents; k++) {
+                                        if (k == j)
+                                                continue;
+                                        nom += MC[k]/MC[j] * negbinomialPDFratio(x, mu[k], var[k], mu[j], var[j]);
+                                }
+                                weight[j][x] = 1.0 / nom;
+                        }
+
+                        // compute the weights corresponding to the geometric distribution
+                        // (all weights should sum to one)
+                        weight[0][x] = 1.0;
+                        for (int j = 1; j < numComponents; j++)
+                                weight[0][x] -= weight[j][x];
+                }
+
+                // compute mean
+                for (int j = 0; j < numComponents; j++) {
+                        double sum = 0.0, count = 0.0;
+                        for (const auto& element : data) {
+                                unsigned int x = element.first;
+                                double y = element.second;
+
+                                count += weight[j][x] * y;
+                                sum += weight[j][x] * x * y;
+                        }
+
+                        mu[j] = sum / count;
+                        MC[j] = count;
+                }
+
+                // compute variance
+                for (int j = 0; j < numComponents; j++) {
+                        double sum = 0.0, count = 0.0;
+                        for (const auto& element : data) {
+                                unsigned int x = element.first;
+                                double y = element.second;
+
+                                sum += weight[j][x] * y * (x - mu[j]) * (x - mu[j]);
+                                count += weight[j][x] * y;
+                        }
+
+                        var[j] = sum / count;
+
+                        // make sure the variance is at least the average
+                        // (overdispersed Poisson model)
+                        if ((j > 0) && ((var[j] - mu[j]) < FLOAT_SMALL))
+                                var[j] = mu[j] + FLOAT_SMALL;
+                }
+
+                // display results
+                /*for (int j = 0; j < numComponents; j++) {
+                        cout << "Average of component " << j << ": " << mu[j] << endl;
+                        cout << "Mixing coefficient of component " << j << ": " << MC[j] << endl;
+                        cout << "Variance of component " << j << ": " << var[j] << endl;
+                }*/
+        }
+
+        delete [] weight;
 }
