@@ -33,10 +33,10 @@ using namespace std;
 
 void DBGraph::removeNode(NodeID nodeID)
 {
-        #ifdef DEBUG
+#ifdef DEBUG
         if (trueMult[abs(nodeID)] > 0)
                 cout << "Error removing node " << nodeID << endl;
-        #endif
+#endif
 
         SSNode node = getSSNode(nodeID);
         for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++) {
@@ -63,8 +63,10 @@ void DBGraph::removeNode(NodeID nodeID)
 void DBGraph::detachNode(NodeID leftID, NodeID rightID)
 {
         #ifdef DEBUG
-        if ((trueMult[abs(leftID)] > 0) && (trueMult[abs(rightID)] > 0))
+        if ((trueMult[abs(leftID)] > 0) && (trueMult[abs(rightID)] > 0)) {
                 cout << "Error detaching nodes " << leftID << " and " << rightID << endl;
+                //exit(0);
+        }
         #endif
         getSSNode(leftID).deleteRightArc(rightID);
         getSSNode(rightID).deleteLeftArc(leftID);
@@ -158,7 +160,7 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
         const double& lowCov = (covSubPathA < covSubPathB) ?
                 covSubPathA : covSubPathB;
 
-        /*cout << "Path A" << endl;
+       /* cout << "Path A" << endl;
         cout << pathA << endl;
         cout << "First: " << firstA << ", last: " << lastA << endl;
         cout << subPathA << endl;
@@ -426,73 +428,114 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
 
 bool DBGraph::concatenateNodes()
 {
-        size_t numConcatentations = 0;
-        size_t numIncorrectConcatenations=0;
+        size_t numConcatenations = 0, numIncorrectConcatenations = 0;
 
-        for (NodeID lID = -numNodes; lID <= numNodes; lID++) {
-                if (lID == 0)
-                        continue;
-                SSNode left = getSSNode(lID);
-                if (!left.isValid())
-                        continue;
-                if (left.getNumRightArcs() != 1)
+        for (NodeID seedID = 1; seedID <= numNodes; seedID++) {
+
+                SSNode seed = getSSNode(seedID);
+                if (!seed.isValid())
                         continue;
 
-                NodeID rID = left.rightBegin()->getNodeID();
+                deque<NodeID> nodeList;
+                nodeList.push_back(seedID);
 
-                // don't merge palindromic repeats
-                if (rID == -lID)
+                // find linear paths to the right
+                SSNode curr = seed;
+                while (curr.getNumRightArcs() == 1) {
+                        NodeID rightID = curr.rightBegin()->getNodeID();
+                        SSNode right = getSSNode(rightID);
+                        // don't merge palindromic repeats
+                        if (rightID == -curr.getNodeID())
+                                break;
+                        if (right.getNumLeftArcs() != 1)
+                                break;
+                        nodeList.push_back(rightID);
+                        curr = right;
+                }
+
+                // find linear paths to the left
+                curr = seed;
+                while (curr.getNumLeftArcs() == 1) {
+                        NodeID leftID = curr.leftBegin()->getNodeID();
+                        SSNode left = getSSNode(leftID);
+                        // don't merge palindromic repeats
+                        if (leftID == -curr.getNodeID())
+                                break;
+                        if (left.getNumRightArcs() != 1)
+                                break;
+                        nodeList.push_front(leftID);
+                        curr = left;
+                }
+
+                // if no linear path was found, continue
+                if (nodeList.size() == 1)
                         continue;
 
-                SSNode right = getSSNode (rID);
-                if (right.getNumLeftArcs() != 1)
-                        continue;
+                // concatenate the path
+                NodeID frontID = nodeList.front();
+                SSNode front = getSSNode(frontID);
+                NodeID backID = nodeList.back();
+                SSNode back = getSSNode(backID);
+
+                front.deleteAllRightArcs();
+                front.inheritRightArcs(back);
+
+                size_t newKmerCov = front.getKmerCov();
+                size_t newReadStartCov = front.getReadStartCov();
+                for (size_t i = 1; i < nodeList.size(); i++) {
+                        newKmerCov += getSSNode(nodeList[i]).getKmerCov();
+                        newReadStartCov += getSSNode(nodeList[i]).getReadStartCov();
+                        getSSNode(nodeList[i]).deleteAllLeftArcs();
+                        getSSNode(nodeList[i]).deleteAllRightArcs();
+                        getSSNode(nodeList[i]).invalidate();
+                }
+
+                front.setKmerCov(newKmerCov);
+                front.setReadStartCov(newReadStartCov);
+
+                vector<NodeID> nodeListv;
+                copy(nodeList.begin(), nodeList.end(), std::back_inserter(nodeListv));
+
+                string str;
+                convertNodesToString(nodeListv, str);
+
+                front.setSequence(str);
+
+                numConcatenations += nodeList.size() - 1;
 
 #ifdef DEBUG
                 if (!trueMult.empty()) {
-                        size_t lMult = trueMult[abs(lID)];
-                        size_t rMult = trueMult[abs(rID)];
-                        if (lMult != rMult) {
-                                /*cout << "\tConcatenating " << lID << " (cov = "
-                                     << left.getAvgKmerCov() << ", " << lMult
-                                     << ") and " << rID << " (cov = "
-                                     << right.getAvgKmerCov() << ", " << rMult
-                                     << ")" << endl;*/
-                                numIncorrectConcatenations++;
-                                trueMult[abs(lID)] = max(lMult, rMult);
-                                trueMult[abs(rID)] = max(lMult, rMult);
+                        for (size_t i = 1; i < nodeListv.size(); i++) {
+                                NodeID lID = nodeListv[i-1];
+                                NodeID rID = nodeListv[i];
+                                SSNode left = getSSNode(lID);
+                                SSNode right = getSSNode(rID);
+                                size_t lMult = trueMult[abs(lID)];
+                                size_t rMult = trueMult[abs(rID)];
+                                if (lMult != rMult) {
+                                        cout << "\tConcatenating " << lID << " (cov = "
+                                             << left.getAvgKmerCov() << ", " << lMult
+                                             << ") and " << rID << " (cov = "
+                                             << right.getAvgKmerCov() << ", " << rMult
+                                             << ")" << endl;
+                                        numIncorrectConcatenations++;
+                                        trueMult[abs(lID)] = max(lMult, rMult);
+                                        trueMult[abs(rID)] = max(lMult, rMult);
+                                }
                         }
                 }
 #endif
-
-                left.deleteRightArc(rID);
-                right.deleteLeftArc(lID);
-                left.inheritRightArcs(right);
-                left.setKmerCov(left.getKmerCov()+right.getKmerCov());
-                left.setReadStartCov(left.getReadStartCov()+right.getReadStartCov());
-                right.invalidate();
-                numConcatentations++;
-
-                vector<NodeID> nodeList;
-                nodeList.push_back(lID);
-                nodeList.push_back(rID);
-
-                string str;
-                convertNodesToString(nodeList, str);
-
-                left.setSequence(str);
-                lID--;
         }
 
-        if (numConcatentations > 0)
-                cout << "Concatenated " << numConcatentations << " nodes" << endl;
+        cout << "Concatenated " << numConcatenations << " nodes" << endl;
+
 #ifdef DEBUG
-        cout << "\t===== DEBUG: tip clipping report =====" << endl;
-        cout << "\t" << "Number of incorrect connections: " << numIncorrectConcatenations << endl;
-        cout << "\t===== DEBUG: end =====" << endl;
+        if (numIncorrectConcatenations > 0)
+                cout << "\t" << "Number of incorrect connections: "
+                     << numIncorrectConcatenations << endl;
 #endif
 
-        return (numConcatentations > 0);
+        return (numConcatenations > 0);
 }
 
 bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
