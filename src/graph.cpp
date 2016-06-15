@@ -322,7 +322,8 @@ void DBGraph::writeCytoscapeGraph(const std::string& filename,
                                 continue;
                         if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
                                 continue;
-                        ofs << it->getNodeID() << "\t" << thisID << "\t" << it->getCoverage() << "\n";
+                        if (it->getNodeID() != thisID)  // avoid writing this arc twice
+                                ofs << it->getNodeID() << "\t" << thisID << "\t" << it->getCoverage() << "\n";
                         PathDFS nextTop(it->getNodeID(), thisDepth + 1);
                         nodeDepth.push(nextTop);
                 }
