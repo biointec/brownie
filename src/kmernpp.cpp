@@ -122,7 +122,8 @@ bool DBGraph::consecutiveNPP(NodePosPair& left, NodePosPair& right) const
 
         // left and right belong to the same node?
         if (left.getNodeID() == right.getNodeID())
-                return (left.getPosition()+1 == right.getPosition());
+                if ((left.getPosition()+1) == right.getPosition())
+                        return true;
 
         // left and right belong to the connected nodes?
         SSNode leftNode = getSSNode(left.getNodeID());
