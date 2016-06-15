@@ -184,7 +184,7 @@ void DBGraph::fitKmerSpectrum(const string& tempdir)
 
         double yMax = 1.2 * MC[1] * Util::negbinomialPDF(mu[1], mu[1], var[1]);
 
-        for (int j = 0; j < numComponents; j++) {
+        for (size_t j = 0; j < numComponents; j++) {
                 cout << "Average of component " << j << ": " << mu[j] << endl;
                 cout << "Mixing coefficient of component " << j << ": " << MC[j] << endl;
                 cout << "Variance of component " << j << ": " << var[j] << endl;
@@ -192,7 +192,7 @@ void DBGraph::fitKmerSpectrum(const string& tempdir)
 
         // estimate the genome size
         size_t genomeSize = 0;
-        for (int j = 1; j <= numComponents; j++)
+        for (size_t j = 1; j <= numComponents; j++)
                 genomeSize += j * MC[j];
         cout << "Estimated genome size: " << genomeSize << endl;
 
