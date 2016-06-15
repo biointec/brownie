@@ -196,6 +196,13 @@ void DBGraph::fitKmerSpectrum(const string& tempdir)
                 genomeSize += j * MC[j];
         cout << "Estimated genome size: " << genomeSize << endl;
 
+        // find the minimum in between the error model and the unique peak
+        double cutoff = ceil(mu[0]);
+        for ( ; cutoff < mu[1]; cutoff++)
+                if (MC[0]/MC[1]*Util::geometricnegbinomialPDFratio((unsigned int)cutoff, mu[0], mu[1], var[1]) < 0.5)
+                        break;
+        cout << "Estimated coverage cutoff: " << cutoff << endl;
+
         ofstream ofs((tempdir + "spectrum.txt").c_str());
         for (const auto& it : data) {
                 double fit = MC[0] * Util::geometricPDF(it.first, mu[0]);
