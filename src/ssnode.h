@@ -63,19 +63,19 @@ public:
         }
 
         /**
-         * Set the loop flag
-         * @param isLoop True of false
+         * Set the flag
+         * @param flag True of false
          */
-        void setLoop(bool isLoop) {
-                dsNode->setLoop(isLoop);
+        void setFlag(bool flag) {
+                dsNode->setFlag(flag);
         }
 
         /**
-         * Check whether the node is a loop or not
+         * Get the flag
          * @return True of false
          */
-        bool isLoop() const {
-                return dsNode->isLoop();
+        bool getFlag() const {
+                return dsNode->getFlag();
         }
 
         /**
@@ -436,7 +436,7 @@ public:
                                 std::cout << "Paniek ! " << std::endl;
                 } else
                         if (dsNode->getRightArc(-origID) == NULL)
-                                std::cout << "Paniek ! " << std::endl;
+                                std::cout << "Paniek 2 ! " << std::endl;
                 if (nodeID > 0)
                         dsNode->getLeftArc(origID)->setNodeID(newID);
                 else

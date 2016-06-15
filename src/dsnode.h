@@ -129,7 +129,7 @@ private:
                         uint8_t numLeft:3;              // [0...4]
                         uint8_t numRight:3;             // [0...4]
                         uint8_t invalid:1;
-                        uint8_t isLoop:1;
+                        uint8_t flag:1;
                 } p;
                 uint8_t up;
         } Bitfield;
@@ -205,19 +205,19 @@ public:
         }
 
         /**
-         * Set the loop flag
-         * @param isLoop True of false
+         * Set the flag
+         * @param flag True of false
          */
-        void setLoop(bool isLoop) {
-                arcInfo.p.isLoop = (isLoop) ? 1 : 0;
+        void setFlag(bool flag) {
+                arcInfo.p.flag = (flag) ? 1 : 0;
         }
 
         /**
-         * Check whether the node is a loop or not
+         * Get the flag
          * @return True of false
          */
-        bool isLoop() const {
-                return arcInfo.p.isLoop;
+        bool getFlag() const {
+                return arcInfo.p.flag;
         }
 
         void swapRightArcsSign() {

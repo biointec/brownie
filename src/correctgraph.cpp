@@ -438,18 +438,20 @@ bool DBGraph::concatenateNodes()
 
                 deque<NodeID> nodeList;
                 nodeList.push_back(seedID);
+                seed.setFlag(true);
 
                 // find linear paths to the right
                 SSNode curr = seed;
                 while (curr.getNumRightArcs() == 1) {
                         NodeID rightID = curr.rightBegin()->getNodeID();
                         SSNode right = getSSNode(rightID);
-                        // don't merge palindromic repeats
-                        if (rightID == -curr.getNodeID())
+                        // don't merge palindromic repeats / loops
+                        if (right.getFlag())
                                 break;
                         if (right.getNumLeftArcs() != 1)
                                 break;
                         nodeList.push_back(rightID);
+                        right.setFlag(true);
                         curr = right;
                 }
 
@@ -458,14 +460,19 @@ bool DBGraph::concatenateNodes()
                 while (curr.getNumLeftArcs() == 1) {
                         NodeID leftID = curr.leftBegin()->getNodeID();
                         SSNode left = getSSNode(leftID);
-                        // don't merge palindromic repeats
-                        if (leftID == -curr.getNodeID())
+                        // don't merge palindromic repeats / loops
+                        if (left.getFlag())
                                 break;
                         if (left.getNumRightArcs() != 1)
                                 break;
                         nodeList.push_front(leftID);
+                        left.setFlag(true);
                         curr = left;
                 }
+
+                // reset the flags to false
+                for (const auto& it : nodeList)
+                        getSSNode(it).setFlag(false);
 
                 // if no linear path was found, continue
                 if (nodeList.size() == 1)
