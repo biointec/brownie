@@ -137,9 +137,7 @@ void Util::binomialMixtureEM(const map<unsigned int, double>& data,
         assert(var.size() == mu.size());
 
         // shortcuts
-        size_t size = data.size();
         int numComponents = mu.size();
-        double avgKmerCov = mu[1];
 
         // initialize weights
         map<unsigned int, double> *weight = new map<unsigned int, double>[numComponents];

@@ -207,8 +207,6 @@ void DBGraph::convertNodesToString(const vector<NodeID> &nodeSeq,
         assert(size == output.size());
 }
 
-
-
 GraphStats DBGraph::getGraphStats()
 {
         vector<size_t> nodeLength;

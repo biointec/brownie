@@ -55,6 +55,8 @@ typedef google::sparse_hash_map<Kmer, NodePosPair, KmerHash> KmerNodeTable;
 
 bool sortNodeByLength(const NodeID& left, const NodeID& right);
 
+std::ostream &operator<<(std::ostream &out, const std::vector<NodeID> &path);
+
 // ============================================================================
 // DIJKSTRA AUXILIARY CLASSES
 // ============================================================================
