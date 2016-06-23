@@ -1,6 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2014, 2015 Jan Fostier (jan.fostier@intec.ugent.be)     *
- *   Copyright (C) 2014, 2015 Mahdi Heydari (mahdi.heydari@intec.ugent.be) *
+ *   Copyright (C) 2014 - 2016 Jan Fostier (jan.fostier@intec.ugent.be)    *
  *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -35,16 +34,28 @@ private:
         NodeID nodeID;                  // ID of node to which the arc points
         std::atomic<Coverage> cov;      // arc coverage
 
+#ifdef DEBUG
+        bool trueArc;                   // does the arc exist in the genome?
+#endif
+
 public:
         /**
          * Default constructor
          */
-        Arc() : nodeID(0), cov(0) {};
+        Arc() : nodeID(0), cov(0) {
+#ifdef DEBUG
+                trueArc = false;
+#endif
+        };
 
         /**
          * Copy constructor
          */
-        Arc(const Arc& rhs) : nodeID(rhs.nodeID), cov(rhs.cov.load()) {}
+        Arc(const Arc& rhs) : nodeID(rhs.nodeID), cov(rhs.cov.load()) {
+#ifdef DEBUG
+                trueArc = rhs.trueArc;
+#endif
+        }
 
         /**
          * Assignment operator
@@ -52,6 +63,9 @@ public:
         Arc& operator=(const Arc& rhs) {
                 nodeID = rhs.nodeID;
                 cov = rhs.cov.load();
+#ifdef DEBUG
+                trueArc = rhs.trueArc;
+#endif
                 return *this;
         }
 
@@ -88,7 +102,7 @@ public:
         }
 
         /**
-         * Increment of the coverage
+         * Atomically increment of the coverage
          */
         void incReadCov() {
                 cov++;
@@ -126,6 +140,24 @@ public:
                 ifs.read((char*)&nodeID, sizeof(nodeID));
                 ifs.read((char*)&cov, sizeof(cov));
         }
+
+#ifdef DEBUG
+        /**
+         * Is the arc a true arc?
+         * @return True of false
+         */
+        bool getTrueArc() const {
+                return trueArc;
+        }
+
+        /**
+         * Set the true arc flag
+         * @param flag True of false
+         */
+        void setTrueArc(bool flag) {
+                trueArc = flag;
+        }
+#endif
 };
 
 #endif

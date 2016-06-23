@@ -25,6 +25,7 @@
 #include "ssnode.h"
 #include "dsnode.h"
 #include "kmernpp.h"
+#include "kmercounttable.h"
 
 #include <vector>
 #include <google/sparse_hash_map>
@@ -142,7 +143,8 @@ private:
         NodeID numNodes;                // number of nodes
         NodeID numArcs;                 // number of arcs
 
-        KmerNodeTable kmerNPPTable;         // kmer node table
+        KmerNodeTable kmerNPPTable;     // kmer node table
+        KmerSpectrum kmerSpectrum;      // kmer spectrum
 
 #ifdef DEBUG
         std::vector<size_t> trueMult;
@@ -425,12 +427,13 @@ private:
         bool bubbleDetection(NodeID nodeID, double covCutoff,
                              size_t maxMargLength);
 
+public: // FIXME !!! (private)
         /**
          * Graph correctoin based on flow conservation
          * @param nodeID Identifier for the source node
-         * @param avgKmerCov Average k-mer coverage
+         * @param covCutoff Coverage cutoff
          */
-        bool flowCorrection(NodeID nodeID, double avgKmerCov);
+        bool flowCorrection(NodeID nodeID, double covCutoff);
 
 public:
         /**
@@ -478,15 +481,20 @@ private:
          * Parse a buffer of reads and store kmers in temporary buffers per thread
          * @param thisThread Identifier for the current thread
          * @param readBuffer Input read bufferp
+         * @param table Table to store the
          */
         void parseReads(size_t thisThread,
-                        std::vector<std::string>& readBuffer);
+                        const std::vector<std::string>& readBuffer,
+                        KmerCountTable& table);
 
         /**
-         * Entry routine for worker thread
+         * Entry routine for worker thread for counting the kmers
          * @param myID Unique threadID
+         * @param input LibraryContainer with the input libraries
+         * @param table KmerCountTable to store the kmer counts
          */
-        void workerThread(size_t myID, LibraryContainer* inputs);
+        void kmerCountWorkerThread(size_t threadID, LibraryContainer* inputs,
+                                   KmerCountTable* table);
 
         /**
          * Compute the kmer coverage of all nodes that have a probability
@@ -498,22 +506,60 @@ private:
         double getInitialKmerCovEstimate(double errLambda = 2,
                                          double p = 0.01) const;
 
-        /**
-         * Based on the set node multiplicity, compute the average kmer coverage
-         */
-        double getAvgKmerCov() const;
-
 public:
         /**
          * Count the node (kmer and nodestart) and arc multiplicity
+         * @param tempdir Path to which to write temporary files
          * @param inputs Container with input libraries
          */
-        void countNodeandArcFrequency(LibraryContainer &inputs);
+        void generateKmerSpectrum(const std::string& tempdir,
+                                  LibraryContainer &inputs);
 
         /**
-         * Fit a mixture model to the kmer spectrum
+         * Load the kmer spectrum fit from disk
+         * @param Filename File name
          */
-        void fitKmerSpectrum(const std::string& tempdir);
+        void loadKmerSpectrumFit(const std::string& filename) {
+                kmerSpectrum.loadSpectrumFit(filename);
+                std::cout << kmerSpectrum << std::endl;
+        }
+
+        /**
+         * Get coverage cutoff
+         * @return The coverage cutoff
+         */
+        double getCovCutoff() const {
+                return kmerSpectrum.getCovCutoff();
+        }
+
+        /**
+         * Given an observed kmer coverage, return the expected multiplicity
+         * @return The expected multiplicity
+         */
+        int getExpMult(double obsKmerCov) const;
+
+        /**
+         * Get the probability of observing a certain number of kmers
+         * @param obsKmerCov The observed number of kmers
+         * @param mult The multiplicity of the node
+         */
+        double getObsProb(unsigned int obsCov, unsigned int mult) const;
+
+        /**
+         * Get the probability of observing a certain number of kmers
+         * @param obsKmerCov The observed number of kmers
+         * @param ML The marginal length of the node
+         * @param mult The multiplicity of the node
+         */
+        double getObsProb(double obsKmerCov, int ML, unsigned int mult) const;
+
+        /**
+         * Get the average k-mer coverage
+         * @return The average k-mer coverage
+         */
+        double getAvgKmerCov() const {
+                return kmerSpectrum.getAvgKmerCov();
+        }
 
         /**
          * Write a node file containing length and kmer coverage
@@ -550,6 +596,12 @@ public:
          * @param npp NodePosPair element to reverse-complement
          **/
         void revCompNPP(NodePosPair& npp) const;
+
+        /**
+         * Populate the KmerCountTable
+         * @param kmerCountTable Table to populate
+         */
+        void buildKmerCountTable(KmerCountTable& kmerCountTable);
 
         /**
          * Check whether two NodePosPairs are consecutive in the graph

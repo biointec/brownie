@@ -60,6 +60,39 @@ void DBGraph::buildKmerNPPTable()
         }
 }
 
+void DBGraph::buildKmerCountTable(KmerCountTable& table)
+{
+        // count the number of k-mers in the graph
+        size_t numKmers = 0;
+        for (NodeID id = 1; id <= numNodes; id++) {
+                const DSNode& node = nodes[id];
+                if (!node.isValid())
+                        continue;
+                numKmers += node.getMarginalLength();
+        }
+
+        table.clear();
+        table.resize(numKmers);
+
+        // populate the table with kmers
+        for (NodeID id = 1; id <= numNodes; id++) {
+                const DSNode &node = nodes[id];
+                if (!node.isValid())
+                        continue;
+
+                // process the first kmer
+                const TString& tStr = node.getTSequence();
+                Kmer kmer(tStr);
+                table.insert(kmer, KmerCount(id));
+
+                // process the rest of the kmers
+                for (size_t i = Kmer::getK(); i < tStr.getLength(); i++) {
+                        kmer.pushNucleotideRight(tStr[i]);
+                        table.insert(kmer, KmerCount(id));
+                }
+        }
+}
+
 void DBGraph::destroyKmerNPPTable()
 {
         kmerNPPTable.clear();

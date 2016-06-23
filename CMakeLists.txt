@@ -19,7 +19,6 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # set some definitions
 add_definitions("-DMAXKMERLENGTH=31")
-add_definitions("-DCATEGORIES=2")
 add_definitions("-DBROWNIE_MAJOR_VERSION=${${PROJECT_NAME}_MAJOR_VERSION}")
 add_definitions("-DBROWNIE_MINOR_VERSION=${${PROJECT_NAME}_MINOR_VERSION}")
 add_definitions("-DBROWNIE_PATCH_LEVEL=${${PROJECT_NAME}_PATCH_LEVEL}")
@@ -30,7 +29,7 @@ if (MSVC)
         add_definitions("-D_CRT_SECURE_NO_WARNINGS")
 endif (MSVC)
 
-# add_definitions(-DDEBUG)        # FIXME: remove !!
+add_definitions(-DDEBUG)        # FIXME: remove !!
 
 # set g++ specific flags
 if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_GNUCC)

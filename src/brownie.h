@@ -1,6 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2014, 2015 Jan Fostier (jan.fostier@intec.ugent.be)     *
- *   Copyright (C) 2014, 2015 Mahdi Heydari (mahdi.heydari@intec.ugent.be) *
+ *   Copyright (C) 2014 - 2016 Jan Fostier (jan.fostier@intec.ugent.be)    *
  *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -131,6 +130,30 @@ public:
          */
         std::string getKmerFilename() const {
                 return settings.addTempDirectory("kmers.stage1");
+        }
+
+        /**
+         * Get the spectrum filename
+         * @return The spectrum filename
+         */
+        std::string getSpectrumFilename() const {
+                return settings.addTempDirectory("spectrum.txt");
+        }
+
+        /**
+         * Get the spectrum GNUplot filename
+         * @return The spectrum GNUplot filename
+         */
+        std::string getSpectrumGNUPlotFilename() const {
+                return settings.addTempDirectory("spectrum.gnu");
+        }
+
+        /**
+         * Get the spectrum fit filename
+         * @return The spectrum fit filename
+         */
+        std::string getSpectrumFitFilename() const {
+                return settings.addTempDirectory("spectrum.fit");
         }
 
         /**

@@ -1,6 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2014, 2015 Jan Fostier (jan.fostier@intec.ugent.be)     *
- *   Copyright (C) 2014, 2015 Mahdi Heydari (mahdi.heydari@intec.ugent.be) *
+ *   Copyright (C) 2014 - 2016 Jan Fostier (jan.fostier@intec.ugent.be)    *
  *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -87,19 +86,19 @@ public:
         }
 
         /**
-         * Set the read start coverage
-         * @param target The target read start coverage
-         */
-        void setReadStartCov(Coverage target) {
-                dsNode->setReadStartCov(target);
-        }
-
-        /**
          * Get the expected multiplicity for this node
          * @param avgKmerCov Global average kmer coverage
          */
         int getExpMult(double avgKmerCov) {
                 return round(getAvgKmerCov() / avgKmerCov);
+        }
+
+        /**
+         * Set the read start coverage
+         * @param target The target read start coverage
+         */
+        void setReadStartCov(Coverage target) {
+                dsNode->setReadStartCov(target);
         }
 
         /**
@@ -437,10 +436,11 @@ public:
                 } else
                         if (dsNode->getRightArc(-origID) == NULL)
                                 std::cout << "Paniek 2 ! " << std::endl;
-                if (nodeID > 0)
+                if (nodeID > 0) {
                         dsNode->getLeftArc(origID)->setNodeID(newID);
-                else
+                } else {
                         dsNode->getRightArc(-origID)->setNodeID(-newID);
+                }
         }
 
         /**

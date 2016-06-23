@@ -1,6 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2014, 2015 Jan Fostier (jan.fostier@intec.ugent.be)     *
- *   Copyright (C) 2014, 2015 Mahdi Heydari (mahdi.heydari@intec.ugent.be) *
+ *   Copyright (C) 2014 - 2016 Jan Fostier (jan.fostier@intec.ugent.be)    *
  *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -437,9 +436,9 @@ void KmerTable::validateStage1()
         cout.precision (4);
         cout << "Validation report: " << endl;
         cout << "\tk-mers in table: " << numFound << "/" << numKmers
-        << "(" << fracFound << "%)" << endl;
+        << " (" << fracFound << "%)" << endl;
         cout << "\tk-mers in table cov GT one: " << numCovGTOne << "/"
-        << numKmers << "(" << fracCovGTOne << "%)" << endl;
+        << numKmers << " (" << fracCovGTOne << "%)" << endl;
 }
 
 #endif

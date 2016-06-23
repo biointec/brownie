@@ -28,8 +28,8 @@ using namespace std;
 // PRIVATE COVERAGE.CPP (STAGE 3)
 // ============================================================================
 
-void DBGraph::parseReads(size_t thisThread,
-                         vector<string>& readBuffer)
+void DBGraph::parseReads(size_t thisThread, const vector<string>& readBuffer,
+                         KmerCountTable& table)
 {
         for (size_t i = 0; i < readBuffer.size(); i++) {
                 const string& read = readBuffer[i];
@@ -38,49 +38,47 @@ void DBGraph::parseReads(size_t thisThread,
                 if (!it.isValid())
                         continue;
 
-                // increase the read start coverage (only for the first valid kmer)
-                NodePosPair result = findNPP(it.getKmer());
-                if (result.getNodeID() != 0) {
-                        SSNode node = getSSNode(result.getNodeID());
-                        node.setReadStartCov(node.getReadStartCov()+1);
+                // process the first kmer
+                NodeID nodeID = table.incrKmerCount(it.getKmer()); // atomic
+                if (nodeID != 0) {
+                        SSNode node = getSSNode(nodeID);
+                        node.incReadStartCov(); // atomic
+                        node.incKmerCov();      // atomic
                 }
 
-                NodeID prevID = 0;
-                for (KmerIt it(read); it.isValid(); it++ ) {
-                        Kmer kmer = it.getKmer();
-                        NodePosPair result = findNPP(kmer);
-                        if (!result.isValid()) {
+                // process the remainder of the kmers
+                NodeID prevID = it.hasRightOverlap() ? nodeID : 0;
+                for (it++; it.isValid(); it++ ) {
+                        nodeID = table.incrKmerCount(it.getKmer());    // atomic
+                        if (nodeID == 0) {
                                 prevID = 0;
                                 continue;
                         }
 
                         // we've found the kmer, increase the node coverage
-                        NodeID thisID = result.getNodeID();
-                        SSNode node = getSSNode(thisID);
-                        node.incKmerCov();
+                        SSNode node = getSSNode(nodeID);
+                        node.incKmerCov();      // atomic
 
                         // if the previous node was valid and different, increase the arc coverage
-                        if ((prevID != 0) && (prevID != thisID)) {
-                                getSSNode(prevID).getRightArc(thisID)->incReadCov();
-                                getSSNode(thisID).getLeftArc(prevID)->incReadCov();
+                        if ((prevID != 0) && (prevID != nodeID)) {
+                                getSSNode(prevID).getRightArc(nodeID)->incReadCov();
+                                getSSNode(nodeID).getLeftArc(prevID)->incReadCov();
                         }
 
-                        if (it.hasRightOverlap())
-                                prevID = thisID;
-                        else
-                                prevID = 0;
+                        prevID = it.hasRightOverlap() ? nodeID : 0;
                 }
         }
 }
 
-void DBGraph::workerThread(size_t thisThread, LibraryContainer* inputs)
+void DBGraph::kmerCountWorkerThread(size_t thisThread, LibraryContainer* inputs,
+                                    KmerCountTable* table)
 {
         // local storage of reads
         vector<string> myReadBuf;
 
         size_t blockID, recordOffset;
         while (inputs->getReadChunk(myReadBuf, blockID, recordOffset))
-                parseReads(thisThread, myReadBuf);
+                parseReads(thisThread, myReadBuf, *table);
 }
 
 double DBGraph::getInitialKmerCovEstimate(double errLambda, double p) const
@@ -119,16 +117,17 @@ double DBGraph::getInitialKmerCovEstimate(double errLambda, double p) const
 // PUBLIC COVERAGE.CPP (STAGE 3)
 // ============================================================================
 
-void DBGraph::countNodeandArcFrequency(LibraryContainer &inputs)
+void DBGraph::generateKmerSpectrum(const string& tempdir, LibraryContainer &inputs)
 {
+        KmerCountTable kmerCountTable;
         const unsigned int& numThreads = settings.getNumThreads();
 
-        cout << "Building kmer-node table... "; cout.flush();
-        buildKmerNPPTable();
-        cout << "done" << endl;
+        cout << "Building kmer-count table... "; cout.flush();
+        buildKmerCountTable(kmerCountTable);
+        cout << "done (size: " << kmerCountTable.size() << " kmers)" << endl;
 
         cout << "Number of threads: " << numThreads << endl;
-        cout << "Counting node and arc frequency: " << endl;
+        cout << "Generating k-mer spectrum: " << endl;
 
         inputs.startIOThreads(settings.getThreadWorkSize(),
                               settings.getThreadWorkSize() * settings.getNumThreads());
@@ -136,120 +135,59 @@ void DBGraph::countNodeandArcFrequency(LibraryContainer &inputs)
         // start worker threads
         vector<thread> workerThreads(numThreads);
         for (size_t i = 0; i < workerThreads.size(); i++)
-                workerThreads[i] = thread(&DBGraph::workerThread, this, i, &inputs);
+                workerThreads[i] = thread(&DBGraph::kmerCountWorkerThread,
+                                          this, i, &inputs, &kmerCountTable);
 
         // wait for worker threads to finish
         for_each(workerThreads.begin(), workerThreads.end(), mem_fn(&thread::join));
-
         inputs.joinIOThreads();
 
-        destroyKmerNPPTable();
-}
+        // build a kmer-spectrum from the table
+        kmerCountTable.getKmerSpectrum(kmerSpectrum);
+        kmerCountTable.clear();
 
-void DBGraph::fitKmerSpectrum(const string& tempdir)
-{
         double avgKmerCov = getInitialKmerCovEstimate(2.0, 0.01);
         cout << "Initial coverage estimate: " << avgKmerCov << endl;
+        kmerSpectrum.fitKmerSpectrum(avgKmerCov);
 
-        size_t numComponents = 3;
-        double xMax = numComponents * avgKmerCov;
+        kmerSpectrum.writeSpectrum(tempdir + "spectrum.txt");
+        kmerSpectrum.writeGNUPlotFile(tempdir + "spectrum.gnu");
+        kmerSpectrum.writeSpectrumFit(tempdir + "spectrum.fit");
 
-        map<unsigned int, double> data;
-        for ( NodeID id = 1; id <= numNodes; id++ ) {
-                SSNode node = getSSNode(id);
-                if (!node.isValid())
-                        continue;
-                if (node.getAvgKmerCov() > xMax)
-                        continue;
+        cout << kmerSpectrum << endl;
+}
 
-                data[round(node.getAvgKmerCov())] += node.getMarginalLength();
+int DBGraph::getExpMult(double obsKmerCov) const
+{
+        if (obsKmerCov < getCovCutoff())
+                return 0;
+        int expMult = round(obsKmerCov / getAvgKmerCov());
+        return (expMult == 0) ? 1 : expMult;
+}
+
+double DBGraph::getObsProb(unsigned int obsCov, unsigned int mult) const
+{
+        /*if (mult > 0) {
+                int i = numErrComp+mult-1;
+                return spectrumMC[i] * Util::negbinomialPDF(obsCov, spectrumMu[i], spectrumVar[i]);
         }
 
-        // also add the number of unique k-mers to the model
-        double temp;
-        ifstream ifs((tempdir + "numkmers.stage1").c_str());
-        ifs >> temp;
-        ifs.close();
-        data[1] = temp;
+        double P = 0.0;
+        for (size_t i = 0; i < numErrComp; i++)
+                P += spectrumMC[i] * Util::negbinomialPDF(obsCov, spectrumMu[i], spectrumVar[i]);
+        return P;*/
+}
 
-        vector<double> mu(numComponents), var(numComponents), MC(numComponents);
+double DBGraph::getObsProb(double avgKmerCov, int ML, unsigned int mult) const
+{
+        /*double mu = (mult == 0) ? spectrumMu[0] : mult * spectrumMu[1];
+        double var = mult * spectrumVar[1];
+        double MC = (mult >= spectrumMC.size()) ? spectrumMC.back() : spectrumMC[mult];
 
-        for (size_t i = 0; i < numComponents; i++) {
-                mu[i] = i * avgKmerCov + 2.0;
-                var[i] = 1.01 * mu[i];
-                MC[i] = 1.0;
-        }
-
-        Util::binomialMixtureEM(data, mu, var, MC, 50);
-
-        double yMax = 1.2 * MC[1] * Util::negbinomialPDF(mu[1], mu[1], var[1]);
-
-        for (size_t j = 0; j < numComponents; j++) {
-                cout << "Average of component " << j << ": " << mu[j] << endl;
-                cout << "Mixing coefficient of component " << j << ": " << MC[j] << endl;
-                cout << "Variance of component " << j << ": " << var[j] << endl;
-        }
-
-        // estimate the genome size
-        size_t genomeSize = 0;
-        for (size_t j = 1; j <= numComponents; j++)
-                genomeSize += j * MC[j];
-        cout << "Estimated genome size: " << genomeSize << endl;
-
-        // find the minimum in between the error model and the unique peak
-        double cutoff = ceil(mu[0]);
-        for ( ; cutoff < mu[1]; cutoff++)
-                if (MC[0]/MC[1]*Util::geometricnegbinomialPDFratio((unsigned int)cutoff, mu[0], mu[1], var[1]) < 0.5)
-                        break;
-        cout << "Estimated coverage cutoff: " << cutoff << endl;
-
-        ofstream ofs((tempdir + "spectrum.txt").c_str());
-        for (const auto& it : data) {
-                double fit = MC[0] * Util::geometricPDF(it.first, mu[0]);
-                for (size_t i = 1; i < numComponents; i++)
-                        fit += MC[i] * Util::negbinomialPDF(it.first, mu[i], var[i]);
-                ofs << it.first << "\t" << it.second << "\t" << fit << endl;
-        }
-        ofs.close();
-
-        ofs.open((tempdir + "spectrum.gnu").c_str());
-        ofs << "set output \"spectrum.ps\"" << endl;
-        ofs << "set terminal postscript landscape" << endl;
-        ofs << "set xrange [0:" << (size_t)xMax << "]" << endl;
-        ofs << "set yrange [0:" << (size_t)yMax << "]" << endl;
-        //ofs << "set style line 1 lt 2 lc rgb \"black\" lw 3" << endl;
-        //ofs << "set style line 2 lt 2 lc rgb \"red\" lw 3" << endl;
-        ofs << "plot \"spectrum.txt\" using 1:2 title \'k-mer spectrum\' with lines, ";
-        ofs << "\"spectrum.txt\" using 1:3 title \'fitted model\' with lines lt 3 lw 3 lc 3" << endl;
-        ofs.close();
-
-        // figure out how many of the nodes are correctly flagged as erroneous
-       /* double fp = 0, tp = 0, tn = 0, fn = 0;
-        for (NodeID id = 1; id <= numNodes; id++) {
-                SSNode node = getSSNode(id);
-                if (!node.isValid())
-                        continue;
-                bool actual = (trueMult[id] >= 1);
-                bool predicted = (node.getExpMult(avgKmerCov) >= 1);
-
-                //cout << actual << " " << predicted << endl;
-                if (actual && predicted)
-                        tp++;
-                if (!actual && predicted)
-                        fp++;
-                if (actual && !predicted)
-                        fn++;
-                if (!actual && !predicted)
-                        tn++;
-        }
-
-        double prec = tp / (tp + fp);
-        double rec = tp / (tp + fn);
-        double F1 = 2 * prec * rec / (prec + rec);
-
-        cout << "Precision: " << prec << endl;
-        cout << "Recall: " << rec << endl;
-        cout << "F1 score: " << F1 << endl;*/
+        if (mult > 0)
+                return ML * (log(MC) + Util::logNegbinomialPDF(avgKmerCov, mu, var));
+        else
+                return ML * (log(MC) + Util::logGeometricPDF(avgKmerCov, mu));*/
 }
 
 void DBGraph::writeNodeFile(const std::string& filename) const

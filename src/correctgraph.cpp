@@ -35,7 +35,7 @@ void DBGraph::removeNode(NodeID nodeID)
 {
 #ifdef DEBUG
         if (trueMult[abs(nodeID)] > 0)
-                cout << "Error removing node " << nodeID << endl;
+                cout << "\tERROR removing node " << nodeID << endl;
 #endif
 
         SSNode node = getSSNode(nodeID);
@@ -62,12 +62,13 @@ void DBGraph::removeNode(NodeID nodeID)
 
 void DBGraph::detachNode(NodeID leftID, NodeID rightID)
 {
-        #ifdef DEBUG
-        if ((trueMult[abs(leftID)] > 0) && (trueMult[abs(rightID)] > 0)) {
-                cout << "Error detaching nodes " << leftID << " and " << rightID << endl;
-                //exit(0);
+#ifdef DEBUG
+        if (getSSNode(leftID).getRightArc(rightID)->getTrueArc()) {
+                cout << "\tERROR detaching nodes " << leftID << " and " << rightID << endl;
+                exit(EXIT_SUCCESS);
         }
-        #endif
+#endif
+
         getSSNode(leftID).deleteRightArc(rightID);
         getSSNode(rightID).deleteLeftArc(leftID);
 }
@@ -289,33 +290,70 @@ bool DBGraph::bubbleDetection(NodeID id, double covCutoff, size_t maxMargLength)
         return returnValue;
 }
 
-bool DBGraph::flowCorrection(NodeID nodeID, double avgKmerCov)
+bool DBGraph::flowCorrection(NodeID nodeID, double covCutoff)
 {
         SSNode node = getSSNode(nodeID);
         if (!node.isValid())
                 return false;
 
-        double expNodeMult = round(node.getAvgKmerCov() / avgKmerCov);
+        int expNodeMult = getExpMult(node.getAvgKmerCov());
         if (expNodeMult == 0)
                 return false;
-       // cout << "Multiplicity for node " << nodeID << ": " << node.getAvgKmerCov() / avgKmerCov << " (" << expNodeMult << ")" << endl;
 
-        double sumArcCov = 0;
-        for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++ )
-                sumArcCov += it->getCoverage();
+        cout << "Multiplicity for node " << nodeID << ": " << expNodeMult << endl;
 
-        // expected arc coverage for multiplicity one
-        double expArcCov = sumArcCov / expNodeMult;
+        int sumArcMult = 0;
+        bool candidateRemoval = false;
+        for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++ ) {
+                int expArcMult = getExpMult(it->getCoverage());
+                if (expArcMult == 0) {
+                        candidateRemoval = true;
+                        expArcMult++;
+                }
+                sumArcMult += expArcMult;
+        }
+
+        cout << "Sum of the right arc multiplicities: " << sumArcMult << endl;
+
+        // we will not detach arcs in this step
+        if (sumArcMult <= expNodeMult && !candidateRemoval)
+                return false;
+
+        cout << "Sum of arcs is higher than expected multiplicity" << endl;
+
+        // a) First assume that the topology is CORRECT
+        double totCorrProb = getObsProb(node.getAvgKmerCov(), node.getMarginalLength(), sumArcMult);
+        cout << "Log prob of node " << nodeID << " with coverage: " << node.getAvgKmerCov() << "  having multiplicity: " << sumArcMult << ": " << totCorrProb << endl;
+
+        for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++ ) {
+                int expArcMult = getExpMult(it->getCoverage());
+                if (expArcMult == 0)    // bring this to one as we assume topology to be correct
+                        expArcMult++;
+                double arcProb = getObsProb(it->getCoverage(), 1, expArcMult);
+                cout << "Log prob of arc with coverage " << it->getCoverage() << " having multiplicity: " << expArcMult << ": " << arcProb << endl;
+                totCorrProb += arcProb;
+        }
+
+        cout << "TOTAL log prob assuming topology is correct: " << totCorrProb << endl;
+
+        // b) Now assume that the topology is INCORRECT
+        double totWrongProb = getObsProb(node.getAvgKmerCov(), node.getMarginalLength(), expNodeMult);
+        cout << "Log prob of node " << nodeID << " with coverage: " << node.getAvgKmerCov() << "  having multiplicity: " << expNodeMult << ": " << totWrongProb << endl;
 
         vector<NodeID> toDetach;
         for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++ ) {
-                double obsArcMult = round(it->getCoverage() / expArcCov);
-               // cout << "Right arc: " << it->getNodeID() << ": " << it->getCoverage() / expArcCov << "(" << obsArcMult << ")" << endl;
-
-                // don't detach right away as this will break the iterator
-                if (obsArcMult == 0)
+                int expArcMult = getExpMult(it->getCoverage());
+                if (expArcMult == 0)
                         toDetach.push_back(it->getNodeID());
+                double arcProb = getObsProb(it->getCoverage(), 1, expArcMult);
+                cout << "Log prob of arc with coverage " << it->getCoverage() << " having multiplicity: " << expArcMult << ": " << arcProb << endl;
+                totWrongProb += arcProb;
         }
+
+        cout << "TOTAL log prob assuming topology is WRONG: " << totWrongProb << endl;
+
+        if (totWrongProb - totCorrProb < 5.0)
+                return false;
 
         for (auto it : toDetach) {
                 detachNode(nodeID, it);
@@ -323,9 +361,6 @@ bool DBGraph::flowCorrection(NodeID nodeID, double avgKmerCov)
                     (getSSNode(it).getNumRightArcs() == 0))
                         getSSNode(it).invalidate();
         }
-
-       // if (nodeID == -763016)
-        //        exit(0);
 
         return !toDetach.empty();
 }
@@ -576,8 +611,6 @@ bool DBGraph::flowCorrection()
 {
         cout << endl << "=================== Flow correction ===================" << endl;
 
-        double avgKmerCov = getInitialKmerCovEstimate(0.10);
-
         bool returnValue = false;
         for (NodeID id = -numNodes; id <= numNodes; id++) {
                 if (id == 0)
@@ -587,7 +620,7 @@ bool DBGraph::flowCorrection()
                 if (getSSNode(id).getNumRightArcs() < 2)
                         continue;
 
-                if (flowCorrection(id, avgKmerCov))
+                if (flowCorrection(id, getCovCutoff()))
                         returnValue = true;
         }
 

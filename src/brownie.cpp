@@ -18,8 +18,6 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-
-
 #include "brownie.h"
 #include "settings.h"
 #include "kmeroverlap.h"
@@ -72,11 +70,6 @@ void Brownie::stageOne()
         //readParser->writeAllKmers(getKmerFilename());
         readParser->writeKmersWithCovGTOne(getKmerFilename());
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
-
-        // write #kmers with cov == 1
-        ofstream ofs(settings.getTempDirectory() + "numkmers.stage1");
-        ofs << readParser->getNumKmers() - readParser->getNumKmersCovGTOne() << endl;
-        ofs.close();
 
         delete readParser;
 
@@ -150,19 +143,19 @@ void Brownie::stageThree()
         DBGraph graph(settings);
 
         Util::startChrono();
-        cout << "Creating graph... ";
+        cout << "Loading graph... ";
         cout.flush();
         graph.createFromFile(getNodeFilename(2),
                              getArcFilename(2),
                              getMetaDataFilename(2));
-        cout << "done (" << graph.getNumNodes() << " nodes, "
-             << graph.getNumArcs() << " arcs)" << endl;
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        cout << graph.getGraphStats() << endl;
 
         Util::startChrono();
-        graph.countNodeandArcFrequency(libraries);
-        cout << "Done counting multiplicity (" << Util::stopChronoStr() << ")" << endl;
+        graph.generateKmerSpectrum(settings.getTempDirectory(), libraries);
+        cout << "Done generating spectrum (" << Util::stopChronoStr() << ")" << endl;
 
-        cout << "Extracting graph..." << endl;
+        cout << "Writing graph..." << endl;
         graph.writeGraphBin(getBinNodeFilename(3),
                             getBinArcFilename(3),
                             getMetaDataFilename(3));
@@ -191,7 +184,6 @@ void Brownie::stageFour()
 
         DBGraph graph(settings);
         Util::startChrono();
-        Util::startChrono();
         cout << "Creating graph... "; cout.flush();
         graph.loadGraphBin(getBinNodeFilename(3),
                            getBinArcFilename(3),
@@ -199,64 +191,135 @@ void Brownie::stageFour()
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << graph.getGraphStats() << endl;
 
-        graph.fitKmerSpectrum(settings.getTempDirectory());
+        graph.loadKmerSpectrumFit(getSpectrumFitFilename());
+        double cutoff = graph.getCovCutoff();
 
 #ifdef DEBUG
-        /*Util::startChrono();
+{
+        Util::startChrono();
         cout << "Building kmer - node/position index... "; cout.flush();
-        graph.buildKmerNPPTable();              // build kmer-NPP index
+        graph.buildKmerNPPTable();      // build kmer-NPP index
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         RefComp refComp("genome.fasta");
         refComp.validateGraph(graph);
         vector<size_t> trueMult;
         refComp.getNodeMultiplicity(graph, trueMult);
-        graph.setTrueNodeMultiplicity(trueMult);*/
+        graph.setTrueNodeMultiplicity(trueMult);
+}
 #endif
-       // graph.writeCytoscapeGraph(settings.getTempDirectory() + "Initial", -1, 20);
-
-
 
         // TIP CLIPPING
-     /*   while (graph.clipTips(30, libraries.getAvgReadLength()))
+        while (graph.clipTips(cutoff, libraries.getAvgReadLength()))
                 graph.concatenateNodes();
+
+/*#ifdef DEBUG
+{
+        Util::startChrono();
+        cout << "Building kmer - node/position index... "; cout.flush();
+        graph.buildKmerNPPTable();      // build kmer-NPP index
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        RefComp refComp("genome.fasta");
+        refComp.validateGraph(graph);
+        vector<size_t> trueMult;
+        refComp.getNodeMultiplicity(graph, trueMult);
+        graph.setTrueNodeMultiplicity(trueMult);
+}
+#endif*/
 
         // BUBBLE DETECTION
-        while (graph.bubbleDetection(30, libraries.getAvgReadLength()))
+        while (graph.bubbleDetection(cutoff, libraries.getAvgReadLength()))
                 graph.concatenateNodes();
 
-        // TIP CLIPPING
-        while (graph.clipTips(30, libraries.getAvgReadLength()))
+/*#ifdef DEBUG
+{
+        Util::startChrono();
+        cout << "Building kmer - node/position index... "; cout.flush();
+        graph.buildKmerNPPTable();      // build kmer-NPP index
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        RefComp refComp("genome.fasta");
+        refComp.validateGraph(graph);
+        vector<size_t> trueMult;
+        refComp.getNodeMultiplicity(graph, trueMult);
+        graph.setTrueNodeMultiplicity(trueMult);
+}
+#endif*/
+
+        graph.writeCytoscapeGraph(settings.getTempDirectory() + "tip", 24450, 3);
+
+        while (graph.flowCorrection())
                 graph.concatenateNodes();
+
+        graph.flowCorrection(2090206, cutoff);
+
+#ifdef DEBUG
+        Util::startChrono();
+        cout << "Building kmer - node/position index... "; cout.flush();
+        graph.buildKmerNPPTable();      // build kmer-NPP index
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        RefComp refComp("genome.fasta");
+        refComp.validateGraph(graph);
+        vector<size_t> trueMult;
+        refComp.getNodeMultiplicity(graph, trueMult);
+        graph.setTrueNodeMultiplicity(trueMult);
+#endif
+
+        cout << graph.getGraphStats() << endl;
+
+        for (int i = 1; i < graph.getNumNodes(); i++) {
+                SSNode node = graph.getSSNode(i);
+                if (!node.isValid())
+                        continue;
+                if (trueMult[i] == 0)
+                        cout << "Node " << i << " with avgKmerCov " << node.getAvgKmerCov() << " is false." << endl;
+        }
+
+        cout << "Bye" << endl;
+        exit(EXIT_SUCCESS);
+
+        // FLOW CORRECTION
+      /*  while (graph.flowCorrection())
+                graph.concatenateNodes();
+
+#ifdef DEBUG
+{
+        Util::startChrono();
+        cout << "Building kmer - node/position index... "; cout.flush();
+        graph.buildKmerNPPTable();      // build kmer-NPP index
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        RefComp refComp("genome.fasta");
+        refComp.validateGraph(graph);
+        vector<size_t> trueMult;
+        refComp.getNodeMultiplicity(graph, trueMult);
+        graph.setTrueNodeMultiplicity(trueMult);
+}
+#endif
+
+        exit(EXIT_SUCCESS);*/
+
+        //graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytFinal");
+
+        // TIP CLIPPING
+     /*   while (graph.clipTips(49, libraries.getAvgReadLength()))
+                graph.concatenateNodes();*/
 
       // graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytDebug3", -774414, 5);
        // graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytDebug2", -763016, 5);
 
-        // FLOW CORRECTION
-        while (graph.flowCorrection())
-                graph.concatenateNodes();
-
-        graph.setNodeMultiplicityEM();
+      /*  graph.setNodeMultiplicityEM();
 
         Util::startChrono();
         cout << "Writing cytoscape graph files..."; cout.flush();
         graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytFinal");
         cout << "done (" << Util::stopChronoStr() << ")" << endl;*/
 
-        exit(EXIT_SUCCESS);
 
-#ifdef DEBUG
-      /*  Util::startChrono();
-        cout << "Building kmer - node/position index... "; cout.flush();
-        graph.buildKmerNPPTable();              // build kmer-NPP index
-        cout << "done (" << Util::stopChronoStr() << ")" << endl;
-        refComp.validateGraph(graph);*/
-#endif
-
-        graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));
+        //graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));
         cout << "Graph correction completed in " << Util::stopChronoStr() << endl;
 
+        cout << graph.getGraphStats() << endl;
+
 #ifdef DEBUG
-        //graph.sanityCheck();
+        graph.sanityCheck();
 #endif
         graph.clear();
         cout << "Stage 4 finished.\n" << endl;

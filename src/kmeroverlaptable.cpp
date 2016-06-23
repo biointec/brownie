@@ -445,7 +445,7 @@ void KmerOverlapTable::validateStage2()
         }
 
         cout << "Validation report: " << endl;
-        cout << "\tExist in table: " << numKmersFound << "/" << numKmersReal << "(" << 100.00*(double)numKmersFound/(double)numKmersReal << "%)" << endl;
-        cout << "\tHave correct overlap: " << numOLFound << "/" << numOLReal << "(" << 100.00*(double)numOLFound/(double)numOLReal << "%)" << endl;
+        cout << "\tExist in table: " << numKmersFound << "/" << numKmersReal << " (" << 100.00*(double)numKmersFound/(double)numKmersReal << "%)" << endl;
+        cout << "\tHave correct overlap: " << numOLFound << "/" << numOLReal << " (" << 100.00*(double)numOLFound/(double)numOLReal << "%)" << endl;
 }
 #endif

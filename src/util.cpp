@@ -102,6 +102,13 @@ double Util::negbinomialPDF(unsigned int k, double mu, double sigma2)
         return exp(lgamma(k + r) - lgamma(k+1) - lgamma(r) + r*log(1-p) + k*log(p));
 }
 
+double Util::logNegbinomialPDF(unsigned int k, double mu, double sigma2)
+{
+        double p = (sigma2 - mu)/sigma2;
+        double r = mu*mu/(sigma2 - mu);
+        return lgamma(k + r) - lgamma(k+1) - lgamma(r) + r*log(1-p) + k*log(p);
+}
+
 double Util::negbinomialPDFratio(unsigned int k, double mu1, double sigma21,
                                  double mu2, double sigma22)
 {
@@ -117,6 +124,12 @@ double Util::geometricPDF(unsigned int k, double mu)
 {
         double p = 1.0 / mu;
         return p * pow(1 - p, k-1);
+}
+
+double Util::logGeometricPDF(unsigned int k, double mu)
+{
+        double p = 1.0 / mu;
+        return log(p) + (k-1)*log(1.0-p);
 }
 
 double Util::geometricnegbinomialPDFratio(unsigned int k, double mu1,
@@ -149,21 +162,15 @@ void Util::binomialMixtureEM(const map<unsigned int, double>& data,
                         unsigned int x = element.first;
 
                         // compute the weights corresponding to the negative binomials
-                        for (int j = 1; j < numComponents; j++) {
-                                double nom = 1.0 + MC[0]/MC[j] * geometricnegbinomialPDFratio(x, mu[0], mu[j], var[j]);
-                                for (int k = 1; k < numComponents; k++) {
+                        for (int j = 0; j < numComponents; j++) {
+                                double nom = 1.0;
+                                for (int k = 0; k < numComponents; k++) {
                                         if (k == j)
                                                 continue;
                                         nom += MC[k]/MC[j] * negbinomialPDFratio(x, mu[k], var[k], mu[j], var[j]);
                                 }
                                 weight[j][x] = 1.0 / nom;
                         }
-
-                        // compute the weights corresponding to the geometric distribution
-                        // (all weights should sum to one)
-                        weight[0][x] = 1.0;
-                        for (int j = 1; j < numComponents; j++)
-                                weight[0][x] -= weight[j][x];
                 }
 
                 // compute mean
@@ -196,7 +203,7 @@ void Util::binomialMixtureEM(const map<unsigned int, double>& data,
 
                         // make sure the variance is at least the average
                         // (overdispersed Poisson model)
-                        if ((j > 0) && ((var[j] - mu[j]) < FLOAT_SMALL))
+                        if ((var[j] - mu[j]) < FLOAT_SMALL)
                                 var[j] = mu[j] + FLOAT_SMALL;
                 }
 

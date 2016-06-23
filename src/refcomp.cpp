@@ -140,21 +140,51 @@ void RefComp::getNodeMultiplicity(const DBGraph& dbg,
         // count the number of true kmers in each node
         for (size_t refID = 0; refID < reference.size(); refID++) {
 
-                // for all kmers in the reference sequence
                 const string& refSeq = reference[refID];
-                for (KmerIt it(refSeq); it.isValid(); it++) {
+
+                // handle the first kmer separately
+                KmerIt it(refSeq);
+                NodePosPair prev = dbg.findNPP(it.getKmer());
+                if (prev.isValid())
+                        multiplicity[abs(prev.getNodeID())]++;
+
+                // for all kmers in the reference sequence
+                for (it++; it.isValid(); it++) {
                         Kmer kmer = it.getKmer();
-                        NodePosPair npp = dbg.findNPP(kmer);
+                        NodePosPair curr = dbg.findNPP(kmer);
 
                         // update kmer counters
-                        if (npp.isValid())
-                                multiplicity[abs(npp.getNodeID())]++;
+                        if (curr.isValid())
+                                multiplicity[abs(curr.getNodeID())]++;
+
+                        // set the true arc flag if appropriate
+                        if (dbg.consecutiveNPP(prev, curr)) {
+                                if ((prev.getPosition()+1) != curr.getPosition()) {
+                                        SSNode left = dbg.getSSNode(prev.getNodeID());
+                                        left.getRightArc(curr.getNodeID())->setTrueArc(true);
+                                }
+                        }
+
+                        prev = curr;
                 }
         }
 
+        size_t numTrueNodes = 0, numErrNodes = 0;
+
         // compute the multiplicity for each node
         for (NodeID i = 1; i <= dbg.getNumNodes(); i++) {
-                double ML = dbg.getSSNode(i).getMarginalLength();
+                SSNode node = dbg.getSSNode(i);
+                if (!node.isValid())
+                        continue;
+
+                double ML = node.getMarginalLength();
                 multiplicity[i] = round((double)multiplicity[i]/ML);
+                if (multiplicity[i] > 0)
+                        numTrueNodes++;
+                else
+                        numErrNodes++;
         }
+
+        cout << "Number of true nodes in the graph: " << numTrueNodes
+             << " number of false nodes: " << numErrNodes << endl;
 }

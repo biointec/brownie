@@ -1,6 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2014, 2015 Jan Fostier (jan.fostier@intec.ugent.be)     *
- *   Copyright (C) 2014, 2015 Mahdi Heydari (mahdi.heydari@intec.ugent.be) *
+ *   Copyright (C) 2014 - 2016 Jan Fostier (jan.fostier@intec.ugent.be)    *
  *   This file is part of Brownie                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -126,6 +125,15 @@ public:
         static double negbinomialPDF(unsigned int k, double mu, double var);
 
         /**
+         * Compute the log(probability p(k)) from a negative bionomial(mu, var)
+         * @param k Number of observations
+         * @param mu Average
+         * @param var Variance
+         * @return The probability p(k)
+         */
+        static double logNegbinomialPDF(unsigned int k, double mu, double var);
+
+        /**
          * Compute the probability ratio p(k, mu1) / p(k, mu2)
          * @param k Number of observations
          * @param mu1 Mean of the distribution
@@ -146,6 +154,15 @@ public:
          * @return The probability p(k)
          */
         static double geometricPDF(unsigned int k, double mu);
+
+        /**
+         * Compute the log(probability p(k)) for the geometric distribution
+         * @param k Number of observations
+         * @param mu Mean of the distribution
+         * @param mu2 Variance of the distribution
+         * @return The probability p(k)
+         */
+        static double logGeometricPDF(unsigned int k, double mu);
 
         /**
          * Compute the probability ratio p(mu1) / p(k, mu2)
