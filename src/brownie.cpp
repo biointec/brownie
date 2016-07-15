@@ -212,44 +212,15 @@ void Brownie::stageFour()
         while (graph.clipTips(cutoff, libraries.getAvgReadLength()))
                 graph.concatenateNodes();
 
-/*#ifdef DEBUG
-{
-        Util::startChrono();
-        cout << "Building kmer - node/position index... "; cout.flush();
-        graph.buildKmerNPPTable();      // build kmer-NPP index
-        cout << "done (" << Util::stopChronoStr() << ")" << endl;
-        RefComp refComp("genome.fasta");
-        refComp.validateGraph(graph);
-        vector<size_t> trueMult;
-        refComp.getNodeMultiplicity(graph, trueMult);
-        graph.setTrueNodeMultiplicity(trueMult);
-}
-#endif*/
-
         // BUBBLE DETECTION
         while (graph.bubbleDetection(cutoff, libraries.getAvgReadLength()))
                 graph.concatenateNodes();
 
-/*#ifdef DEBUG
-{
-        Util::startChrono();
-        cout << "Building kmer - node/position index... "; cout.flush();
-        graph.buildKmerNPPTable();      // build kmer-NPP index
-        cout << "done (" << Util::stopChronoStr() << ")" << endl;
-        RefComp refComp("genome.fasta");
-        refComp.validateGraph(graph);
-        vector<size_t> trueMult;
-        refComp.getNodeMultiplicity(graph, trueMult);
-        graph.setTrueNodeMultiplicity(trueMult);
-}
-#endif*/
-
-        graph.writeCytoscapeGraph(settings.getTempDirectory() + "tip", 24450, 3);
-
+        // FLOW CORRECTION
         while (graph.flowCorrection())
                 graph.concatenateNodes();
 
-        graph.flowCorrection(2090206, cutoff);
+        //graph.writeCytoscapeGraph(settings.getTempDirectory() + "tip", 24450, 3);
 
 #ifdef DEBUG
         Util::startChrono();
@@ -261,9 +232,6 @@ void Brownie::stageFour()
         vector<size_t> trueMult;
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);
-#endif
-
-        cout << graph.getGraphStats() << endl;
 
         for (int i = 1; i < graph.getNumNodes(); i++) {
                 SSNode node = graph.getSSNode(i);
@@ -272,51 +240,13 @@ void Brownie::stageFour()
                 if (trueMult[i] == 0)
                         cout << "Node " << i << " with avgKmerCov " << node.getAvgKmerCov() << " is false." << endl;
         }
-
-        cout << "Bye" << endl;
-        exit(EXIT_SUCCESS);
-
-        // FLOW CORRECTION
-      /*  while (graph.flowCorrection())
-                graph.concatenateNodes();
-
-#ifdef DEBUG
-{
-        Util::startChrono();
-        cout << "Building kmer - node/position index... "; cout.flush();
-        graph.buildKmerNPPTable();      // build kmer-NPP index
-        cout << "done (" << Util::stopChronoStr() << ")" << endl;
-        RefComp refComp("genome.fasta");
-        refComp.validateGraph(graph);
-        vector<size_t> trueMult;
-        refComp.getNodeMultiplicity(graph, trueMult);
-        graph.setTrueNodeMultiplicity(trueMult);
-}
 #endif
 
-        exit(EXIT_SUCCESS);*/
-
-        //graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytFinal");
-
-        // TIP CLIPPING
-     /*   while (graph.clipTips(49, libraries.getAvgReadLength()))
-                graph.concatenateNodes();*/
-
-      // graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytDebug3", -774414, 5);
-       // graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytDebug2", -763016, 5);
-
-      /*  graph.setNodeMultiplicityEM();
-
-        Util::startChrono();
-        cout << "Writing cytoscape graph files..."; cout.flush();
-        graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytFinal");
-        cout << "done (" << Util::stopChronoStr() << ")" << endl;*/
-
-
-        //graph.writeGraph(getNodeFilename(4),getArcFilename(4),getMetaDataFilename(4));
-        cout << "Graph correction completed in " << Util::stopChronoStr() << endl;
-
         cout << graph.getGraphStats() << endl;
+        cout << "Writing graph..." << endl;
+        graph.writeGraph(getNodeFilename(4),
+                         getArcFilename(4),
+                         getMetaDataFilename(4));
 
 #ifdef DEBUG
         graph.sanityCheck();
@@ -353,6 +283,57 @@ void Brownie::stageFive()
 
         cout << "Error correction completed in " << Util::stopChronoStr() << endl;
         cout << "Stage 5 finished\n" << endl;
+        graph.clear();
+}
+
+void Brownie::stageSix()
+{
+        cout << "Entering stage 6" << endl;
+        cout << "================" << endl;
+
+        // Build a DBG from stage 4 files on disk
+        DBGraph graph(settings);
+        Util::startChrono();
+        cout << "Creating graph... "; cout.flush();
+        graph.createFromFile(getNodeFilename(4),
+                             getArcFilename(4),
+                             getMetaDataFilename(4));
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        cout << "Graph contains " << graph.getNumNodes() << " nodes and "
+             << graph.getNumArcs() << " arcs" << endl;
+
+        vector<NodeChain> trueNodeChain;
+
+#ifdef DEBUG
+{
+        Util::startChrono();
+        cout << "Building kmer - node/position index... "; cout.flush();
+        graph.buildKmerNPPTable();      // build kmer-NPP index
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        RefComp refComp("genome.fasta");
+        refComp.validateGraph(graph);
+        refComp.getTrueNodeChain(graph, trueNodeChain);
+        vector<size_t> trueMult;
+        refComp.getNodeMultiplicity(graph, trueMult);
+        graph.setTrueNodeMultiplicity(trueMult);
+}
+#endif
+
+        /*for (auto it : trueNodeChain)
+                cout << it << endl;*/
+
+        Util::startChrono();
+
+        graph.loadNodeChainContainer("nodechain.txt", trueNodeChain);
+        graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytRed");
+
+#ifdef DEBUG
+        graph.sanityCheck();
+#endif
+        cout << graph.getGraphStats() << endl;
+
+        cout << "Repeat resolution completed in " << Util::stopChronoStr() << endl;
+        cout << "Stage 6 finished\n" << endl;
         graph.clear();
 }
 
@@ -394,7 +375,8 @@ int main(int argc, char** args)
                 brownie.stageTwo();
                 brownie.stageThree();
                 brownie.stageFour();
-               // brownie.stageFive();
+                //brownie.stageFive();
+                brownie.stageSix();
 
                 brownie.writeGraphFasta();
         } catch (exception &e) {

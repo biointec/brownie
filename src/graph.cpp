@@ -35,18 +35,6 @@ const DBGraph* DBGraph::graph = NULL;
 // GRAPH STATISTICS
 // ============================================================================
 
-std::ostream &operator<<(std::ostream &out, const vector<NodeID> &path)
-{
-        for (auto& it : path)
-                out << it << " ";
-
-        return out;
-}
-
-// ============================================================================
-// GRAPH STATISTICS
-// ============================================================================
-
 std::ostream &operator<<(std::ostream &out, const GraphStats &stats)
 {
         out << "Number of nodes: " << stats.numNodes << "\n";
@@ -125,6 +113,12 @@ void DBGraph::sanityCheck()
                         if (!t.isValid())
                                 cerr << "\t\tNode " << n.getNodeID()
                                 << " has a right arc to an invalid node." << endl;
+
+                        if (t.getLeftArc(i)->getCoverage() != it->getCoverage())
+                                cerr << "\t\tNode " << n.getNodeID()
+                                << " has a right arc with cov " << (int)it->getCoverage()
+                                << " to node " << t.getNodeID() << " whereas that node"
+                                << " has a left arc with cov " << (int)t.getLeftArc(i)->getCoverage() << endl;
 
                         assert(t.getLeftArc(i)->getCoverage() == it->getCoverage());
 
@@ -436,7 +430,7 @@ void DBGraph::createFromFile(const string& nodeFilename,
                 node.setFirstLeftArcID(arcOffset);
                 node.setFirstRightArcID(arcOffset+numLeftArcs);
 
-                // connect the left arcs
+                // connect the left arcs alphabetically (ACGT)
                 Kmer firstKmer = node.getLeftKmer();
                 for (NucleotideID j = 0; j < 4; j++) {
                         char n = Nucleotide::nucleotideToChar(j);
@@ -456,7 +450,7 @@ void DBGraph::createFromFile(const string& nodeFilename,
                         arcs[arcOffset++].setNodeID(ref.getNodeID());
                 }
 
-                // connect the right arcs
+                // connect the right arcs alphabetically (ACGT)
                 Kmer finalKmer = node.getRightKmer();
                 for (NucleotideID j = 0; j < 4; j++) {
                         char n = Nucleotide::nucleotideToChar(j);
@@ -516,13 +510,27 @@ void DBGraph::writeGraph(const std::string& nodeFilename,
                 }
 
                 arcFile << numExtractedNodes << "\t" << (int)ol.getLeftOverlap()
-                << "\t" << (int)ol.getRightOverlap();
+                        << "\t" << (int)ol.getRightOverlap();
 
-                for (ArcIt it = node.leftBegin(); it != node.leftEnd(); it++)
-                        arcFile << "\t" << it->getCoverage();
+                // write the left arcs alphabetically (ACGT)
+                for (NucleotideID j = 0; j < 4; j++) {
+                        char n = Nucleotide::nucleotideToChar(j);
+                        if (!ol.hasLeftOverlap(n))
+                                continue;
 
-                for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++)
-                        arcFile << "\t" << it->getCoverage();
+                        NodeID leftID = node.getLeftArcNodeID(n);
+                        arcFile << "\t" << (int)node.getLeftArc(leftID)->getCoverage();
+                }
+
+                // write the right arcs alphabetically (ACGT)
+                for (NucleotideID j = 0; j < 4; j++) {
+                        char n = Nucleotide::nucleotideToChar(j);
+                        if (!ol.hasRightOverlap(n))
+                                continue;
+
+                        NodeID rightID = node.getRightArcNodeID(n);
+                        arcFile << "\t" << (int)node.getRightArc(rightID)->getCoverage();
+                }
 
                 arcFile << endl;
 
@@ -643,4 +651,163 @@ void DBGraph::writeGraphFasta() const
         }
 
         nodeFile.close();
+}
+
+void DBGraph::performReductionTypeA(const NodeChain& reduction)
+{
+        cout << "Doing reduction type A: " << reduction << endl;
+
+        NodeID firstID = reduction.front();
+        NodeID nextID = reduction[1];
+        NodeID lastID = reduction.back();
+        NodeID prevID = reduction[reduction.size() - 2];
+
+        SSNode first = getSSNode(firstID);
+        SSNode next = getSSNode(nextID);
+        SSNode last = getSSNode(lastID);
+        SSNode prev = getSSNode(prevID);
+
+        // rewire the arcs
+        first.replaceRightArc(nextID, lastID);
+        next.deleteLeftArc(firstID);
+        last.replaceLeftArc(prevID, firstID);
+        prev.deleteRightArc(lastID);
+
+        first.getRightArc(lastID)->setCoverage(last.getLeftArc(firstID)->getCoverage());
+
+        // FIXME : update coverage !!
+
+        /*size_t newKmerCov = first.getKmerCov();
+        size_t newReadStartCov = first.getReadStartCov();
+        for (size_t i = 1; i < reduction.size() - 1; i++) {
+                newKmerCov += getSSNode(reduction[i]).getKmerCov();
+                newReadStartCov += getSSNode(reduction[i]).getReadStartCov();
+                getSSNode(reduction[i]).deleteAllLeftArcs();
+                getSSNode(reduction[i]).deleteAllRightArcs();
+                getSSNode(reduction[i]).invalidate();
+        }
+
+        first.setKmerCov(newKmerCov);
+        first.setReadStartCov(newReadStartCov);*/
+
+        string str;
+        convertNodesToString(vector<NodeID>(reduction.begin(), reduction.begin() + reduction.size() - 1), str);
+
+        first.setSequence(str);
+}
+
+void DBGraph::performReductionTypeB(const NodeChain& reduction)
+{
+        cout << "Doing reduction type B: " << reduction << endl;
+
+        NodeID firstID = reduction.front();
+        NodeID nextID = reduction[1];
+        NodeID lastID = reduction.back();
+        NodeID prevID = reduction[reduction.size() - 2];
+
+        SSNode first = getSSNode(firstID);
+        SSNode next = getSSNode(nextID);
+        SSNode last = getSSNode(lastID);
+        SSNode prev = getSSNode(prevID);
+
+        // rewire the arcs
+        first.deleteRightArc(nextID);
+        next.deleteLeftArc(firstID);
+        last.deleteLeftArc(prevID);
+        prev.deleteRightArc(lastID);
+
+        first.inheritRightArcs(last);
+
+        last.invalidate();
+
+        //first.getRightArc(lastID)->setCoverage(last.getLeftArc(firstID)->getCoverage());
+
+        // FIXME : update coverage !!
+
+        /*size_t newKmerCov = first.getKmerCov();
+        size_t newReadStartCov = first.getReadStartCov();
+        for (size_t i = 1; i < reduction.size() - 1; i++) {
+                newKmerCov += getSSNode(reduction[i]).getKmerCov();
+                newReadStartCov += getSSNode(reduction[i]).getReadStartCov();
+                getSSNode(reduction[i]).deleteAllLeftArcs();
+                getSSNode(reduction[i]).deleteAllRightArcs();
+                getSSNode(reduction[i]).invalidate();
+        }
+
+        first.setKmerCov(newKmerCov);
+        first.setReadStartCov(newReadStartCov);*/
+
+        string str;
+        convertNodesToString(reduction, str);
+
+        first.setSequence(str);
+}
+
+void DBGraph::performReduction(const NodeChain& reduction)
+{
+        if (getSSNode(reduction.back()).getNumLeftArcs() > 1)
+                performReductionTypeA(reduction);
+        else
+                performReductionTypeB(reduction);
+}
+
+void DBGraph::loadNodeChainContainer(const string& filename,
+                                     vector<NodeChain>& trueNodeChain)
+{
+        ncc.loadContainer(filename);
+        cout << "Loaded " << ncc.size() << " " << endl;
+
+        vector<NodeChain> reductionv;
+        for (NodeID id = -getNumNodes(); id <= numNodes; id++) {
+                if (id == 0)
+                        continue;
+
+                //cout << "========== " << id << " =========== " << endl;
+
+                SSNode node = getSSNode(id);
+                if (!node.isValid())
+                        continue;
+                if (node.getNumRightArcs() != 1)
+                        continue;
+                NodeID rightID = node.rightBegin()->getNodeID();
+
+                vector<NodeChain> nbPaths = ncc.getNonBranchingPath(id, rightID);
+
+                for (const auto& nbPath : nbPaths) {
+                        if (ncc.isNonBranchingPath(nbPath.getReverseComplement())) {
+                                reductionv.push_back(nbPath);
+                                break;;
+                        }
+                }
+        }
+
+        sort(reductionv.begin(), reductionv.end(), sortChainByOcc);
+
+        NodeChainContainer trueNcc(trueNodeChain);
+
+        cout << "Number of reductions: " << reductionv.size() << endl;
+
+        for (const auto& reduction : reductionv) {
+                cout << reduction << " ";
+                cout << trueNcc.isNonBranchingPath(reduction) << " ";
+                cout << trueNcc.isNonBranchingPath(reduction.getReverseComplement()) << " " << endl;
+        }
+
+        cout << "Bye..." << endl;
+        exit(0);
+
+        for (const auto& reduction : reductionv) {
+                bool stillOK = true;
+                for (auto id : reduction)
+                        if (!getSSNode(id).isValid()) {
+                                stillOK = false;
+                                break;
+                        }
+
+                if (!stillOK)
+                        continue;
+
+                performReduction(reduction);
+                concatenateNodes();
+        }
 }

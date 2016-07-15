@@ -52,14 +52,49 @@ ostream &operator<<(std::ostream &out, const KmerSpectrum& kms)
 
 double KmerSpectrum::evalSpec(unsigned int x, unsigned int mult) const
 {
-        if (mult > 0) {
-                int i = numErrComp+mult-1;
-                return spectrumMC[i] * Util::negbinomialPDF(x, spectrumMu[i], spectrumVar[i]);
+        if (mult > 0) {                 // we're evaluating the true spectrum
+                double mu, var, MC;
+                if (mult <= numTrueComp) {
+                        int i = numErrComp+mult-1;
+                        mu = spectrumMu[i];
+                        var = spectrumVar[i];
+                        MC = spectrumMC[i];
+                } else {
+                        mu = mult * spectrumMu[numErrComp];
+                        var = mult * spectrumVar[numErrComp];
+                        MC = spectrumMC[numErrComp];
+                }
+
+                return MC * Util::negbinomialPDF(x, mu, var);
         }
 
         double P = 0.0;
         for (size_t i = 0; i < numErrComp; i++)
                 P += spectrumMC[i] * Util::negbinomialPDF(x, spectrumMu[i], spectrumVar[i]);
+        return P;
+}
+
+double KmerSpectrum::evalSpecLog(unsigned int x, unsigned int mult) const
+{
+        if (mult > 0) {                 // we're evaluating the true spectrum
+                double mu, var, MC;
+                if (mult <= numTrueComp) {
+                        int i = numErrComp+mult-1;
+                        mu = spectrumMu[i];
+                        var = spectrumVar[i];
+                        MC = spectrumMC[i];
+                } else {
+                        mu = mult * spectrumMu[numErrComp];
+                        var = mult * spectrumVar[numErrComp];
+                        MC = spectrumMC[numErrComp];
+                }
+
+                return log(MC) + Util::logNegbinomialPDF(x, mu, var);
+        }
+
+        double P = 0.0;
+        for (size_t i = 0; i < numErrComp; i++)
+                P += log(spectrumMC[i]) + Util::logNegbinomialPDF(x, spectrumMu[i], spectrumVar[i]);
         return P;
 }
 

@@ -167,27 +167,12 @@ int DBGraph::getExpMult(double obsKmerCov) const
 
 double DBGraph::getObsProb(unsigned int obsCov, unsigned int mult) const
 {
-        /*if (mult > 0) {
-                int i = numErrComp+mult-1;
-                return spectrumMC[i] * Util::negbinomialPDF(obsCov, spectrumMu[i], spectrumVar[i]);
-        }
-
-        double P = 0.0;
-        for (size_t i = 0; i < numErrComp; i++)
-                P += spectrumMC[i] * Util::negbinomialPDF(obsCov, spectrumMu[i], spectrumVar[i]);
-        return P;*/
+        return kmerSpectrum.evalSpec(obsCov, mult);
 }
 
-double DBGraph::getObsProb(double avgKmerCov, int ML, unsigned int mult) const
+double DBGraph::getObsProbLog(double obsCov, int ML, unsigned int mult) const
 {
-        /*double mu = (mult == 0) ? spectrumMu[0] : mult * spectrumMu[1];
-        double var = mult * spectrumVar[1];
-        double MC = (mult >= spectrumMC.size()) ? spectrumMC.back() : spectrumMC[mult];
-
-        if (mult > 0)
-                return ML * (log(MC) + Util::logNegbinomialPDF(avgKmerCov, mu, var));
-        else
-                return ML * (log(MC) + Util::logGeometricPDF(avgKmerCov, mu));*/
+        return kmerSpectrum.evalSpecLog(obsCov, mult);
 }
 
 void DBGraph::writeNodeFile(const std::string& filename) const

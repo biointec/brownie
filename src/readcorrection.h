@@ -212,17 +212,24 @@ private:
 
         /**
          * Correct a specific read record
-         * @param TODO
+         * @param read Read itself (input/output)
+         * @param npp Node position pair vector (input/output)
+         * @param first First corrected kmer (input/output)
+         * @param last Last corrected kmer (input/output)
+         * @param nodeChain Node chain (output)
          */
-        void correctRead(std::string& read, std::vector<NodePosPair> npp,
-                         size_t& first, size_t& last);
+        void correctRead(std::string& read, std::vector<NodePosPair>& npp,
+                         size_t& first, size_t& last,
+                         std::vector<NodeID>& nodeChain);
 
         /**
          * Correct a specific read record
          * @param record Record to correct (input/output)
          * @param metric Alignment metric to update (input/output)
+         * @param nodeChain Nodechain along which the read aligns (output)
          */
-        void correctRead(ReadRecord& record, AlignmentMetrics& metric);
+        void correctRead(ReadRecord& record, AlignmentMetrics& metric,
+                         std::vector<NodeID>& nodeChain);
 
         /**
          * Correct the records in one chunk
@@ -248,11 +255,12 @@ private:
          * @param npp Vector of node position pairs
          * @param first First position of the seed
          * @param last Last position of the seed
-         * @return false if no seed was found
+         * @param nodeChain Node chain
          */
         void applyReadCorrection(std::string& read,
-                              const std::vector<NodePosPair>& npp,
-                              size_t first, size_t last);
+                                 const std::vector<NodePosPair>& npp,
+                                 size_t first, size_t last,
+                                 std::vector<NodeID>& nodeChain);
 
         void recSearch(NodeID curr, string& read, vector<NodePosPair>& npp,
                        size_t currPos, size_t& counter, int score,
@@ -272,7 +280,8 @@ private:
 
         int correctRead(const std::string& read,
                         std::string& bestCorrectedRead,
-                        const std::vector<Seed>& seeds);
+                        const std::vector<Seed>& seeds,
+                        std::vector<NodeID>& nodeChain);
 
 public:
         /**

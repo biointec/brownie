@@ -97,6 +97,10 @@ double Util::poissonPDFratio(unsigned int k, double mu1, double mu2)
 
 double Util::negbinomialPDF(unsigned int k, double mu, double sigma2)
 {
+        // make sure that sigma2 is bigger than mu
+        if ((sigma2 - mu) < 1e-3)
+                sigma2 = mu + 1e-3;
+
         double p = (sigma2 - mu)/sigma2;
         double r = mu*mu/(sigma2 - mu);
         return exp(lgamma(k + r) - lgamma(k+1) - lgamma(r) + r*log(1-p) + k*log(p));
@@ -104,6 +108,10 @@ double Util::negbinomialPDF(unsigned int k, double mu, double sigma2)
 
 double Util::logNegbinomialPDF(unsigned int k, double mu, double sigma2)
 {
+        // make sure that sigma2 is bigger than mu
+        if ((sigma2 - mu) < 1e-3)
+                sigma2 = mu + 1e-3;
+
         double p = (sigma2 - mu)/sigma2;
         double r = mu*mu/(sigma2 - mu);
         return lgamma(k + r) - lgamma(k+1) - lgamma(r) + r*log(1-p) + k*log(p);

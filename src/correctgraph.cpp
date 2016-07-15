@@ -65,7 +65,7 @@ void DBGraph::detachNode(NodeID leftID, NodeID rightID)
 #ifdef DEBUG
         if (getSSNode(leftID).getRightArc(rightID)->getTrueArc()) {
                 cout << "\tERROR detaching nodes " << leftID << " and " << rightID << endl;
-                exit(EXIT_SUCCESS);
+                //exit(EXIT_SUCCESS);
         }
 #endif
 
@@ -300,7 +300,7 @@ bool DBGraph::flowCorrection(NodeID nodeID, double covCutoff)
         if (expNodeMult == 0)
                 return false;
 
-        cout << "Multiplicity for node " << nodeID << ": " << expNodeMult << endl;
+        //cout << "Multiplicity for node " << nodeID << ": " << expNodeMult << endl;
 
         int sumArcMult = 0;
         bool candidateRemoval = false;
@@ -313,44 +313,44 @@ bool DBGraph::flowCorrection(NodeID nodeID, double covCutoff)
                 sumArcMult += expArcMult;
         }
 
-        cout << "Sum of the right arc multiplicities: " << sumArcMult << endl;
+        //cout << "Sum of the right arc multiplicities: " << sumArcMult << endl;
 
         // we will not detach arcs in this step
         if (sumArcMult <= expNodeMult && !candidateRemoval)
                 return false;
 
-        cout << "Sum of arcs is higher than expected multiplicity" << endl;
+        //cout << "Sum of arcs is higher than expected multiplicity" << endl;
 
         // a) First assume that the topology is CORRECT
-        double totCorrProb = getObsProb(node.getAvgKmerCov(), node.getMarginalLength(), sumArcMult);
-        cout << "Log prob of node " << nodeID << " with coverage: " << node.getAvgKmerCov() << "  having multiplicity: " << sumArcMult << ": " << totCorrProb << endl;
+        double totCorrProb = getObsProbLog(node.getAvgKmerCov(), node.getMarginalLength(), sumArcMult);
+        //cout << "Log prob of node " << nodeID << " with coverage: " << node.getAvgKmerCov() << "  having multiplicity: " << sumArcMult << ": " << totCorrProb << endl;
 
         for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++ ) {
                 int expArcMult = getExpMult(it->getCoverage());
                 if (expArcMult == 0)    // bring this to one as we assume topology to be correct
                         expArcMult++;
-                double arcProb = getObsProb(it->getCoverage(), 1, expArcMult);
-                cout << "Log prob of arc with coverage " << it->getCoverage() << " having multiplicity: " << expArcMult << ": " << arcProb << endl;
+                double arcProb = getObsProbLog(it->getCoverage(), 1, expArcMult);
+                //cout << "Log prob of arc with coverage " << it->getCoverage() << " having multiplicity: " << expArcMult << ": " << arcProb << endl;
                 totCorrProb += arcProb;
         }
 
-        cout << "TOTAL log prob assuming topology is correct: " << totCorrProb << endl;
+        //cout << "TOTAL log prob assuming topology is correct: " << totCorrProb << endl;
 
         // b) Now assume that the topology is INCORRECT
-        double totWrongProb = getObsProb(node.getAvgKmerCov(), node.getMarginalLength(), expNodeMult);
-        cout << "Log prob of node " << nodeID << " with coverage: " << node.getAvgKmerCov() << "  having multiplicity: " << expNodeMult << ": " << totWrongProb << endl;
+        double totWrongProb = getObsProbLog(node.getAvgKmerCov(), node.getMarginalLength(), expNodeMult);
+        //cout << "Log prob of node " << nodeID << " with coverage: " << node.getAvgKmerCov() << "  having multiplicity: " << expNodeMult << ": " << totWrongProb << endl;
 
         vector<NodeID> toDetach;
         for (ArcIt it = node.rightBegin(); it != node.rightEnd(); it++ ) {
                 int expArcMult = getExpMult(it->getCoverage());
                 if (expArcMult == 0)
                         toDetach.push_back(it->getNodeID());
-                double arcProb = getObsProb(it->getCoverage(), 1, expArcMult);
-                cout << "Log prob of arc with coverage " << it->getCoverage() << " having multiplicity: " << expArcMult << ": " << arcProb << endl;
+                double arcProb = getObsProbLog(it->getCoverage(), 1, expArcMult);
+                //cout << "Log prob of arc with coverage " << it->getCoverage() << " having multiplicity: " << expArcMult << ": " << arcProb << endl;
                 totWrongProb += arcProb;
         }
 
-        cout << "TOTAL log prob assuming topology is WRONG: " << totWrongProb << endl;
+        //cout << "TOTAL log prob assuming topology is WRONG: " << totWrongProb << endl;
 
         if (totWrongProb - totCorrProb < 5.0)
                 return false;
@@ -371,7 +371,7 @@ bool DBGraph::flowCorrection(NodeID nodeID, double covCutoff)
 
 bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
 {
-        cout << endl << "=================== Removing tips ===================" << endl;
+        //cout << endl << "=================== Removing tips ===================" << endl;
 
 #ifdef DEBUG
         size_t tp=0, tn=0, fp=0,fn=0;
@@ -582,7 +582,7 @@ bool DBGraph::concatenateNodes()
 
 bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
 {
-        cout << endl << "=================== Removing bubbles ===================" << endl;
+        //cout << endl << "=================== Removing bubbles ===================" << endl;
 
         vector<NodeID> visited;
         vector<NodeID> prevNode(2*numNodes+1, 0);
@@ -609,7 +609,7 @@ bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
 
 bool DBGraph::flowCorrection()
 {
-        cout << endl << "=================== Flow correction ===================" << endl;
+        //cout << endl << "=================== Flow correction ===================" << endl;
 
         bool returnValue = false;
         for (NodeID id = -numNodes; id <= numNodes; id++) {

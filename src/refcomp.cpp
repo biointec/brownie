@@ -70,6 +70,7 @@ void RefComp::validateGraph(const DBGraph& dbg)
                 // handle the other kmers
                 for (it++; it.isValid(); it++) {
                         Kmer kmer = it.getKmer();
+
                         NodePosPair curr = dbg.findNPP(kmer);
 
                         // update kmer counters
@@ -127,6 +128,37 @@ void RefComp::validateGraph(const DBGraph& dbg)
                         Kmer kmer(refSeq, end);
                         NodePosPair npp = dbg.findNPP(kmer);
                         cout << npp.getNodeID() << " (" << npp.getPosition() << ")" << endl;
+                }
+        }
+}
+
+void RefComp::getTrueNodeChain(const DBGraph& dbg, vector<NodeChain>& nodeChain)
+{
+        // align the reference sequences to the DBG to figure out true node chains
+        for (size_t refID = 0; refID < reference.size(); refID++) {
+                const string& refSeq = reference[refID];
+
+                // handle the other kmers
+                NodePosPair prev;
+                for (KmerIt it(refSeq); it.isValid(); it++) {
+                        Kmer kmer = it.getKmer();
+                        NodePosPair curr = dbg.findNPP(kmer);
+
+                        if (!curr.isValid()) {
+                                prev = curr;
+                                continue;
+                        }
+
+                        if (dbg.consecutiveNPP(prev, curr)) {
+                                if (curr.getNodeID() != prev.getNodeID())
+                                        nodeChain.back().push_back(curr.getNodeID());
+                        } else {
+                                nodeChain.push_back(NodeChain());
+                                nodeChain.back().setCount(1);
+                                nodeChain.back().push_back(curr.getNodeID());
+                        }
+
+                        prev = curr;
                 }
         }
 }

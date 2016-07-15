@@ -397,13 +397,12 @@ public:
         }
 
         /**
-         * Get a specific left arc
+         * Get the nodeID a specific left arc
          * @param nucleotide Nucleotide under consideration
-         * @return Pointer to the specific arc, NULL if not found
+         * @return Node identifier
          */
-        NodeID getLeftArc(char nucleotide) const {
+       NodeID getLeftArcNodeID(char nucleotide) const {
                 for (ArcIt it = leftBegin(); it != leftEnd(); it++) {
-                       // cout << "This is node " << getNodeID() << " left arc to " << it->getNodeID() << " with right charachter " << SSNode(it).peekNucleotideRight() << endl;
                         if (SSNode(it).peekNucleotideMarginalRight() == nucleotide)
                                 return it->getNodeID();
                 }
@@ -416,7 +415,7 @@ public:
          * @param nucleotide Nucleotide under consideration
          * @return Pointer to the specific arc, NULL if not found
          */
-        NodeID getRightArc(char nucleotide) const {
+        NodeID getRightArcNodeID(char nucleotide) const {
                 for (ArcIt it = rightBegin(); it != rightEnd(); it++)
                         if (SSNode(it).peekNucleotideMarginalLeft() == nucleotide)
                                 return it->getNodeID();

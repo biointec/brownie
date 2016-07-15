@@ -26,6 +26,7 @@
 #include "dsnode.h"
 #include "kmernpp.h"
 #include "kmercounttable.h"
+#include "nodechain.h"
 
 #include <vector>
 #include <google/sparse_hash_map>
@@ -55,8 +56,6 @@ typedef google::sparse_hash_map<Kmer, NodePosPair, KmerHash> KmerNodeTable;
 // ============================================================================
 
 bool sortNodeByLength(const NodeID& left, const NodeID& right);
-
-std::ostream &operator<<(std::ostream &out, const std::vector<NodeID> &path);
 
 // ============================================================================
 // DIJKSTRA AUXILIARY CLASSES
@@ -145,6 +144,7 @@ private:
 
         KmerNodeTable kmerNPPTable;     // kmer node table
         KmerSpectrum kmerSpectrum;      // kmer spectrum
+        NodeChainContainer ncc;         // node chain container
 
 #ifdef DEBUG
         std::vector<size_t> trueMult;
@@ -551,7 +551,7 @@ public:
          * @param ML The marginal length of the node
          * @param mult The multiplicity of the node
          */
-        double getObsProb(double obsKmerCov, int ML, unsigned int mult) const;
+        double getObsProbLog(double obsKmerCov, int ML, unsigned int mult) const;
 
         /**
          * Get the average k-mer coverage
@@ -610,6 +610,21 @@ public:
          * @return True if the NodePosPairs are consecutive
          */
         bool consecutiveNPP(NodePosPair& left, NodePosPair& right) const;
+
+        // ====================================================================
+        // REDUCTION.CPP (STAGE 6)
+        // ====================================================================
+
+        /**
+         * Load a node chain container from disk
+         * @param filename File name
+         */
+        void loadNodeChainContainer(const std::string& filename,
+                                    std::vector<NodeChain>& nodeChain);
+
+        void performReduction(const NodeChain& reduction);
+        void performReductionTypeA(const NodeChain& reduction);
+        void performReductionTypeB(const NodeChain& reduction);
 };
 
 #endif

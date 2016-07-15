@@ -317,13 +317,17 @@ void ReadCorrection::extendSeed(string& read, vector<NodePosPair>& npp,
 }
 
 void ReadCorrection::applyReadCorrection(string& read,
-                                            const vector<NodePosPair>& npp,
-                                            size_t seedFirst, size_t seedLast)
+                                         const vector<NodePosPair>& npp,
+                                         size_t seedFirst, size_t seedLast,
+                                         vector<NodeID>& nodeChain)
 {
         // correct the seed
         size_t curr = seedFirst;
         while (curr < seedLast) {
-                SSNode node = dbg.getSSNode(npp[curr].getNodeID());
+                NodeID currID = npp[curr].getNodeID();
+                nodeChain.push_back(currID);
+
+                SSNode node = dbg.getSSNode(currID);
                 size_t strLen = min(node.getLength() - npp[curr].getPosition(), read.size() - curr);
                 string str = node.substr(npp[curr].getPosition(), strLen);
 
@@ -332,8 +336,9 @@ void ReadCorrection::applyReadCorrection(string& read,
         }
 }
 
-void ReadCorrection::correctRead(string& read, vector<NodePosPair> npp,
-                                    size_t& first, size_t& last)
+void ReadCorrection::correctRead(string& read, vector<NodePosPair>& npp,
+                                 size_t& first, size_t& last,
+                                 vector<NodeID>& nodeChain)
 {
         // extend to the right
         extendSeed(read, npp, first, last);
@@ -356,7 +361,7 @@ void ReadCorrection::correctRead(string& read, vector<NodePosPair> npp,
 
         // reverse complement all data
         string original = read;
-        applyReadCorrection(read, npp, first, last);
+        applyReadCorrection(read, npp, first, last, nodeChain);
 }
 
 void ReadCorrection::findSeedKmer(const std::string& read,
@@ -495,7 +500,8 @@ void ReadCorrection::findSeedMEM(const string& read,
 
 int ReadCorrection::correctRead(const string& read,
                                 string& bestCorrectedRead,
-                                const vector<Seed>& seeds)
+                                const vector<Seed>& seeds,
+                                vector<NodeID>& bestNodeChain)
 {
         int bestScore = -read.size();
 
@@ -508,7 +514,8 @@ int ReadCorrection::correctRead(const string& read,
                 it.createNodePosition(dbg, npp);
 
                 string correctedRead = read;
-                correctRead(correctedRead, npp, first, last);
+                vector<NodeID> nodeChain;
+                correctRead(correctedRead, npp, first, last, nodeChain);
 
                 size_t correctedLength = Kmer::getK() - 1 + last - first;
                 size_t uncorrectedLength = read.size() - correctedLength;
@@ -522,6 +529,7 @@ int ReadCorrection::correctRead(const string& read,
                 if (score > bestScore) {
                         bestCorrectedRead = correctedRead;
                         bestScore = score;
+                        bestNodeChain = nodeChain;
                 }
         }
 
@@ -529,7 +537,8 @@ int ReadCorrection::correctRead(const string& read,
 }
 
 void ReadCorrection::correctRead(ReadRecord& record,
-                                 AlignmentMetrics& metrics)
+                                 AlignmentMetrics& metrics,
+                                 vector<NodeID>& nodeChain)
 {
         bool correctedByMEM = false, readCorrected = false;
         string& read = record.getRead();
@@ -542,12 +551,13 @@ void ReadCorrection::correctRead(ReadRecord& record,
         findSeedKmer(read, seeds);
 
         string bestCorrectedRead;
-        int bestScore = correctRead(read, bestCorrectedRead, seeds);
+        vector<NodeID> bestNodeChain;
+        int bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
 
         if (bestScore <= ((int)read.size() / 2)) {
                 correctedByMEM = true;
                 findSeedMEM(read, seeds);
-                bestScore = correctRead(read, bestCorrectedRead, seeds);
+                bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
         }
 
         /*alignment.align(read, bestCorrectedRead);
@@ -559,19 +569,30 @@ void ReadCorrection::correctRead(ReadRecord& record,
                 read = bestCorrectedRead;
                 readCorrected = true;
                 numSubstitutions = (read.length() - bestScore)/2;
+                nodeChain = bestNodeChain;
         }
 
         metrics.addObservation(readCorrected, correctedByMEM, numSubstitutions);
 }
 
 void ReadCorrection::correctChunk(vector<ReadRecord>& readChunk,
-                                     AlignmentMetrics& metrics)
+                                  AlignmentMetrics& metrics)
 {
-        for (auto& it : readChunk)
-                correctRead(it, metrics);
+        ofstream ofs;
+        ofs.open("nodechain.txt", std::ofstream::app);
+
+        for (auto& it : readChunk) {
+                vector<NodeID> nodeChain;
+                correctRead(it, metrics, nodeChain);
+
+                if (nodeChain.size() > 2)
+                        ofs << nodeChain << endl;
+        }
+
+        ofs.close();
 
         /*cout << readChunk.size() << endl;
-        for (size_t i = 269; i < 270; i++) {
+        for (size_t i = 0; i < 1000; i++) {
                 cout << "================== read " << i << endl;
                 correctRead(readChunk[i], metrics);
         }

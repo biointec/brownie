@@ -24,6 +24,8 @@
 #include <string>
 #include <vector>
 
+#include "nodechain.h"
+
 // ============================================================================
 // CLASS PROTOTYPES
 // ============================================================================
@@ -112,6 +114,14 @@ public:
          * @param dbg A const-ref to the de Bruijn graph
          */
         void validateGraph(const DBGraph& dbg);
+
+        /**
+         * Get the true node chains from the reference sequence
+         * @param dbg A const-ref to the de Bruijn graph
+         * @param nodeChain Node chains (output)
+         */
+        void getTrueNodeChain(const DBGraph& dbg,
+                              std::vector<NodeChain>& nodeChain);
 
         /**
          * Calculate the true node multiplicity

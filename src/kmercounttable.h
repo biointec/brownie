@@ -44,14 +44,6 @@ private:
 
         double covCutoff;
 
-        /**
-         * Evaluate the fit in point x given multiplicity mult
-         * @param x Point in which to evaluate the spectrum
-         * @param mult multiplicity
-         * @return Spectrum evaluated in x given multiplicity mult
-         */
-        double evalSpec(unsigned int x, unsigned int mult) const;
-
 public:
         /**
          * Default constructor
@@ -89,6 +81,22 @@ public:
         double getAvgKmerCov() const {
                 return spectrumMu[numErrComp];
         }
+
+        /**
+         * Evaluate the fit in point x given multiplicity mult
+         * @param x Point in which to evaluate the spectrum
+         * @param mult multiplicity
+         * @return Spectrum evaluated in x given multiplicity mult
+         */
+        double evalSpec(unsigned int x, unsigned int mult) const;
+
+        /**
+         * Evaluate the logarithm of the fit in point x given multiplicity mult
+         * @param x Point in which to evaluate the spectrum
+         * @param mult multiplicity
+         * @return Spectrum evaluated in x given multiplicity mult
+         */
+        double evalSpecLog(unsigned int x, unsigned int mult) const;
 
         /**
          * Get the odds ratio of observing kmerCov with mult1 over mult2

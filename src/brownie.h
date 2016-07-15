@@ -65,6 +65,11 @@ public:
         void stageFive();
 
         /**
+         * Execute stage six
+         */
+        void stageSix();
+
+        /**
          * Get the node filename
          * @return String containing the node filename
          */
