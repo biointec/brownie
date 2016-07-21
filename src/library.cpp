@@ -521,6 +521,9 @@ void LibraryContainer::outputThreadLibrary(ReadLibrary& lib)
                         readFile->writeRecord(recordBuffer[i]);
 
                         const vector<int>& nc = recordBuffer[i].getNodeChain();
+                        //if (nc.size() < 3)
+                         //       continue;
+
                         if (nc.empty()) {
                                 nodeChainFile << "0\n";
                                 continue;

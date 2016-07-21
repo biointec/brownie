@@ -371,7 +371,7 @@ int main(int argc, char** args)
                 brownie.stageTwo();
                 brownie.stageThree();
                 brownie.stageFour();
-                //brownie.stageFive();
+                brownie.stageFive();
                 brownie.stageSix();
 
                 brownie.writeGraphFasta();
