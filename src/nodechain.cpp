@@ -34,8 +34,11 @@ using namespace std;
 
 std::ostream &operator<<(std::ostream &out, const vector<NodeID> &path)
 {
-        for (auto& it : path)
-                out << it << " ";
+        if (!path.empty())
+                out << path.front();
+
+        for (size_t i = 1; i < path.size(); i++)
+                out << " " << path[i];
 
         return out;
 }
@@ -44,7 +47,7 @@ std::ostream &operator<<(std::ostream &out, const NodeChain &nc)
 {
         for (auto& it : nc)
                 out << it << " ";
-        out << " (" << nc.count << ")";
+        out << "(" << nc.count << ")";
 
         return out;
 }
@@ -220,13 +223,10 @@ void NodeChainContainer::addContainers(const vector<string>& filenames)
                         // convert line to a node chain
                         vector<NodeID> inputVector;
                         istringstream iss(line);
-                        while (true) {
-                                NodeID nodeID;
-                                iss >> nodeID;
-                                if (!iss.good())
-                                        break;
+
+                        NodeID nodeID;
+                        while (iss >> nodeID)
                                 inputVector.push_back(nodeID);
-                        }
 
                         if (inputVector.size() < 3)
                                 continue;
