@@ -227,9 +227,9 @@ public:
 
         /**
          * Load the container from disk
-         * @param filename File name of the input file
+         * @param filename File names of the input files
          */
-        void loadContainer(const std::string& filename);
+        void addContainers(const std::vector<std::string>& filenames);
 
         /**
          * Get all nodeChains starting at node with identifier nodeID

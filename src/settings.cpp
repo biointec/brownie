@@ -98,6 +98,7 @@ void Settings::parseCommandLineArguments(int argc, char** args,
 {
         // parse all input arguments
         string inputFilename, outputFilename;
+        vector<pair<string, string> > libraries;
         for (int i = 1; i < argc; i++) {
                 string arg(args[i]);
 
@@ -157,8 +158,7 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                                 outputFilename = args[i];
                 } else {        // it must be an input file
                         inputFilename = args[i];
-                        ReadLibrary lib = ReadLibrary(inputFilename, outputFilename);
-                        libCont.insert(lib);
+                        libraries.push_back(pair<string, string>(inputFilename, outputFilename));
                         outputFilename.clear();
                 }
         }
@@ -195,12 +195,6 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                         pathtotemp.push_back('/');
         }
 
-        if (libCont.getSize() == 0) {
-                cerr << "brownie: missing input read file\n";
-                cerr << "Try 'brownie --help' for more information" << endl;
-                exit(EXIT_FAILURE);
-        }
-
         // final check: see if we can write to the temporary directory
         ofstream ofs(pathtotemp + "log.txt");
         if (!ofs.good()) {
@@ -214,6 +208,18 @@ void Settings::parseCommandLineArguments(int argc, char** args,
         ofs << endl;
 
         ofs.close();
+
+        // add the libaries to the library container
+        for (auto it : libraries) {
+                ReadLibrary lib = ReadLibrary(it.first, it.second, getTempDirectory() + it.first + ".ncf");
+                libCont.insert(lib);
+        }
+
+        if (libCont.getSize() == 0) {
+                cerr << "brownie: missing input read file\n";
+                cerr << "Try 'brownie --help' for more information" << endl;
+                exit(EXIT_FAILURE);
+        }
 
         // try to read the metadata for each library
         libCont.readMetadata(getTempDirectory());

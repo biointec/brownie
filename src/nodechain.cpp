@@ -202,46 +202,53 @@ void NodeChainContainer::findOcc(const NodeChain& pattern,
         }
 }
 
-void NodeChainContainer::loadContainer(const string& filename)
+void NodeChainContainer::addContainers(const vector<string>& filenames)
 {
         // create a temporary set
         std::set<NodeChain> tempSet;
 
-        ifstream ifs(filename.c_str());
-        while (true) {
-                // get a line from the input file
-                string line;
-                getline(ifs, line);
-                if (!ifs.good())
-                        break;
-
-                // convert line to a node chain
-                vector<NodeID> inputVector;
-                istringstream iss(line);
+        // load all node chains
+        for (const string& filename : filenames) {
+                ifstream ifs(filename.c_str());
                 while (true) {
-                        NodeID nodeID;
-                        iss >> nodeID;
-                        if (!iss.good())
+                        // get a line from the input file
+                        string line;
+                        getline(ifs, line);
+                        if (!ifs.good())
                                 break;
-                        inputVector.push_back(nodeID);
+
+                        // convert line to a node chain
+                        vector<NodeID> inputVector;
+                        istringstream iss(line);
+                        while (true) {
+                                NodeID nodeID;
+                                iss >> nodeID;
+                                if (!iss.good())
+                                        break;
+                                inputVector.push_back(nodeID);
+                        }
+
+                        if (inputVector.size() < 3)
+                                continue;
+
+                        NodeChain nc(inputVector);
+                        NodeChain repr = nc.getRepresentative();
+
+                        auto it = tempSet.insert(repr);
+                        bool inserted = it.second;
+
+                        // handle duplicates: sum the counts
+                        if (!inserted) {
+                                size_t count = nc.getCount() + it.first->getCount();
+                                const_cast<NodeChain&>(*it.first).setCount(count);
+                        }
                 }
 
-                NodeChain nc(inputVector);
-                NodeChain repr = nc.getRepresentative();
-
-                auto it = tempSet.insert(repr);
-                bool inserted = it.second;
-
-                // handle duplicates: sum the counts
-                if (!inserted) {
-                        size_t count = nc.getCount() + it.first->getCount();
-                        const_cast<NodeChain&>(*it.first).setCount(count);
-                }
+                ifs.close();
         }
 
-        ifs.close();
-
         // convert the set to a vector
+        clear();
         reserve(tempSet.size());
         for (const auto& nc : tempSet)
                 push_back(nc);

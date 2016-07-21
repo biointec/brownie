@@ -537,11 +537,11 @@ int ReadCorrection::correctRead(const string& read,
 }
 
 void ReadCorrection::correctRead(ReadRecord& record,
-                                 AlignmentMetrics& metrics,
-                                 vector<NodeID>& nodeChain)
+                                 AlignmentMetrics& metrics)
 {
         bool correctedByMEM = false, readCorrected = false;
         string& read = record.getRead();
+        vector<NodeID>& nodeChain = record.getNodeChain();
 
         // if the read is too short, get out
         if (read.length() < Kmer::getK())
@@ -579,17 +579,10 @@ void ReadCorrection::correctChunk(vector<ReadRecord>& readChunk,
                                   AlignmentMetrics& metrics)
 {
         ofstream ofs;
-        ofs.open("nodechain.txt", std::ofstream::app);
-
-        for (auto& it : readChunk) {
+        for (ReadRecord& record : readChunk) {
                 vector<NodeID> nodeChain;
-                correctRead(it, metrics, nodeChain);
-
-                if (nodeChain.size() > 2)
-                        ofs << nodeChain << endl;
+                correctRead(record, metrics);
         }
-
-        ofs.close();
 
         /*cout << readChunk.size() << endl;
         for (size_t i = 0; i < 1000; i++) {

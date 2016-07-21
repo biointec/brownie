@@ -617,7 +617,7 @@ public:
          * Load a node chain container from disk
          * @param filename File name
          */
-        void loadNodeChainContainer(const std::string& filename,
+        void loadNodeChainContainer(const LibraryContainer& libCont,
                                     std::vector<NodeChain>& nodeChain);
 
         void pruneNodeChainContainer();

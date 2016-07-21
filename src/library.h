@@ -51,6 +51,7 @@ class ReadLibrary
 private:
         std::string inputFilename;      // name of the input file
         std::string outputFilename;     // name of the output file
+        std::string nodeChainFilename;  // name of the node chain file
 
         FileType fileType;              // file type (FASTQ, FASTA, etc.)
 
@@ -62,9 +63,11 @@ public:
          * Default constructor
          * @param inputFilename Input filename
          * @param outputFilename Output filename
+         * @param nodeChainFilename Node chain filename
          */
         ReadLibrary(const std::string& inputFilename,
-                    const std::string& outputFilename);
+                    const std::string& outputFilename,
+                    const std::string& nodeChainFilename);
 
         /**
          * Allocate and return the correct read file for a certain input
@@ -86,6 +89,14 @@ public:
          */
         std::string getOutputFileName() const {
                 return outputFilename;
+        }
+
+        /**
+         * Get the node chain filename
+         * @return The node chain filename
+         */
+        std::string getNodeChainFilename() const {
+                return nodeChainFilename;
         }
 
         /**

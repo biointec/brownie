@@ -97,9 +97,11 @@ void ReadLibrary::writeMetadata(const string& path) const
 // ============================================================================
 
 ReadLibrary::ReadLibrary(const std::string& inputFilename_,
-                         const std::string& outputFilename_) :
+                         const std::string& outputFilename_,
+                         const std::string& nodeChainFilename_) :
         inputFilename(inputFilename_), outputFilename(outputFilename_),
-        fileType(UNKNOWN_FT), numReads(0), avgReadLength(0.0)
+        nodeChainFilename(nodeChainFilename_), fileType(UNKNOWN_FT),
+        numReads(0), avgReadLength(0.0)
 {
         // try to figure out the file format based on the extension
         string extension, baseFilename;
@@ -477,11 +479,13 @@ void LibraryContainer::commitRecordChunk(const vector<ReadRecord>& buffer,
         }
 }
 
-void LibraryContainer::outputThreadLibrary(ReadLibrary& input)
+void LibraryContainer::outputThreadLibrary(ReadLibrary& lib)
 {
         // open the read file
-        ReadFile *readFile = input.allocateReadFile();
-        readFile->open(input.getOutputFileName(), WRITE);
+        ReadFile *readFile = lib.allocateReadFile();
+        readFile->open(lib.getOutputFileName(), WRITE);
+
+        ofstream nodeChainFile(lib.getNodeChainFilename());
 
         while (true) {
                 // A) wait until an output block is ready
@@ -513,11 +517,22 @@ void LibraryContainer::outputThreadLibrary(ReadLibrary& input)
 
                 // E) write the actual data (only this thread has access)
                 const vector<ReadRecord>& recordBuffer = block->getRecordBuffer();
-                for (size_t i = 0; i < recordBuffer.size(); i++)
+                for (size_t i = 0; i < recordBuffer.size(); i++) {
                         readFile->writeRecord(recordBuffer[i]);
 
+                        const vector<int>& nc = recordBuffer[i].getNodeChain();
+                        if (nc.empty()) {
+                                nodeChainFile << "0\n";
+                                continue;
+                        }
+
+                        for (size_t j = 0; j < nc.size() - 1; j++)
+                                nodeChainFile << nc[j] << " ";
+                        nodeChainFile << nc.back() << "\n";
+                }
+
                 if (!readFile->good())
-                        throw ios_base::failure("Cannot write to " + input.getOutputFileName());
+                        throw ios_base::failure("Cannot write to " + lib.getOutputFileName());
 
                 // F) return the block to the input queue
                 block->reset();
@@ -527,6 +542,7 @@ void LibraryContainer::outputThreadLibrary(ReadLibrary& input)
                 inputLock.unlock();
         }
 
+        nodeChainFile.close();
         readFile->close();
         delete readFile;
 }

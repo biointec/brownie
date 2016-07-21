@@ -788,10 +788,16 @@ void DBGraph::pruneNodeChainContainer()
         }
 }
 
-void DBGraph::loadNodeChainContainer(const string& filename,
+void DBGraph::loadNodeChainContainer(const LibraryContainer& libCont,
                                      vector<NodeChain>& trueNodeChain)
 {
-        ncc.loadContainer(filename);
+        vector<string> filenames;
+        for (size_t i = 0; i < libCont.getSize(); i++) {
+                const ReadLibrary& lib = libCont.getInput(i);
+                filenames.push_back(lib.getNodeChainFilename());
+        }
+
+        ncc.addContainers(filenames);
         cout << "Loaded " << ncc.size() << " " << endl;
 
         while(true) {

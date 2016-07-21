@@ -226,10 +226,8 @@ private:
          * Correct a specific read record
          * @param record Record to correct (input/output)
          * @param metric Alignment metric to update (input/output)
-         * @param nodeChain Nodechain along which the read aligns (output)
          */
-        void correctRead(ReadRecord& record, AlignmentMetrics& metric,
-                         std::vector<NodeID>& nodeChain);
+        void correctRead(ReadRecord& record, AlignmentMetrics& metric);
 
         /**
          * Correct the records in one chunk

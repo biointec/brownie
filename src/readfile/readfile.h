@@ -27,6 +27,7 @@
 #include <sstream>
 #include <cstdio>
 #include <cstdlib>
+#include <vector>
 
 #ifdef HAVE_ZLIB
         #include "zlib.h"
@@ -65,6 +66,14 @@ public:
                 return read;
         }
 
+        std::vector<int> getNodeChain() const {
+                return nodeChain;
+        }
+
+        std::vector<int>& getNodeChain() {
+                return nodeChain;
+        }
+
         size_t getReadLength() const {
                 return read.length();
         }
@@ -82,6 +91,7 @@ public:
         std::string postRead;   // everything in the record that procedes the read
 
         size_t qualityOff;      // quality score offset within the record
+        std::vector<int> nodeChain; // node chain to which the read aligns
 };
 
 // ============================================================================
