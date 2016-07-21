@@ -653,7 +653,7 @@ void DBGraph::writeGraphFasta() const
         nodeFile.close();
 }
 
-void DBGraph::performReductionTypeA(const NodeChain& reduction)
+void DBGraph::performReduction(const NodeChain& reduction)
 {
         cout << "Doing reduction type A: " << reduction << endl;
 
@@ -693,76 +693,46 @@ void DBGraph::performReductionTypeA(const NodeChain& reduction)
         string str;
         convertNodesToString(vector<NodeID>(reduction.begin(), reduction.begin() + reduction.size() - 1), str);
 
+#ifdef DEBUG
+        if (!trueMult.empty()) {
+                for (size_t i = 1; i < reduction.size() - 1; i++)
+                        trueMult[abs(reduction[i])] -= trueMult[abs(reduction[0])];
+        }
+#endif
+
         first.setSequence(str);
 }
 
-void DBGraph::performReductionTypeB(const NodeChain& reduction)
+bool DBGraph::validateChain(const NodeChain& nc)
 {
-        cout << "Doing reduction type B: " << reduction << endl;
+        for (size_t i = 0; i < nc.size(); i++) {
+                SSNode node = getSSNode(nc[i]);
 
-        NodeID firstID = reduction.front();
-        NodeID nextID = reduction[1];
-        NodeID lastID = reduction.back();
-        NodeID prevID = reduction[reduction.size() - 2];
-
-        SSNode first = getSSNode(firstID);
-        SSNode next = getSSNode(nextID);
-        SSNode last = getSSNode(lastID);
-        SSNode prev = getSSNode(prevID);
-
-        // rewire the arcs
-        first.deleteRightArc(nextID);
-        next.deleteLeftArc(firstID);
-        last.deleteLeftArc(prevID);
-        prev.deleteRightArc(lastID);
-
-        first.inheritRightArcs(last);
-
-        last.invalidate();
-
-        //first.getRightArc(lastID)->setCoverage(last.getLeftArc(firstID)->getCoverage());
-
-        // FIXME : update coverage !!
-
-        /*size_t newKmerCov = first.getKmerCov();
-        size_t newReadStartCov = first.getReadStartCov();
-        for (size_t i = 1; i < reduction.size() - 1; i++) {
-                newKmerCov += getSSNode(reduction[i]).getKmerCov();
-                newReadStartCov += getSSNode(reduction[i]).getReadStartCov();
-                getSSNode(reduction[i]).deleteAllLeftArcs();
-                getSSNode(reduction[i]).deleteAllRightArcs();
-                getSSNode(reduction[i]).invalidate();
+                if (!node.isValid())
+                        return false;
+                if (i+1 == nc.size())
+                        break;
+                if (node.getRightArc(nc[i+1]) == NULL)
+                        return false;
         }
 
-        first.setKmerCov(newKmerCov);
-        first.setReadStartCov(newReadStartCov);*/
-
-        string str;
-        convertNodesToString(reduction, str);
-
-        first.setSequence(str);
+        return true;
 }
 
-void DBGraph::performReduction(const NodeChain& reduction)
+void DBGraph::validateChainContainer(const NodeChainContainer& ncc)
 {
-        if (getSSNode(reduction.back()).getNumLeftArcs() > 1)
-                performReductionTypeA(reduction);
-        else
-                performReductionTypeB(reduction);
+        for (const NodeChain& nc : ncc)
+                if (!validateChain(nc))
+                        cout << nc << " is no longer valid in the graph!" << endl;
 }
 
-void DBGraph::loadNodeChainContainer(const string& filename,
-                                     vector<NodeChain>& trueNodeChain)
+void DBGraph::findReductions(vector<NodeChain>& reductionv)
 {
-        ncc.loadContainer(filename);
-        cout << "Loaded " << ncc.size() << " " << endl;
+        reductionv.clear();
 
-        vector<NodeChain> reductionv;
-        for (NodeID id = -getNumNodes(); id <= numNodes; id++) {
+        for (NodeID id = -numNodes; id <= numNodes; id++) {
                 if (id == 0)
                         continue;
-
-                //cout << "========== " << id << " =========== " << endl;
 
                 SSNode node = getSSNode(id);
                 if (!node.isValid())
@@ -774,40 +744,102 @@ void DBGraph::loadNodeChainContainer(const string& filename,
                 vector<NodeChain> nbPaths = ncc.getNonBranchingPath(id, rightID);
 
                 for (const auto& nbPath : nbPaths) {
-                        if (ncc.isNonBranchingPath(nbPath.getReverseComplement())) {
-                                reductionv.push_back(nbPath);
-                                break;;
+                        // check whether the final node in the nbPath is part of a loop structure
+                        bool isLoop = false;
+                        for (size_t i = 0; i < nbPath.size() - 1; i++)
+                                if (nbPath[i] == nbPath.back())
+                                        isLoop = true;
+                        if (isLoop)
+                                continue;
+
+                        // TODO : what about hairpins: A - B - A~ ??
+
+                        // check whether the reverse-complement is OK
+                        NodeChain nbPathRC = nbPath.getReverseComplement();
+
+                        if (ncc.isNonBranchingPath(nbPathRC)) {
+                                bool typeA = getSSNode(nbPath.back()).getNumLeftArcs() >= 2;
+                                bool repr = nbPath < nbPathRC;
+
+                                // save the reduction when it is
+                                if (repr || typeA) {
+                                        reductionv.push_back(nbPath);
+                                }
+                                break;
                         }
                 }
         }
+}
 
-        sort(reductionv.begin(), reductionv.end(), sortChainByOcc);
+void DBGraph::pruneNodeChainContainer()
+{
+        if (trueMult.empty())
+                return; // FIXME !!
 
-        NodeChainContainer trueNcc(trueNodeChain);
+        for (NodeID id = -numNodes; id <= numNodes; id++) {
+                if (id == 0)
+                        continue;
+                if (!getSSNode(id).isValid())
+                        continue;
+                if (trueMult[abs(id)] != 1)
+                        continue;
 
-        cout << "Number of reductions: " << reductionv.size() << endl;
+                ncc.smoothPath(id);
+        }
+}
 
-        for (const auto& reduction : reductionv) {
+void DBGraph::loadNodeChainContainer(const string& filename,
+                                     vector<NodeChain>& trueNodeChain)
+{
+        ncc.loadContainer(filename);
+        cout << "Loaded " << ncc.size() << " " << endl;
+
+        while(true) {
+
+                // reset all flags in the graph to false
+                for (NodeID id = 1; id <= numNodes; id++)
+                        getSSNode(id).setFlag(false);
+
+                pruneNodeChainContainer();
+
+                vector<NodeChain> reductionv;
+                findReductions(reductionv);
+                sort(reductionv.begin(), reductionv.end(), sortChainByOcc);
+
+                cout << "Number of reductions: " << reductionv.size() << endl;
+                if (reductionv.size() == 0)
+                        break;
+
+                for (const auto& reduction : reductionv) {
+                        //cout << "Reduction: " << reduction << endl;
+
+                        bool valid = true;
+                        for (auto nodeID : reduction)
+                                if (getSSNode(nodeID).getFlag())
+                                        valid = false;
+
+                        if (!valid)
+                                continue;
+
+                        // first handle the reduction itself
+                        performReduction(reduction);
+                        ncc.processReduction(reduction);
+
+                        for (auto nodeID : reduction)
+                                getSSNode(nodeID).setFlag(true);
+                }
+
+                validateChainContainer(ncc);
+        }
+
+        // NodeChainContainer trueNcc(trueNodeChain);
+        //ncc.updateChains(origChainv, newChainv);
+
+        /*for (const auto& reduction : reductionv) {
                 cout << reduction << " ";
                 cout << trueNcc.isNonBranchingPath(reduction) << " ";
                 cout << trueNcc.isNonBranchingPath(reduction.getReverseComplement()) << " " << endl;
-        }
+        }*/
 
-        cout << "Bye..." << endl;
-        exit(0);
-
-        for (const auto& reduction : reductionv) {
-                bool stillOK = true;
-                for (auto id : reduction)
-                        if (!getSSNode(id).isValid()) {
-                                stillOK = false;
-                                break;
-                        }
-
-                if (!stillOK)
-                        continue;
-
-                performReduction(reduction);
-                concatenateNodes();
-        }
+        concatenateNodes();
 }

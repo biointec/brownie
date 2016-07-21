@@ -185,8 +185,6 @@ private:
         void convertNodesToString(const std::vector<NodeID> &nodeSeq,
                                   std::string &output);
 
-        void markPairedArcs(const std::vector<NodeID>& seq);
-
 public:
         static const DBGraph* graph;
 
@@ -622,9 +620,12 @@ public:
         void loadNodeChainContainer(const std::string& filename,
                                     std::vector<NodeChain>& nodeChain);
 
+        void pruneNodeChainContainer();
         void performReduction(const NodeChain& reduction);
-        void performReductionTypeA(const NodeChain& reduction);
-        void performReductionTypeB(const NodeChain& reduction);
+
+        void findReductions(std::vector<NodeChain>& reductionv);
+        bool validateChain(const NodeChain& nc);
+        void validateChainContainer(const NodeChainContainer& ncc);
 };
 
 #endif

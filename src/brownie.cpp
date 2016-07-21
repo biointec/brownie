@@ -322,6 +322,39 @@ void Brownie::stageSix()
         /*for (auto it : trueNodeChain)
                 cout << it << endl;*/
 
+        //Before: -716 1544 -1829 1219 -716 1544 -1829 -596  (2)
+
+        /*NodeChain test;
+        test.push_back(-716);
+        test.push_back(1544);
+        test.push_back(-1829);
+        test.push_back(1219);
+        test.push_back(-716);
+        test.push_back(1544);
+        test.push_back(-1829);
+        test.push_back(-596);
+        //test.push_back(2);
+        //test.push_back(2);
+        vector<NodeChain> ncv;
+        ncv.push_back(test);
+
+        NodeChainContainer ncc(ncv);
+
+        cout << ncc << endl;
+
+        NodeChain pattern;
+        pattern.push_back(-716);
+        pattern.push_back(1544);
+        pattern.push_back(-1829);
+
+        ncc.processReduction(pattern);
+        cout << " ---- " << endl;
+        cout << ncc << endl;
+        cout << " ---- " << endl;
+        ncc.printIndex();
+
+        exit(0);*/
+
         Util::startChrono();
 
         graph.loadNodeChainContainer("nodechain.txt", trueNodeChain);
