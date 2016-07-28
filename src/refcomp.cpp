@@ -47,7 +47,7 @@ RefComp::RefComp(const std::string& refFilename)
         ifs.close();
 }
 
-void RefComp::validateGraph(const DBGraph& dbg)
+void RefComp::validateGraph(const DBGraph& dbg, size_t minContigSize)
 {
         size_t numKmers = 0, numKmerFound = 0;
         vector<BreakPoint> breakpoint;
@@ -56,12 +56,14 @@ void RefComp::validateGraph(const DBGraph& dbg)
         for (size_t refID = 0; refID < reference.size(); refID++) {
                 bool breakPointOpen = false;
                 const string& refSeq = reference[refID];
+                size_t currContigSize = 0;
 
                 // handle the first kmer separately
                 KmerIt it(refSeq);
                 NodePosPair prev = dbg.findNPP(it.getKmer());
                 if (prev.isValid()) {
                         numKmerFound++;
+                        currContigSize++;
                 } else {
                         breakpoint.push_back(BreakPoint(refID, 0));
                         breakPointOpen = true;
@@ -80,19 +82,23 @@ void RefComp::validateGraph(const DBGraph& dbg)
 
                         // if the kmer is connected to the previous one, get out
                         if (dbg.consecutiveNPP(prev, curr)) {
-                                breakPointOpen = false;
+                                currContigSize++;
+                                if (currContigSize >= minContigSize)
+                                        breakPointOpen = false;
                                 prev = curr;
                                 continue;
                         }
 
                         // update or create a new breakpoint
                         if (breakPointOpen) {
-                                breakpoint.back().extendBreakPoint();
+                                for (size_t i = 0; i < currContigSize + 1; i++)
+                                        breakpoint.back().extendBreakPoint();
                         } else {
                                 breakpoint.push_back(BreakPoint(refID, it.getOffset()));
                                 breakPointOpen = true;
                         }
 
+                        currContigSize = 0;
                         prev = curr;
                 }
         }

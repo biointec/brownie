@@ -113,7 +113,7 @@ public:
          * Validate a de Bruijn graph
          * @param dbg A const-ref to the de Bruijn graph
          */
-        void validateGraph(const DBGraph& dbg);
+        void validateGraph(const DBGraph& dbg, size_t minContigSize = 1);
 
         /**
          * Get the true node chains from the reference sequence
