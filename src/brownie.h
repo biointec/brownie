@@ -224,7 +224,16 @@ public:
         bool stageFiveNecessary() const {
                 if (settings.getSkipStage5())
                         return false;
-                return true;
+
+                for (size_t i = 0; i < libraries.getSize(); i++) {
+                        const ReadLibrary &input = libraries.getInput(i);
+                        if (!Util::fileExists(input.getOutputFileName()))
+                                return true;
+                        if (!Util::fileExists(input.getNodeChainFilename()))
+                                return true;
+                }
+
+                return false;
         }
 
         /**

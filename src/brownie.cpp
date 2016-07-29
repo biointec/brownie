@@ -328,6 +328,8 @@ void Brownie::stageSix()
 #endif
         cout << graph.getGraphStats() << endl;
 
+        graph.writeGraphFasta();
+
         cout << "Repeat resolution completed in " << Util::stopChronoStr() << endl;
         cout << "Stage 6 finished\n" << endl;
         graph.clear();
