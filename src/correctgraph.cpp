@@ -461,109 +461,117 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
         return  numDeleted > 0;
 }
 
+void DBGraph::concatenateAroundNode(NodeID seedID, vector<NodeID>& nodeListv)
+{
+        nodeListv.clear();
+
+        SSNode seed = getSSNode(seedID);
+        if (!seed.isValid())
+                return;
+
+        deque<NodeID> nodeListq;
+        nodeListq.push_back(seedID);
+        seed.setFlag(true);
+
+        // find linear paths to the right
+        SSNode curr = seed;
+        while (curr.getNumRightArcs() == 1) {
+                NodeID rightID = curr.rightBegin()->getNodeID();
+                SSNode right = getSSNode(rightID);
+                // don't merge palindromic repeats / loops
+                if (right.getFlag())
+                        break;
+                if (right.getNumLeftArcs() != 1)
+                        break;
+                nodeListq.push_back(rightID);
+                right.setFlag(true);
+                curr = right;
+        }
+
+        // find linear paths to the left
+        curr = seed;
+        while (curr.getNumLeftArcs() == 1) {
+                NodeID leftID = curr.leftBegin()->getNodeID();
+                SSNode left = getSSNode(leftID);
+                // don't merge palindromic repeats / loops
+                if (left.getFlag())
+                        break;
+                if (left.getNumRightArcs() != 1)
+                        break;
+                nodeListq.push_front(leftID);
+                left.setFlag(true);
+                curr = left;
+        }
+
+        // reset the flags to false
+        for (const auto& it : nodeListq)
+                getSSNode(it).setFlag(false);
+
+        // if no linear path was found, continue
+        if (nodeListq.size() == 1)
+                return;
+
+        // concatenate the path
+        NodeID frontID = nodeListq.front();
+        SSNode front = getSSNode(frontID);
+        NodeID backID = nodeListq.back();
+        SSNode back = getSSNode(backID);
+
+        front.deleteAllRightArcs();
+        front.inheritRightArcs(back);
+
+        size_t newKmerCov = front.getKmerCov();
+        size_t newReadStartCov = front.getReadStartCov();
+        for (size_t i = 1; i < nodeListq.size(); i++) {
+                newKmerCov += getSSNode(nodeListq[i]).getKmerCov();
+                newReadStartCov += getSSNode(nodeListq[i]).getReadStartCov();
+                getSSNode(nodeListq[i]).deleteAllLeftArcs();
+                getSSNode(nodeListq[i]).deleteAllRightArcs();
+                getSSNode(nodeListq[i]).invalidate();
+        }
+
+        front.setKmerCov(newKmerCov);
+        front.setReadStartCov(newReadStartCov);
+
+        copy(nodeListq.begin(), nodeListq.end(), std::back_inserter(nodeListv));
+
+        string str;
+        convertNodesToString(nodeListv, str);
+
+        front.setSequence(str);
+}
+
 bool DBGraph::concatenateNodes()
 {
         size_t numConcatenations = 0, numIncorrectConcatenations = 0;
 
         for (NodeID seedID = 1; seedID <= numNodes; seedID++) {
+                vector<NodeID> concatenation;
+                concatenateAroundNode(seedID, concatenation);
 
-                SSNode seed = getSSNode(seedID);
-                if (!seed.isValid())
-                        continue;
-
-                deque<NodeID> nodeList;
-                nodeList.push_back(seedID);
-                seed.setFlag(true);
-
-                // find linear paths to the right
-                SSNode curr = seed;
-                while (curr.getNumRightArcs() == 1) {
-                        NodeID rightID = curr.rightBegin()->getNodeID();
-                        SSNode right = getSSNode(rightID);
-                        // don't merge palindromic repeats / loops
-                        if (right.getFlag())
-                                break;
-                        if (right.getNumLeftArcs() != 1)
-                                break;
-                        nodeList.push_back(rightID);
-                        right.setFlag(true);
-                        curr = right;
-                }
-
-                // find linear paths to the left
-                curr = seed;
-                while (curr.getNumLeftArcs() == 1) {
-                        NodeID leftID = curr.leftBegin()->getNodeID();
-                        SSNode left = getSSNode(leftID);
-                        // don't merge palindromic repeats / loops
-                        if (left.getFlag())
-                                break;
-                        if (left.getNumRightArcs() != 1)
-                                break;
-                        nodeList.push_front(leftID);
-                        left.setFlag(true);
-                        curr = left;
-                }
-
-                // reset the flags to false
-                for (const auto& it : nodeList)
-                        getSSNode(it).setFlag(false);
-
-                // if no linear path was found, continue
-                if (nodeList.size() == 1)
-                        continue;
-
-                // concatenate the path
-                NodeID frontID = nodeList.front();
-                SSNode front = getSSNode(frontID);
-                NodeID backID = nodeList.back();
-                SSNode back = getSSNode(backID);
-
-                front.deleteAllRightArcs();
-                front.inheritRightArcs(back);
-
-                size_t newKmerCov = front.getKmerCov();
-                size_t newReadStartCov = front.getReadStartCov();
-                for (size_t i = 1; i < nodeList.size(); i++) {
-                        newKmerCov += getSSNode(nodeList[i]).getKmerCov();
-                        newReadStartCov += getSSNode(nodeList[i]).getReadStartCov();
-                        getSSNode(nodeList[i]).deleteAllLeftArcs();
-                        getSSNode(nodeList[i]).deleteAllRightArcs();
-                        getSSNode(nodeList[i]).invalidate();
-                }
-
-                front.setKmerCov(newKmerCov);
-                front.setReadStartCov(newReadStartCov);
-
-                vector<NodeID> nodeListv;
-                copy(nodeList.begin(), nodeList.end(), std::back_inserter(nodeListv));
-
-                string str;
-                convertNodesToString(nodeListv, str);
-
-                front.setSequence(str);
-
-                numConcatenations += nodeList.size() - 1;
+                if (!concatenation.empty())
+                        numConcatenations += concatenation.size() - 1;
 
 #ifdef DEBUG
-                if (!trueMult.empty()) {
-                        for (size_t i = 1; i < nodeListv.size(); i++) {
-                                NodeID lID = nodeListv[i-1];
-                                NodeID rID = nodeListv[i];
-                                SSNode left = getSSNode(lID);
-                                SSNode right = getSSNode(rID);
-                                size_t lMult = trueMult[abs(lID)];
-                                size_t rMult = trueMult[abs(rID)];
-                                if (lMult != rMult) {
-                                        cout << "\tConcatenating " << lID << " (cov = "
-                                             << left.getAvgKmerCov() << ", " << lMult
-                                             << ") and " << rID << " (cov = "
-                                             << right.getAvgKmerCov() << ", " << rMult
-                                             << ")" << endl;
-                                        numIncorrectConcatenations++;
-                                        trueMult[abs(lID)] = max(lMult, rMult);
-                                        trueMult[abs(rID)] = max(lMult, rMult);
-                                }
+                if (trueMult.empty())
+                        continue;
+
+                for (size_t i = 1; i < concatenation.size(); i++) {
+                        NodeID lID = concatenation[i-1];
+                        NodeID rID = concatenation[i];
+                        SSNode left = getSSNode(lID);
+                        SSNode right = getSSNode(rID);
+                        size_t lMult = trueMult[abs(lID)];
+                        size_t rMult = trueMult[abs(rID)];
+                        if (lMult != rMult) {
+                                cout << "\tConcatenating " << lID << " (cov = "
+                                     << left.getAvgKmerCov() << ", " << lMult
+                                     << ") and " << rID << " (cov = "
+                                     << right.getAvgKmerCov() << ", " << rMult
+                                     << ")" << endl;
+                                numIncorrectConcatenations++;
+                                trueMult[abs(lID)] = max(lMult, rMult);
+                                trueMult[abs(rID)] = max(lMult, rMult);
                         }
                 }
 #endif

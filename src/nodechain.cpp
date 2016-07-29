@@ -102,6 +102,16 @@ bool NodeChain::operator<(const NodeChain& rhs) const
         return false;
 }
 
+bool NodeChain::operator==(const NodeChain& rhs) const
+{
+        if (size() != rhs.size())
+                return false;
+        for (size_t i = 0; i < size(); i++)
+                if ((*this)[i] != rhs[i])
+                        return false;
+        return true;
+}
+
 // ============================================================================
 // NODE CHAIN CONTAINER CLASS
 // ============================================================================
@@ -205,6 +215,25 @@ void NodeChainContainer::findOcc(const NodeChain& pattern,
         }
 }
 
+size_t NodeChainContainer::getChainIdx(const NodeChain& nc) const
+{
+        NodeID leftID = nc.front();
+
+        for (multimap<NodeID, NodeChainPos>::const_iterator it = index.find(abs(leftID)); it != index.end(); it++) {
+                if (it->first != abs(leftID))
+                        break;
+
+                const NodeChain& target = at(it->second.getChainID());
+
+                if (nc == target)
+                        return it->second.getChainID();
+
+        }
+
+        // we should never reach this position
+        assert(false);
+}
+
 void NodeChainContainer::addContainers(const vector<string>& filenames)
 {
         // create a temporary set
@@ -228,8 +257,8 @@ void NodeChainContainer::addContainers(const vector<string>& filenames)
                         while (iss >> nodeID)
                                 inputVector.push_back(nodeID);
 
-                        if (inputVector.size() < 3)
-                                continue;
+                        //if (inputVector.size() < 3)
+                        //        continue;
 
                         NodeChain nc(inputVector);
                         NodeChain repr = nc.getRepresentative();
@@ -256,6 +285,52 @@ void NodeChainContainer::addContainers(const vector<string>& filenames)
 
         // create the index
         buildIndex();
+
+        // read files again to figure out which nodechains are paired
+        ifstream ifs[2];
+        for (size_t i = 0; i < 2; i++)
+                ifs[i].open(filenames[i].c_str());
+
+        while (true) {
+                // get a line from the input file
+                string line1;
+                getline(ifs[0], line1);
+                if (!ifs[0].good())
+                        break;
+
+                string line2;
+                getline(ifs[1], line2);
+                if (!ifs[1].good())
+                        break;
+
+                // convert line to a node chain
+                vector<NodeID> inputVector1;
+                istringstream iss(line1);
+
+                NodeID nodeID;
+                while (iss >> nodeID)
+                        inputVector1.push_back(nodeID);
+
+                NodeChain nc1(inputVector1);
+                nc1 = nc1.getRepresentative();
+
+                vector<NodeID> inputVector2;
+                istringstream iss2(line2);
+
+                while (iss2 >> nodeID)
+                        inputVector2.push_back(nodeID);
+
+                NodeChain nc2(inputVector2);
+                nc2 = nc2.getRepresentative();
+
+                size_t idx1 = getChainIdx(nc1);
+                size_t idx2 = getChainIdx(nc2);
+
+                PER[pair<size_t, size_t>(idx1, idx2)]++;
+        }
+
+        for (size_t i = 0; i < 2; i++)
+                ifs[i].close();
 }
 
 NodeChain NodeChainContainer::getNodeChainSection(NodeID nodeID,
@@ -473,16 +548,19 @@ void NodeChainContainer::printIndex() const
                 cout << it.first <<  " " << it.second.getChainID() << " " << it.second.getChainPos() << endl;
 }
 
-size_t NodeChainContainer::updateNodeChains(const NodeChain& pattern,
+size_t NodeChainContainer::updateNodeChains(const NodeChain& seedPattern,
+                                            const NodeChain& oldPattern,
                                             const NodeChain& newPattern)
 {
+        // make sure the seed pattern is the initial part of the old pattern
+        assert(seedPattern.size() <= oldPattern.size());
+        for (size_t i = 0; i < seedPattern.size(); i++)
+                assert(seedPattern[i] == oldPattern[i]);
+
         size_t numChanged = 0;
 
-        // find all occurences of the pattern
-        NodeChain seed(vector<NodeID>(pattern.begin(), pattern.begin() + 2));
-
         vector<NodeChainPos> occ;
-        findOcc(seed, occ);
+        findOcc(seedPattern, occ);
 
         // sort occurrences by chain identifier and position
         sort(occ.begin(), occ.end(), sortByPosition);
@@ -503,8 +581,8 @@ size_t NodeChainContainer::updateNodeChains(const NodeChain& pattern,
 
                 do {
                         ssize_t pos = occ[i].getChainPos();
-                        size_t patBegin = (occ[i].getReverse()) ? max(pos + 1 - (ssize_t)pattern.size(), (ssize_t)0) : pos;
-                        size_t patEnd = (occ[i].getReverse()) ? pos + 1 : min(pos + pattern.size(), nc.size());
+                        size_t patBegin = (occ[i].getReverse()) ? max(pos + 1 - (ssize_t)oldPattern.size(), (ssize_t)0) : pos;
+                        size_t patEnd = (occ[i].getReverse()) ? pos + 1 : min(pos + oldPattern.size(), nc.size());
 
                         const NodeChain& newRep = occ[i].getReverse() ? newPatternRC : newPattern;
 
@@ -558,23 +636,51 @@ size_t NodeChainContainer::processReduction(const NodeChain& reduction)
         NodeChain newPattern;
         newPattern.push_back(reduction.front());
 
+        NodeChain seed(vector<NodeID>(searchPattern.begin(), searchPattern.begin() + 2));
+
         //cout << "Replacing: " << searchPattern << " by " << newPattern << endl;
 
         // Find all instances of "A - B - ..." and replace by "A"
-        result += updateNodeChains(searchPattern, newPattern);
+        result += updateNodeChains(seed, searchPattern, newPattern);
 
         searchPattern = reduction.getReverseComplement();
         newPattern.clear();
         newPattern.push_back(searchPattern.front());
         newPattern.push_back(searchPattern.back());
 
+        seed.clear();
+        seed.push_back(searchPattern[0]);
+        seed.push_back(searchPattern[1]);
+
         //cout << "Replacing: " << searchPattern << " by " << newPattern << endl;
 
         // Find all instances of "Y~ - X~ - ..." and replace by "Y~ - A~"
-        result += updateNodeChains(searchPattern, newPattern);
+        result += updateNodeChains(seed, searchPattern, newPattern);
 
         return result;
 }
+
+size_t NodeChainContainer::processConcatentation(const NodeChain& concatenation)
+{
+        size_t result = 0;
+
+        // Assume a valid concatenation
+        if (concatenation.size() < 2)
+                return result;
+
+        NodeChain newPattern;
+        newPattern.push_back(concatenation.front());
+
+        for (size_t i = 0; i < concatenation.size(); i++) {
+                NodeChain searchPattern(vector<NodeID>(concatenation.begin() + i, concatenation.end()));
+                NodeChain seedPattern;
+                seedPattern.push_back(searchPattern.front());
+                result += updateNodeChains(seedPattern, searchPattern, newPattern);
+        }
+
+        return result;
+}
+
 
 void NodeChainContainer::removeSubChain(const NodeChainPos& pos)
 {
@@ -646,4 +752,20 @@ void NodeChainContainer::smoothPath(NodeID nodeID)
                         cout << getNodeID(pos) << " ";
                 cout << endl;
         }*/
+}
+
+void NodeChainContainer::printPER() const
+{
+        cout << PER.size() << endl;
+        for (auto it : PER)
+                cout << at(it.first.first) << " --> " << at(it.first.second) << " (" << it.second << ")" << endl;
+
+        cout << " === " << endl;
+
+        // create a node chain tree
+        vector<NodeChain> nodeChainTree = getNodeChainTree(1279, 1323);
+
+        for (auto it : nodeChainTree)
+                cout << it << endl;
+        cout << " === " << endl;
 }

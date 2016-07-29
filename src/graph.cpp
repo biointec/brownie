@@ -655,8 +655,6 @@ void DBGraph::writeGraphFasta() const
 
 void DBGraph::performReduction(const NodeChain& reduction)
 {
-        cout << "Doing reduction type A: " << reduction << endl;
-
         NodeID firstID = reduction.front();
         NodeID nextID = reduction[1];
         NodeID lastID = reduction.back();
@@ -821,18 +819,31 @@ void DBGraph::loadNodeChainContainer(const LibraryContainer& libCont,
 
                         bool valid = true;
                         for (auto nodeID : reduction)
-                                if (getSSNode(nodeID).getFlag())
+                                if (getSSNode(nodeID).getFlag() || !getSSNode(nodeID).isValid())
                                         valid = false;
 
                         if (!valid)
                                 continue;
 
                         // first handle the reduction itself
+                        cout << "Doing reduction: " << reduction << endl;
+
                         performReduction(reduction);
                         ncc.processReduction(reduction);
 
+                        // try to concatenate nodes as a consequence of this reduction
+                        for (size_t i = 0; i < reduction.size() - 1; i++) {
+                                vector<NodeID> concatenation;
+                                concatenateAroundNode(reduction[i], concatenation);
+
+                                cout << "Concatenated nodes: " << concatenation << endl;
+
+                                ncc.processConcatentation(concatenation);
+                        }
+
                         for (auto nodeID : reduction)
                                 getSSNode(nodeID).setFlag(true);
+
                 }
 
                 validateChainContainer(ncc);
@@ -847,5 +858,9 @@ void DBGraph::loadNodeChainContainer(const LibraryContainer& libCont,
                 cout << trueNcc.isNonBranchingPath(reduction.getReverseComplement()) << " " << endl;
         }*/
 
+        //ncc.printPER();
+
         concatenateNodes();
+
+        validateChainContainer(ncc);
 }

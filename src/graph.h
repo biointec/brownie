@@ -425,6 +425,14 @@ private:
         bool bubbleDetection(NodeID nodeID, double covCutoff,
                              size_t maxMargLength);
 
+        /**
+         * Concatenation the linear path around a seed node
+         * @param seedID Node identifier of the seed node
+         * @param nodeListv Linear path that was concatenated
+         */
+        void concatenateAroundNode(NodeID seedID,
+                                   std::vector<NodeID>& nodeListv);
+
 public: // FIXME !!! (private)
         /**
          * Graph correctoin based on flow conservation

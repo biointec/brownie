@@ -100,6 +100,12 @@ public:
         bool operator<(const NodeChain& rhs) const;
 
         /**
+         * Operator < overloading
+         * @param rhs Right hand side
+         */
+        bool operator==(const NodeChain& rhs) const;
+
+        /**
          * Get the reverse complement of the node chain
          * @return The reverse complementary chain
          */
@@ -198,6 +204,7 @@ class NodeChainContainer : public std::vector<NodeChain>
 private:
 
         std::multimap<NodeID, NodeChainPos> index;
+        std::map<std::pair<size_t, size_t>, size_t> PER;
 
         /**
          * Build the index
@@ -212,6 +219,19 @@ private:
          * @return A nodeChain section starting at a given node
          */
         NodeChain getNodeChainSection(NodeID nodeID, size_t id, size_t pos) const;
+
+        /**
+         * Replace the oldPattern by the newPattern in the container, and this
+         * in both strands. The seedPattern is necessarily the first fraction
+         * of the oldPattern, and will all instances of seedPattern will be replaced
+         * @param seedPattern Pattern used to find (partial) occurrences of oldPattern
+         * @param oldPattern Pattern to be replaced (or a fraction thereof)
+         * @param newPattern New pattern
+         * @return Then number of nodechains there were updated
+         */
+        size_t updateNodeChains(const NodeChain& seedPattern,
+                                const NodeChain& oldPattern,
+                                const NodeChain& newPattern);
 
 public:
         /**
@@ -249,10 +269,19 @@ public:
 
         void findOcc(const NodeChain& target, std::vector<NodeChainPos>& occ) const;
 
-        size_t updateNodeChains(const NodeChain& origChainv,
-                              const NodeChain& newChainv);
-
+        /**
+         * Update all node chains to reflect the changes imposed by a reduction
+         * @param reduction Reduction under consideration
+         * @return The number of node chains that were altered
+         */
         size_t processReduction(const NodeChain& reduction);
+
+        /**
+         * Update all node chains to reflect the changes imposed by a concatenation
+         * @param concatenation Concatenation under consideration
+         * @return The number of node chains that were altered
+         */
+        size_t processConcatentation(const NodeChain& concatenation);
 
         void insertIndex(NodeID nodeID, NodeChainPos pos);
         void deleteIndex(NodeID nodeID, NodeChainPos oldPos);
@@ -297,6 +326,12 @@ public:
         }
 
         /**
+         * Get the index of a specific nodechain
+         * @param nc Nodechain
+         */
+        size_t getChainIdx(const NodeChain& nc) const;
+
+        /**
          * Check whether a node chain position is valid
          * @param pos The node chain position
          * @return true or false
@@ -310,6 +345,8 @@ public:
         }
 
         void removeSubChain(const NodeChainPos& pos);
+
+        void printPER() const;
 
         /**
          * Operator<< overloading
