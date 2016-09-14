@@ -704,14 +704,22 @@ void DBGraph::performReduction(const NodeChain& reduction)
 bool DBGraph::validateChain(const NodeChain& nc)
 {
         for (size_t i = 0; i < nc.size(); i++) {
+                if (nc[i] == 0)
+                        continue;
+
                 SSNode node = getSSNode(nc[i]);
 
-                if (!node.isValid())
+                if (!node.isValid()) {
+                        cout << "Not valid" << endl;
                         return false;
-                if (i+1 == nc.size())
+                }
+                if (i+1 == nc.size()) {
                         break;
-                if (node.getRightArc(nc[i+1]) == NULL)
+                }
+                if (node.getRightArc(nc[i+1]) == NULL) {
+                        cout << "Not connected" << endl;
                         return false;
+                }
         }
 
         return true;
@@ -771,7 +779,7 @@ void DBGraph::findReductions(vector<NodeChain>& reductionv)
 
 void DBGraph::pruneNodeChainContainer()
 {
-        if (trueMult.empty())
+        /*if (trueMult.empty())
                 return; // FIXME !!
 
         for (NodeID id = -numNodes; id <= numNodes; id++) {
@@ -783,7 +791,7 @@ void DBGraph::pruneNodeChainContainer()
                         continue;
 
                 ncc.smoothPath(id);
-        }
+        }*/
 }
 
 void DBGraph::loadNodeChainContainer(const LibraryContainer& libCont,
@@ -804,6 +812,7 @@ void DBGraph::loadNodeChainContainer(const LibraryContainer& libCont,
                 for (NodeID id = 1; id <= numNodes; id++)
                         getSSNode(id).setFlag(false);
 
+                validateChainContainer(ncc);
                 pruneNodeChainContainer();
 
                 vector<NodeChain> reductionv;
@@ -845,8 +854,6 @@ void DBGraph::loadNodeChainContainer(const LibraryContainer& libCont,
                                 getSSNode(nodeID).setFlag(true);
 
                 }
-
-                validateChainContainer(ncc);
         }
 
         // NodeChainContainer trueNcc(trueNodeChain);
@@ -859,8 +866,4 @@ void DBGraph::loadNodeChainContainer(const LibraryContainer& libCont,
         }*/
 
         //ncc.printPER();
-
-        concatenateNodes();
-
-        validateChainContainer(ncc);
 }

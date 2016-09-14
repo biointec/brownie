@@ -204,7 +204,7 @@ class NodeChainContainer : public std::vector<NodeChain>
 private:
 
         std::multimap<NodeID, NodeChainPos> index;
-        std::map<std::pair<size_t, size_t>, size_t> PER;
+        std::map<std::pair<int64_t, int64_t>, size_t> PER;
 
         /**
          * Build the index

@@ -312,7 +312,7 @@ void NodeChainContainer::addContainers(const vector<string>& filenames)
                         inputVector1.push_back(nodeID);
 
                 NodeChain nc1(inputVector1);
-                nc1 = nc1.getRepresentative();
+                NodeChain repr1 = nc1.getRepresentative();
 
                 vector<NodeID> inputVector2;
                 istringstream iss2(line2);
@@ -321,10 +321,15 @@ void NodeChainContainer::addContainers(const vector<string>& filenames)
                         inputVector2.push_back(nodeID);
 
                 NodeChain nc2(inputVector2);
-                nc2 = nc2.getRepresentative();
+                NodeChain repr2 = nc2.getRepresentative();
 
-                size_t idx1 = getChainIdx(nc1);
-                size_t idx2 = getChainIdx(nc2);
+                int64_t idx1 = getChainIdx(repr1);
+                int64_t idx2 = getChainIdx(repr2);
+
+                if (nc1 != repr1)
+                        idx1 = -idx1;
+                if (nc2 == repr2)               // TODO: Change innies to outies : auto-detect
+                        idx2 = -idx2;
 
                 PER[pair<size_t, size_t>(idx1, idx2)]++;
         }
@@ -757,8 +762,27 @@ void NodeChainContainer::smoothPath(NodeID nodeID)
 void NodeChainContainer::printPER() const
 {
         cout << PER.size() << endl;
-        for (auto it : PER)
-                cout << at(it.first.first) << " --> " << at(it.first.second) << " (" << it.second << ")" << endl;
+        for (auto it : PER) {
+                int64_t idx1 = it.first.first, idx2 = it.first.second;
+
+                if (idx1 == idx2)
+                        continue;
+
+                NodeChain nc1 = at(abs(idx1));
+                if (idx1 < 0)
+                        nc1 = nc1.getReverseComplement();
+
+                NodeChain nc2 = at(abs(idx2));
+                if (idx2 < 0)
+                        nc2 = nc2.getReverseComplement();
+
+                if (nc1 == nc2)
+                        continue;
+                if (nc1.empty() || nc2.empty())
+                        continue;
+
+                cout << nc1 << " --> " << nc2 << " (" << it.second << ")" << endl;
+        }
 
         cout << " === " << endl;
 

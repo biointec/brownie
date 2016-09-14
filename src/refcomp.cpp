@@ -196,12 +196,12 @@ void RefComp::getNodeMultiplicity(const DBGraph& dbg,
                                 multiplicity[abs(curr.getNodeID())]++;
 
                         // set the true arc flag if appropriate
-                        if (dbg.consecutiveNPP(prev, curr)) {
+                        /*if (dbg.consecutiveNPP(prev, curr)) {
                                 if ((prev.getPosition()+1) != curr.getPosition()) {
                                         SSNode left = dbg.getSSNode(prev.getNodeID());
                                         left.getRightArc(curr.getNodeID())->setTrueArc(true);
                                 }
-                        }
+                        }*/
 
                         prev = curr;
                 }
