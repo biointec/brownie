@@ -372,6 +372,7 @@ bool DBGraph::flowCorrection(NodeID nodeID, double covCutoff)
 bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
 {
         //cout << endl << "=================== Removing tips ===================" << endl;
+        cout << "Cut-off value for removing tips is: " << covCutoff << endl;
 
 #ifdef DEBUG
         size_t tp=0, tn=0, fp=0,fn=0;
@@ -380,8 +381,6 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
 #endif
 
         size_t numDeleted = 0, numTotal = 0;
-        cout << "Cut-off value for removing tips is: " << covCutoff << endl;
-
         for (NodeID id = 1; id <= numNodes; id++) {
                 SSNode node = getSSNode(id);
                 if (!node.isValid())
@@ -590,7 +589,8 @@ bool DBGraph::concatenateNodes()
 
 bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
 {
-        //cout << endl << "=================== Removing bubbles ===================" << endl;
+        // cout << endl << "=================== Removing bubbles ===================" << endl;
+        cout << "Cut-off value for removing bubbles is: " << covCutoff << endl;
 
         vector<NodeID> visited;
         vector<NodeID> prevNode(2*numNodes+1, 0);
@@ -606,11 +606,18 @@ bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
                 if (getSSNode(id).getNumRightArcs() < 2)
                         continue;
 
+                if (abs(id) % OUTPUT_FREQUENCY == 0) {
+                        cout << "Processing node " << id << "/" << numNodes << "\r";
+                        cout.flush();
+                }
+
                 while (bubbleDetection(id, visited, prevNode, nodeColor,
                                        covCutoff, maxMargLength,
                                        settings.getBubbleDFSNodeLimit()))
                         returnValue = true;
         }
+
+        cout << "Processing node " << numNodes << "/" << numNodes << endl;
 
         return returnValue;
 }
@@ -618,6 +625,7 @@ bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
 bool DBGraph::flowCorrection()
 {
         //cout << endl << "=================== Flow correction ===================" << endl;
+        cout << "Flow correction started" << endl;
 
         bool returnValue = false;
         for (NodeID id = -numNodes; id <= numNodes; id++) {
@@ -628,9 +636,16 @@ bool DBGraph::flowCorrection()
                 if (getSSNode(id).getNumRightArcs() < 2)
                         continue;
 
+                if (abs(id) % OUTPUT_FREQUENCY == 0) {
+                        cout << "Processing node " << id << "/" << numNodes << "\r";
+                        cout.flush();
+                }
+
                 if (flowCorrection(id, getCovCutoff()))
                         returnValue = true;
         }
+
+        cout << "Processing node " << numNodes << "/" << numNodes << endl;
 
         return returnValue;
 }
