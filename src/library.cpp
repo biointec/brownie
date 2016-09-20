@@ -86,6 +86,7 @@ void ReadLibrary::readMetadata(const string& path)
 
 void ReadLibrary::writeMetadata(const string& path) const
 {
+        cout << "Writing metadata: " << path << inputFilename << ".met" << endl;
         ofstream ofs((path + inputFilename + ".met").c_str());
         ofs << "Number of reads: " << numReads << "\n"
             << "Average read length: " << avgReadLength << endl;
