@@ -175,7 +175,7 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
         cout << subPathB << endl;
         cout << covSubPathB << endl;*/
 
-        if ((lowCov <= covCutoff) && !lowCovPath.empty()) {
+ /*       if ((lowCov <= covCutoff) && !lowCovPath.empty()) {
                 removePath(lowCovPath);
                 return true;
         }
@@ -204,7 +204,7 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
                 else
                         detachNode(pathB[0], pathB[1]);
                 return true;
-        }
+        }*/
 
         return false;
 }
@@ -587,15 +587,52 @@ bool DBGraph::concatenateNodes()
         return (numConcatenations > 0);
 }
 
-bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
+void DBGraph::bubbleDetectionThread(size_t threadID, ParGraph& wlb,
+                                    double covCutoff, size_t maxMargLength)
 {
-        // cout << endl << "=================== Removing bubbles ===================" << endl;
-        cout << "Cut-off value for removing bubbles is: " << covCutoff << endl;
-
         vector<NodeID> visited;
         vector<NodeID> prevNode(2*numNodes+1, 0);
         vector<NodeID> nodeColor(2*numNodes+1, 0);
 
+        while (true) {
+                size_t firstNode, numNodes;
+                wlb.getNodeChunk(firstNode, numNodes);
+
+                if (numNodes == 0)
+                        return;
+
+                //cout << "Work from " << threadID << " " << firstNode << " to " << firstNode + numNodes << endl;
+                for (size_t id = firstNode; id < firstNode + numNodes; id++) {
+                        bubbleDetection(id, visited, prevNode, nodeColor,
+                                        covCutoff, maxMargLength,
+                                        settings.getBubbleDFSNodeLimit());
+                }
+        }
+
+        cout << " Thread active !! " << threadID << endl;
+}
+
+bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
+{
+        cout << "Search depth for removing bubbles is: " << maxMargLength << endl;
+        cout << "Cut-off value for removing bubbles is: " << covCutoff << endl;
+
+        const unsigned int& numThreads = settings.getNumThreads();
+        cout << "Number of threads: " << numThreads << endl;
+
+        ParGraph wlb(numNodes, 1000);
+
+        vector<thread> workerThreads(numThreads);
+        for (size_t i = 0; i < workerThreads.size(); i++)
+                workerThreads[i] = thread(&DBGraph::bubbleDetectionThread,
+                                          this, i, ref(wlb), covCutoff, maxMargLength);
+
+        // wait for worker threads to finish
+        for_each(workerThreads.begin(), workerThreads.end(), mem_fn(&thread::join));
+
+        cout << "Processing node " << numNodes << "/" << numNodes << endl;
+
+        /*
         bool returnValue = false;
 
         for (NodeID id = -numNodes; id <= numNodes; id++) {
@@ -619,7 +656,7 @@ bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
 
         cout << "Processing node " << numNodes << "/" << numNodes << endl;
 
-        return returnValue;
+        return returnValue;*/
 }
 
 bool DBGraph::flowCorrection()

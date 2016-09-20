@@ -28,6 +28,7 @@
 #include "kmercounttable.h"
 #include "nodechain.h"
 
+#include <mutex>
 #include <vector>
 #include <google/sparse_hash_map>
 
@@ -81,6 +82,37 @@ struct PathDFSComp {
         bool operator()(const PathDFS& f, const PathDFS& s) {
                 return f.length >= s.length;
         }
+};
+
+// ============================================================================
+// PARALLEL GRAPH CLASSES
+// ============================================================================
+
+class ParGraph
+{
+private:
+        size_t numNodes;                // number of nodes in the graph
+        size_t targetChunkSize;         // target chunk size
+        size_t currOffset;              // current node offset
+
+        std::mutex mutex;               // mutex
+
+public:
+        /**
+         * Get a chunk of nodes (thread-safe)
+         * @param chunkOffset First nodeID to handle
+         * @param chunkSize Number of nodes to handle
+         */
+        void getNodeChunk(size_t& chunkOffset, size_t &chunkSize);
+
+        /**
+         * Default constructor
+         * @param numNodes Number of nodes in the graph
+         * @param targetChunkSize Target size per chunk
+         */
+        ParGraph(size_t numNodes_, size_t targetChunkSize_) :
+                numNodes(numNodes_), targetChunkSize(targetChunkSize_),
+                currOffset(1)  {}
 };
 
 // ============================================================================
@@ -414,6 +446,16 @@ private:
                              std::vector<NodeID>& nodeColor,
                              double covCutoff,
                              size_t maxMargLength, size_t maxNodesVisited);
+
+        /**
+         * Thread entry for bubble detection
+         * @param threadID Identifier for the thread
+         * @param wlb Workload balancer
+         * @param covCutoff Maximum coverage of a node to delete
+         * @param maxLength Maximum marginal length of a parallel path
+         */
+        void bubbleDetectionThread(size_t threadID, ParGraph& wlb,
+                                   double covCutoff, size_t maxMargLength);
 
         /**
          * Generic bubble detection (parallel paths of arbitrary length)

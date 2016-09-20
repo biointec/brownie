@@ -24,6 +24,7 @@
 #include "nodeendstable.h"
 #include "library.h"
 
+#include <mutex>
 #include <queue>
 
 using namespace std;
@@ -49,6 +50,34 @@ bool sortNodeByLength(const NodeID& left, const NodeID& right)
 {
         return DBGraph::graph->getDSNode(left).getMarginalLength() <
                DBGraph::graph->getDSNode(right).getMarginalLength();
+}
+
+// ============================================================================
+// PARALLEL GRAPH CLASSES
+// ============================================================================
+
+void ParGraph::getNodeChunk(size_t& chunkOffset, size_t& chunkSize)
+{
+        // lock the mutex
+        std::unique_lock<std::mutex> lock(mutex);
+
+        // no more work: send termination signal (chunkSize == 0)
+        if (currOffset > numNodes) {
+                chunkOffset = chunkSize = 0;
+                lock.unlock();
+                return;
+        }
+
+        // assign a workload
+        chunkOffset = currOffset;
+        chunkSize = min(targetChunkSize, numNodes + 1 - currOffset);
+
+        currOffset += chunkSize;
+
+        lock.unlock();
+
+        cout << "Processing node " << chunkOffset << "/" << numNodes << "\r";
+        cout.flush();
 }
 
 // ============================================================================

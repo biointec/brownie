@@ -176,11 +176,11 @@ void Brownie::stageFour()
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
 
-        if (!stageFourNecessary()) {
+        /*if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                         "skipping stage 4..." << endl << endl;
                 return;
-        }
+        }*/
 
         DBGraph graph(settings);
         Util::startChrono();
@@ -373,6 +373,7 @@ int main(int argc, char** args)
                 brownie.stageTwo();
                 brownie.stageThree();
                 brownie.stageFour();
+                exit(0);
                 brownie.stageFive();
                 brownie.stageSix();
 
