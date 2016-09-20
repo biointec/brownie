@@ -211,7 +211,7 @@ void Settings::parseCommandLineArguments(int argc, char** args,
 
         // add the libaries to the library container
         for (auto it : libraries) {
-                ReadLibrary lib = ReadLibrary(it.first, it.second, getTempDirectory() + it.first + ".ncf");
+                ReadLibrary lib = ReadLibrary(it.first, it.second, getTempDirectory());
                 libCont.insert(lib);
         }
 

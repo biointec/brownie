@@ -73,7 +73,7 @@ std::ostream &operator<<(std::ostream &out, const FileType &fileType) {
 
 void ReadLibrary::readMetadata(const string& path)
 {
-        ifstream ifs((path + inputFilename + ".met").c_str());
+        ifstream ifs(getMetadataFilename().c_str());
         if (!ifs.good())
                 return;
         string line, tmp;
@@ -86,8 +86,7 @@ void ReadLibrary::readMetadata(const string& path)
 
 void ReadLibrary::writeMetadata(const string& path) const
 {
-        cout << "Writing metadata: " << path << inputFilename << ".met" << endl;
-        ofstream ofs((path + inputFilename + ".met").c_str());
+        ofstream ofs(getMetadataFilename().c_str());
         ofs << "Number of reads: " << numReads << "\n"
             << "Average read length: " << avgReadLength << endl;
         ofs.close();
@@ -99,13 +98,13 @@ void ReadLibrary::writeMetadata(const string& path) const
 
 ReadLibrary::ReadLibrary(const std::string& inputFilename_,
                          const std::string& outputFilename_,
-                         const std::string& nodeChainFilename_) :
+                         const std::string& tempDir_) :
         inputFilename(inputFilename_), outputFilename(outputFilename_),
-        nodeChainFilename(nodeChainFilename_), fileType(UNKNOWN_FT),
+        tempDir(tempDir_), fileType(UNKNOWN_FT),
         numReads(0), avgReadLength(0.0)
 {
         // try to figure out the file format based on the extension
-        string extension, baseFilename;
+        string extension;
 
         if (inputFilename.length() >= 4)
                 extension = inputFilename.substr(inputFilename.length() - 4);
@@ -162,6 +161,11 @@ ReadLibrary::ReadLibrary(const std::string& inputFilename_,
                 cerr << "Exiting... " << endl;
                 exit(EXIT_FAILURE);
         }
+
+        // strip path from base filename
+        size_t last_slash_idx = baseFilename.find_last_of("\\/");
+        if (last_slash_idx != std::string::npos)
+                baseFilename.erase(0, last_slash_idx + 1);
 
         // set the outputFilename only if not specified by the user
         if (outputFilename.empty()) {

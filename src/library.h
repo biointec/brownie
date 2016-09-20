@@ -51,7 +51,8 @@ class ReadLibrary
 private:
         std::string inputFilename;      // name of the input file
         std::string outputFilename;     // name of the output file
-        std::string nodeChainFilename;  // name of the node chain file
+        std::string baseFilename;       // base file name (no extension, no path)
+        std::string tempDir;            // path to store temporary files
 
         FileType fileType;              // file type (FASTQ, FASTA, etc.)
 
@@ -63,11 +64,11 @@ public:
          * Default constructor
          * @param inputFilename Input filename
          * @param outputFilename Output filename
-         * @param nodeChainFilename Node chain filename
+         * @param tempDir Path to store temporary files
          */
         ReadLibrary(const std::string& inputFilename,
                     const std::string& outputFilename,
-                    const std::string& nodeChainFilename);
+                    const std::string& tempDir);
 
         /**
          * Allocate and return the correct read file for a certain input
@@ -96,7 +97,15 @@ public:
          * @return The node chain filename
          */
         std::string getNodeChainFilename() const {
-                return nodeChainFilename;
+                return tempDir + baseFilename + ".ncf";
+        }
+
+        /**
+         * Get the meta data filename
+         * @return The meta data filename
+         */
+        std::string getMetadataFilename() const {
+                return tempDir + baseFilename + ".met";
         }
 
         /**
