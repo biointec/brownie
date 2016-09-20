@@ -74,10 +74,10 @@ void ParGraph::getNodeChunk(size_t& chunkOffset, size_t& chunkSize)
 
         currOffset += chunkSize;
 
-        lock.unlock();
-
-        cout << "Processing node " << chunkOffset << "/" << numNodes << "\r";
+        cout << "\tProcessing node " << chunkOffset << "/" << numNodes << "\r";
         cout.flush();
+
+        lock.unlock();
 }
 
 // ============================================================================

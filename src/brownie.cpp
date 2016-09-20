@@ -209,16 +209,28 @@ void Brownie::stageFour()
 #endif
 
         // TIP CLIPPING
+        Util::startChrono();
+        cout << "Cleaning graph (tips, cov-cutoff = " << cutoff
+             << ", lmax = " << libraries.getAvgReadLength() << ")\n";
         while (graph.clipTips(cutoff, libraries.getAvgReadLength()))
                 graph.concatenateNodes();
+        cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
         // BUBBLE DETECTION
+        Util::startChrono();
+        cout << "Cleaning graph (bubbles, cov-cutoff = " << cutoff
+             << ", lmax = " << libraries.getAvgReadLength() << ", threads = "
+             << settings.getNumThreads() << ")\n";
         while (graph.bubbleDetection(cutoff, libraries.getAvgReadLength()))
                 graph.concatenateNodes();
+        cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
         // FLOW CORRECTION
+        Util::startChrono();
+        cout << "Cleaning graph (flow correction)\n";
         while (graph.flowCorrection())
                 graph.concatenateNodes();
+        cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
         //graph.writeCytoscapeGraph(settings.getTempDirectory() + "tip", 24450, 3);
 

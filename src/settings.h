@@ -122,6 +122,14 @@ public:
         }
 
         /**
+         * Get the IO block size in number of kmers
+         * @return The IO block size in number of kmers
+         */
+        size_t getThreadBubbleWorkSize() const {
+                return 10000;
+        }
+
+        /**
          * Get the essaMEM sparseness factor
          * @return The essaMEM sparseness factor
          */

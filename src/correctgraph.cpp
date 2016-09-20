@@ -371,9 +371,6 @@ bool DBGraph::flowCorrection(NodeID nodeID, double covCutoff)
 
 bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
 {
-        //cout << endl << "=================== Removing tips ===================" << endl;
-        cout << "Cut-off value for removing tips is: " << covCutoff << endl;
-
 #ifdef DEBUG
         size_t tp=0, tn=0, fp=0,fn=0;
         size_t tps=0, tns=0, fps=0,fns=0;
@@ -440,7 +437,7 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
 #endif
         }
 
-        cout << "Clipped " << numDeleted << "/" << numTotal << " nodes" << endl;
+        cout << "\tClipped " << numDeleted << "/" << numTotal << " nodes" << endl;
 #ifdef DEBUG
         /*cout << "\t===== DEBUG: tip clipping report =====" << endl;
         cout << "\tIsolated TP: " << tps << "\tTN: "<< tns << "\tFP: " << fps << "\tFN: "<< fns << endl;
@@ -576,7 +573,7 @@ bool DBGraph::concatenateNodes()
 #endif
         }
 
-        cout << "Concatenated " << numConcatenations << " nodes" << endl;
+        cout << "\tConcatenated " << numConcatenations << " nodes" << endl;
 
 #ifdef DEBUG
         if (numIncorrectConcatenations > 0)
@@ -614,13 +611,8 @@ void DBGraph::bubbleDetectionThread(size_t threadID, ParGraph& wlb,
 
 bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
 {
-        cout << "Search depth for removing bubbles is: " << maxMargLength << endl;
-        cout << "Cut-off value for removing bubbles is: " << covCutoff << endl;
-
         const unsigned int& numThreads = settings.getNumThreads();
-        cout << "Number of threads: " << numThreads << endl;
-
-        ParGraph wlb(numNodes, 1000);
+        ParGraph wlb(numNodes, settings.getThreadBubbleWorkSize());
 
         vector<thread> workerThreads(numThreads);
         for (size_t i = 0; i < workerThreads.size(); i++)
@@ -630,7 +622,7 @@ bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
         // wait for worker threads to finish
         for_each(workerThreads.begin(), workerThreads.end(), mem_fn(&thread::join));
 
-        cout << "Processing node " << numNodes << "/" << numNodes << endl;
+        cout << "\tProcessing node " << numNodes << "/" << numNodes << endl;
 
         /*
         bool returnValue = false;
@@ -661,9 +653,6 @@ bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
 
 bool DBGraph::flowCorrection()
 {
-        //cout << endl << "=================== Flow correction ===================" << endl;
-        cout << "Flow correction started" << endl;
-
         bool returnValue = false;
         for (NodeID id = -numNodes; id <= numNodes; id++) {
                 if (id == 0)
@@ -674,7 +663,7 @@ bool DBGraph::flowCorrection()
                         continue;
 
                 if (abs(id) % OUTPUT_FREQUENCY == 0) {
-                        cout << "Processing node " << id << "/" << numNodes << "\r";
+                        cout << "\tProcessing node " << id << "/" << numNodes << "\r";
                         cout.flush();
                 }
 
@@ -682,7 +671,7 @@ bool DBGraph::flowCorrection()
                         returnValue = true;
         }
 
-        cout << "Processing node " << numNodes << "/" << numNodes << endl;
+        cout << "\tProcessing node " << numNodes << "/" << numNodes << endl;
 
         return returnValue;
 }
