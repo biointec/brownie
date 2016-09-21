@@ -296,14 +296,14 @@ void Brownie::stageFive()
         cout << "Graph contains " << graph.getNumNodes() << " nodes and "
              << graph.getNumArcs() << " arcs" << endl;
 
-        cout << "Writing cytoscape graph: " << endl;
-        graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage4", 155, 7);
+        //cout << "Writing cytoscape graph: " << endl;
+        //graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage4", 155, 7);
 
-        /*Util::startChrono();
+        Util::startChrono();
         ReadCorrectionHandler rcHandler(graph, settings);
         rcHandler.doErrorCorrection(libraries);
 
-        cout << "Error correction completed in " << Util::stopChronoStr() << endl;*/
+        cout << "Error correction completed in " << Util::stopChronoStr() << endl;
         cout << "Stage 5 finished\n" << endl;
         graph.clear();
 }
@@ -396,7 +396,6 @@ int main(int argc, char** args)
                 brownie.stageThree();
                 brownie.stageFour();
                 brownie.stageFive();
-                exit(0);
                 brownie.stageSix();
 
                 brownie.writeGraphFasta();
