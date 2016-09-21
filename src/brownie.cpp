@@ -176,11 +176,11 @@ void Brownie::stageFour()
         cout << "Entering stage 4" << endl;
         cout << "================" << endl;
 
-        /*if (!stageFourNecessary()) {
+        if (!stageFourNecessary()) {
                 cout << "Files produced by this stage appear to be present, "
                         "skipping stage 4..." << endl << endl;
                 return;
-        }*/
+        }
 
         DBGraph graph(settings);
         Util::startChrono();
@@ -296,11 +296,14 @@ void Brownie::stageFive()
         cout << "Graph contains " << graph.getNumNodes() << " nodes and "
              << graph.getNumArcs() << " arcs" << endl;
 
-        Util::startChrono();
+        cout << "Writing cytoscape graph: " << endl;
+        graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage4", 1, 30);
+
+        /*Util::startChrono();
         ReadCorrectionHandler rcHandler(graph, settings);
         rcHandler.doErrorCorrection(libraries);
 
-        cout << "Error correction completed in " << Util::stopChronoStr() << endl;
+        cout << "Error correction completed in " << Util::stopChronoStr() << endl;*/
         cout << "Stage 5 finished\n" << endl;
         graph.clear();
 }
@@ -392,8 +395,8 @@ int main(int argc, char** args)
                 brownie.stageTwo();
                 brownie.stageThree();
                 brownie.stageFour();
-                exit(0);
                 brownie.stageFive();
+                exit(0);
                 brownie.stageSix();
 
                 brownie.writeGraphFasta();

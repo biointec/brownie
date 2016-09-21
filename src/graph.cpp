@@ -75,8 +75,8 @@ void ParGraph::getNodeChunk(size_t& chunkOffset, size_t& chunkSize)
 
         currOffset += chunkSize;
 
-        double perc = (double)chunkOffset / (double)numNodes;
-        cout << std::fixed << std::setprecision(2) << "\tProcessing graph (" << perc << "%)\r";
+        double perc = 100.0 * (double)chunkOffset / (double)numNodes;
+        cout << std::fixed << std::setprecision(1) << "\tProcessing graph (" << perc << "%)\r";
         cout.flush();
 
         lock.unlock();
