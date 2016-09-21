@@ -297,7 +297,7 @@ void Brownie::stageFive()
              << graph.getNumArcs() << " arcs" << endl;
 
         cout << "Writing cytoscape graph: " << endl;
-        graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage4", 1, 30);
+        graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage4", 1, 5);
 
         /*Util::startChrono();
         ReadCorrectionHandler rcHandler(graph, settings);
