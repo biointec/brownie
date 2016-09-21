@@ -383,11 +383,24 @@ private:
         void removeNode(NodeID nodeID);
 
         /**
-         * Detach two nodes
+         * Flag a node in the graph
+         * @param nodeID node identifier
+         **/
+        void flagNode(NodeID nodeID);
+
+        /**
+         * Remove an arc between two nodes
          * @param leftID Identifier of the left node
          * @param rightID Identifier of the right node
          */
-        void detachNode(NodeID leftID, NodeID rightID);
+        void removeArc(NodeID leftID, NodeID rightID);
+
+        /**
+         * Flag an arc between two nodes
+         * @param leftID Identifier of the left node
+         * @param rightID Identifier of the right node
+         */
+        void flagArc(NodeID leftID, NodeID rightID);
 
         /**
          * Given a node and a list of previous nodes, extract the path
@@ -405,7 +418,7 @@ private:
          * @param last Last node that can be deleted (output)
          */
         void getUniquePath(const std::vector<NodeID>& path,
-                           size_t& first, size_t& last);
+                           size_t& first, size_t& last) const;
 
         /**
          * Get the average kmer coverage for a given path
@@ -419,6 +432,12 @@ private:
          * @param path Vector containing nodeIDs to be removed
          */
         void removePath(const std::vector<NodeID>& path);
+
+        /**
+         * Flag the nodes in a path
+         * @param path Vector containing nodeIDs to be removed
+         */
+        void flagPath(const std::vector<NodeID>& path);
 
         /**
          * Given two parallel paths, check if a bubble can be popped
@@ -456,16 +475,6 @@ private:
          */
         void bubbleDetectionThread(size_t threadID, ParGraph& wlb,
                                    double covCutoff, size_t maxMargLength);
-
-        /**
-         * Generic bubble detection (parallel paths of arbitrary length)
-         * @param nodeID Node identifier
-         * @param covCutoff Maximum coverage of a node to delete
-         * @param maxLength Maximum marginal length of a parallel path
-         * @return True if at least one node was removed
-         */
-        bool bubbleDetection(NodeID nodeID, double covCutoff,
-                             size_t maxMargLength);
 
         /**
          * Concatenation the linear path around a seed node

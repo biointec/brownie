@@ -126,7 +126,7 @@ public:
          * @return The IO block size in number of kmers
          */
         size_t getThreadBubbleWorkSize() const {
-                return 10000;
+                return 32768;
         }
 
         /**

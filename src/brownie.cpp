@@ -219,7 +219,8 @@ void Brownie::stageFour()
         // BUBBLE DETECTION
         Util::startChrono();
         cout << "Cleaning graph (bubbles, cov-cutoff = " << cutoff
-             << ", lmax = " << libraries.getAvgReadLength() << ", threads = "
+             << ", lmax = " << libraries.getAvgReadLength() << ", maxvisits = "
+             << settings.getBubbleDFSNodeLimit() << ", threads = "
              << settings.getNumThreads() << ")\n";
         while (graph.bubbleDetection(cutoff, libraries.getAvgReadLength()))
                 graph.concatenateNodes();

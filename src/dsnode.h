@@ -140,6 +140,7 @@ private:
 
         std::atomic<Coverage> readStartCov;
         std::atomic<Coverage> kmerCov;
+        std::atomic<bool> myFlag;
 
 public:
         /**
@@ -153,7 +154,7 @@ public:
         /**
          * Default constructor
          */
-        DSNode() : leftID(0), rightID(0), readStartCov(0), kmerCov(0) {
+        DSNode() : leftID(0), rightID(0), readStartCov(0), kmerCov(0), myFlag(false) {
                 arcInfo.up = 0;
         }
 
@@ -208,7 +209,8 @@ public:
          * @param flag True of false
          */
         void setFlag(bool flag) {
-                arcInfo.p.flag = (flag) ? 1 : 0;
+                //arcInfo.p.flag = (flag) ? 1 : 0;
+                myFlag = flag;
         }
 
         /**
@@ -216,7 +218,8 @@ public:
          * @return True of false
          */
         bool getFlag() const {
-                return arcInfo.p.flag;
+                //return arcInfo.p.flag;
+                return myFlag;
         }
 
         void swapRightArcsSign() {

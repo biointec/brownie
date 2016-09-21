@@ -33,6 +33,7 @@ class Arc {
 private:
         NodeID nodeID;                  // ID of node to which the arc points
         std::atomic<Coverage> cov;      // arc coverage
+        std::atomic<bool> flag;         // arc flag
 
 #ifdef DEBUG
         bool trueArc;                   // does the arc exist in the genome?
@@ -42,7 +43,7 @@ public:
         /**
          * Default constructor
          */
-        Arc() : nodeID(0), cov(0) {
+        Arc() : nodeID(0), cov(0), flag(false) {
 #ifdef DEBUG
                 trueArc = false;
 #endif
@@ -51,7 +52,7 @@ public:
         /**
          * Copy constructor
          */
-        Arc(const Arc& rhs) : nodeID(rhs.nodeID), cov(rhs.cov.load()) {
+        Arc(const Arc& rhs) : nodeID(rhs.nodeID), cov(rhs.cov.load()), flag(rhs.flag.load()) {
 #ifdef DEBUG
                 trueArc = rhs.trueArc;
 #endif
@@ -63,6 +64,7 @@ public:
         Arc& operator=(const Arc& rhs) {
                 nodeID = rhs.nodeID;
                 cov = rhs.cov.load();
+                flag = rhs.flag.load();
 #ifdef DEBUG
                 trueArc = rhs.trueArc;
 #endif
@@ -158,6 +160,22 @@ public:
                 trueArc = flag;
         }
 #endif
+
+        /**
+         * Get the arc flag
+         * @return True of false
+         */
+        bool getFlag() const {
+                return flag;
+        }
+
+        /**
+         * Set the arc flag
+         * @param flag True of false
+         */
+        void setFlag(bool flag_) {
+                flag = flag_;
+        }
 };
 
 #endif
