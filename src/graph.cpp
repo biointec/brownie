@@ -26,6 +26,7 @@
 
 #include <mutex>
 #include <queue>
+#include <iomanip>
 
 using namespace std;
 
@@ -74,7 +75,8 @@ void ParGraph::getNodeChunk(size_t& chunkOffset, size_t& chunkSize)
 
         currOffset += chunkSize;
 
-        cout << "\tProcessing node " << chunkOffset << "/" << numNodes << "\r";
+        double perc = (double)chunkOffset / (double)numNodes;
+        cout << std::fixed << std::setprecision(2) << "\tProcessing graph (" << perc << "%)\r";
         cout.flush();
 
         lock.unlock();
@@ -382,9 +384,9 @@ void DBGraph::writeCytoscapeGraph(const std::string& filename,
         ofs.close();
 }
 
-void DBGraph::createFromFile(const string& nodeFilename,
-                             const string& arcFilename,
-                             const string& metaDataFilename)
+void DBGraph::loadFromFile(const string& nodeFilename,
+                           const string& arcFilename,
+                           const string& metaDataFilename)
 {
         // auxiliary variables
         string dS, descriptor;
@@ -396,6 +398,8 @@ void DBGraph::createFromFile(const string& nodeFilename,
         if (!metaDataFile)
                 throw ios_base::failure("Can't open " + metaDataFilename);
         metaDataFile >> numNodes >> numArcs;
+        numValidNodes = numNodes;
+        numValidArcs = numArcs;
         metaDataFile.close();
 
         NodeEndTable table(settings.isDoubleStranded(), 2*numNodes);
@@ -589,6 +593,8 @@ void DBGraph::loadGraphBin(const std::string& nodeFilename,
         if (!metaDataFile)
                 throw ios_base::failure("Can't open " + metaDataFilename);
         metaDataFile >> numNodes >> numArcs;
+        numValidNodes = numNodes;
+        numValidArcs = numArcs;
         metaDataFile.close();
 
         // A) create the nodes

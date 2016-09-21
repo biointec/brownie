@@ -145,7 +145,7 @@ void Brownie::stageThree()
         Util::startChrono();
         cout << "Loading graph... ";
         cout.flush();
-        graph.createFromFile(getNodeFilename(2),
+        graph.loadFromFile(getNodeFilename(2),
                              getArcFilename(2),
                              getMetaDataFilename(2));
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
@@ -212,8 +212,10 @@ void Brownie::stageFour()
         Util::startChrono();
         cout << "Cleaning graph (tips, cov-cutoff = " << cutoff
              << ", lmax = " << libraries.getAvgReadLength() << ")\n";
-        while (graph.clipTips(cutoff, libraries.getAvgReadLength()))
+        while (graph.clipTips(cutoff, libraries.getAvgReadLength())) {
                 graph.concatenateNodes();
+                cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" << endl;
+        }
         cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
         // BUBBLE DETECTION
@@ -222,15 +224,19 @@ void Brownie::stageFour()
              << ", lmax = " << libraries.getAvgReadLength() << ", maxvisits = "
              << settings.getBubbleDFSNodeLimit() << ", threads = "
              << settings.getNumThreads() << ")\n";
-        while (graph.bubbleDetection(cutoff, libraries.getAvgReadLength()))
+        while (graph.bubbleDetection(cutoff, libraries.getAvgReadLength())) {
                 graph.concatenateNodes();
+                cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
+        }
         cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
         // FLOW CORRECTION
         Util::startChrono();
         cout << "Cleaning graph (flow correction)\n";
-        while (graph.flowCorrection())
+        while (graph.flowCorrection()) {
                 graph.concatenateNodes();
+                cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
+        }
         cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
         //graph.writeCytoscapeGraph(settings.getTempDirectory() + "tip", 24450, 3);
@@ -283,7 +289,7 @@ void Brownie::stageFive()
         DBGraph graph(settings);
         Util::startChrono();
         cout << "Creating graph... "; cout.flush();
-        graph.createFromFile(getNodeFilename(4),
+        graph.loadFromFile(getNodeFilename(4),
                              getArcFilename(4),
                              getMetaDataFilename(4));
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
@@ -308,7 +314,7 @@ void Brownie::stageSix()
         DBGraph graph(settings);
         Util::startChrono();
         cout << "Creating graph... "; cout.flush();
-        graph.createFromFile(getNodeFilename(4),
+        graph.loadFromFile(getNodeFilename(4),
                              getArcFilename(4),
                              getMetaDataFilename(4));
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
@@ -360,7 +366,7 @@ void Brownie::writeGraphFasta()
                                  getMetaDataFilename(4));
                 graph.writeGraphFasta();
         } else if (settings.getSkipStage5()) {
-                graph.createFromFile(getNodeFilename(4),
+                graph.loadFromFile(getNodeFilename(4),
                         getArcFilename(4),
                         getMetaDataFilename(4));
                 graph.writeGraphFasta();

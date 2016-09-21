@@ -58,6 +58,7 @@ void DBGraph::removeNode(NodeID nodeID)
         node.deleteAllRightArcs();
         node.deleteAllLeftArcs();
         node.invalidate();
+        numValidNodes--;
 }
 
 void DBGraph::flagNode(NodeID nodeID)
@@ -219,8 +220,10 @@ bool DBGraph::flowCorrection(NodeID nodeID, double covCutoff)
         for (auto it : toDetach) {
                 removeArc(nodeID, it);
                 if ((getSSNode(it).getNumLeftArcs() == 0) &&
-                    (getSSNode(it).getNumRightArcs() == 0))
+                    (getSSNode(it).getNumRightArcs() == 0)) {
                         getSSNode(it).invalidate();
+                        numValidNodes--;
+                }
         }
 
         return !toDetach.empty();
@@ -238,12 +241,11 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
         size_t tpj=0, tnj=0, fpj=0,fnj=0;
 #endif
 
-        size_t numDeleted = 0, numTotal = 0;
+        size_t numDeleted = 0;
         for (NodeID id = 1; id <= numNodes; id++) {
                 SSNode node = getSSNode(id);
                 if (!node.isValid())
                         continue;
-                numTotal++;
 
                 // check for dead ends
                 bool leftDE = (node.getNumLeftArcs() == 0);
@@ -298,7 +300,8 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
 #endif
         }
 
-        cout << "\tClipped " << numDeleted << "/" << numTotal << " nodes" << endl;
+        cout << "\tClipped " << numDeleted << " nodes" << endl;
+
 #ifdef DEBUG
         /*cout << "\t===== DEBUG: tip clipping report =====" << endl;
         cout << "\tIsolated TP: " << tps << "\tTN: "<< tns << "\tFP: " << fps << "\tFN: "<< fns << endl;
@@ -396,6 +399,7 @@ void DBGraph::concatenateAroundNode(NodeID seedID, vector<NodeID>& nodeListv)
         convertNodesToString(nodeListv, str);
 
         front.setSequence(str);
+        numValidNodes -= nodeListq.size() - 1;
 }
 
 bool DBGraph::concatenateNodes()
@@ -441,6 +445,11 @@ bool DBGraph::concatenateNodes()
                 cout << "\t" << "Number of incorrect connections: "
                      << numIncorrectConcatenations << endl;
 #endif
+
+        size_t countTotal = 0;
+        for (NodeID seedID = 1; seedID <= numNodes; seedID++)
+                if (getSSNode(seedID).isValid())
+                        countTotal++;
 
         return (numConcatenations > 0);
 }
@@ -670,7 +679,7 @@ bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
         // wait for worker threads to finish
         for_each(workerThreads.begin(), workerThreads.end(), mem_fn(&thread::join));
 
-        cout << "\tProcessing node " << numNodes << "/" << numNodes << endl;
+        cout << "\tProcessing graph (100%) " << endl;
 
         bool returnValue = false; size_t numNodesRemoved = 0;
         for (NodeID id = 1; id <= numNodes; id++) {

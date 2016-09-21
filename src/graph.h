@@ -174,6 +174,9 @@ private:
         NodeID numNodes;                // number of nodes
         NodeID numArcs;                 // number of arcs
 
+        NodeID numValidNodes;           // number of valid arcs
+        NodeID numValidArcs;            // number of valid nodes
+
         KmerNodeTable kmerNPPTable;     // kmer node table
         KmerSpectrum kmerSpectrum;      // kmer spectrum
         NodeChainContainer ncc;         // node chain container
@@ -276,6 +279,14 @@ public:
         }
 
         /**
+         * Get the number of valid nodes
+         * @return The number of valid nodes
+         */
+        NodeID getNumValidNodes() const {
+                return numValidNodes;
+        }
+
+        /**
          * Clear all nodes and arcs in this graph
          */
         void clear() {
@@ -336,7 +347,7 @@ public:
          * @param arcFilename Filename for the arcs
          * @param metaDataFilename Filename for the metadata
          */
-        void createFromFile(const std::string& nodeFilename,
+        void loadFromFile(const std::string& nodeFilename,
                             const std::string& arcFilename,
                             const std::string& metaDataFilename);
 
