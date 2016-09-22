@@ -242,12 +242,20 @@ void NodeChainContainer::addContainers(const vector<string>& filenames)
         // load all node chains
         for (const string& filename : filenames) {
                 ifstream ifs(filename.c_str());
+                cout << "Reading file " << filename << endl;
+                size_t count = 0;
+
                 while (true) {
                         // get a line from the input file
                         string line;
                         getline(ifs, line);
                         if (!ifs.good())
                                 break;
+
+                        if (count++ % OUTPUT_FREQUENCY == 0) {
+                                cout << "Processing read " << count << "\r";
+                                cout.flush();
+                        }
 
                         // convert line to a node chain
                         vector<NodeID> inputVector;
@@ -273,9 +281,12 @@ void NodeChainContainer::addContainers(const vector<string>& filenames)
                         }
                 }
 
+                cout << "Processing read " << count << endl;
+
                 ifs.close();
         }
 
+        cout << "Converting set to vector..." << endl;
         // convert the set to a vector
         clear();
         reserve(tempSet.size());
@@ -283,8 +294,11 @@ void NodeChainContainer::addContainers(const vector<string>& filenames)
                 push_back(nc);
         tempSet.clear();
 
+        cout << "Building index..." << endl;
         // create the index
         buildIndex();
+
+        cout << "Make paired-end reads index..." << endl;
 
         // read files again to figure out which nodechains are paired
         ifstream ifs[2];
