@@ -736,7 +736,7 @@ void DBGraph::performReduction(const NodeChain& reduction)
         first.setSequence(str);
 }
 
-bool DBGraph::validateChain(const NodeChain& nc)
+bool DBGraph::validateChain(const NodeChain& nc) const
 {
         for (size_t i = 0; i < nc.size(); i++) {
                 if (nc[i] == 0)

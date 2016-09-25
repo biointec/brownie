@@ -288,9 +288,9 @@ public:
          * @param settings_ Reference to the settings class
          */
         ReadCorrection(const DBGraph& dbg_, const Settings& settings_,
-                          const sparseSA& sa_, const std::vector<long>& startpos_) :
-                          dbg(dbg_), settings(settings_),
-                          alignment(100, 2, 1, -1, -3), sa(sa_), startpos(startpos_) {}
+                       const sparseSA& sa_, const std::vector<long>& startpos_) :
+                       dbg(dbg_), settings(settings_),
+                       alignment(100, 2, 1, -1, -3), sa(sa_), startpos(startpos_) {}
 
         /**
          * Correct the records in one chunk

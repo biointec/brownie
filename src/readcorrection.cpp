@@ -258,8 +258,10 @@ void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& n
 
                 // save and, if necessary, update the best score
                 int prevBestScore = bestScore;
-                if (nextScore > bestScore)
+                if ((nextScore > bestScore) && (currReadPos + OLSize > seedLast)) {
                         bestScore = nextScore;
+                        seedLast = currReadPos + OLSize;
+                }
 
                 // =====================
                /* SSNode nextNode = dbg.getSSNode(nextID);
@@ -275,16 +277,10 @@ void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& n
                 if (maxAttainScore > bestScore)
                         recSearch(nextID, read, npp, nextReadPos, counter, nextScore, bestScore, seedLast);
 
-                // if the best score has been updated in this branch...
-                if (bestScore <= prevBestScore)
-                        continue;
-
-                // ... save the npp
-                for (size_t i = 0; i < OLSize; i++)
-                        npp[currReadPos+i] = NodePosPair(nextID, i);
-
-                if (currReadPos + OLSize > seedLast)
-                        seedLast = currReadPos + OLSize;
+                // if the best score has been updated in this branch save the npp
+                if (bestScore > prevBestScore)
+                        for (size_t i = 0; i < OLSize; i++)
+                                npp[currReadPos+i] = NodePosPair(nextID, i);
         }
 }
 
@@ -570,6 +566,7 @@ void ReadCorrection::correctRead(ReadRecord& record,
                 readCorrected = true;
                 numSubstitutions = (read.length() - bestScore)/2;
                 nodeChain = bestNodeChain;
+                dbg.validateChain(bestNodeChain);
         }
 
         metrics.addObservation(readCorrected, correctedByMEM, numSubstitutions);

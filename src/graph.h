@@ -694,7 +694,7 @@ public:
         void performReduction(const NodeChain& reduction);
 
         void findReductions(std::vector<NodeChain>& reductionv);
-        bool validateChain(const NodeChain& nc);
+        bool validateChain(const NodeChain& nc) const;
         void validateChainContainer(const NodeChainContainer& ncc);
 };
 
