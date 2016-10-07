@@ -814,19 +814,29 @@ void DBGraph::findReductions(vector<NodeChain>& reductionv)
 
 void DBGraph::pruneNodeChainContainer()
 {
-        /*if (trueMult.empty())
-                return; // FIXME !!
+       // if (trueMult.empty())
+       //         return; // FIXME !!
 
         for (NodeID id = -numNodes; id <= numNodes; id++) {
                 if (id == 0)
                         continue;
-                if (!getSSNode(id).isValid())
+                SSNode node = getSSNode(id);
+
+                if (!node.isValid())
                         continue;
-                if (trueMult[abs(id)] != 1)
+
+                int expNodeMult = getExpMult(node.getAvgKmerCov());
+
+#ifdef DEBUG
+                if ((expNodeMult == 1) && (trueMult[abs(id)] != 1))
+                        cout << "Warning: node " << id << " exp mult = " << expNodeMult << " true mult = " << trueMult[abs(id)] << endl;
+#endif
+
+                if (expNodeMult != 1)
                         continue;
 
                 ncc.smoothPath(id);
-        }*/
+        }
 }
 
 void DBGraph::loadNodeChainContainer(const LibraryContainer& libCont,
@@ -841,7 +851,11 @@ void DBGraph::loadNodeChainContainer(const LibraryContainer& libCont,
         ncc.addContainers(filenames);
         cout << "Loaded " << ncc.size() << " " << endl;
 
+        trueNcc = NodeChainContainer(trueNodeChain);
+
         while(true) {
+
+                cout << " =============== PASS ================ " << endl;
 
                 // reset all flags in the graph to false
                 for (NodeID id = 1; id <= numNodes; id++)
@@ -859,6 +873,11 @@ void DBGraph::loadNodeChainContainer(const LibraryContainer& libCont,
                         break;
 
                 for (const auto& reduction : reductionv) {
+                        if (!trueNcc.isNonBranchingPath(reduction) || !trueNcc.isNonBranchingPath(reduction.getReverseComplement()))
+                                cout << "Problematic reduction " << reduction << endl;
+                }
+
+                for (const auto& reduction : reductionv) {
                         //cout << "Reduction: " << reduction << endl;
 
                         bool valid = true;
@@ -870,19 +889,21 @@ void DBGraph::loadNodeChainContainer(const LibraryContainer& libCont,
                                 continue;
 
                         // first handle the reduction itself
-                        cout << "Doing reduction: " << reduction << endl;
+                        //cout << "Doing reduction: " << reduction << endl;
 
                         performReduction(reduction);
                         ncc.processReduction(reduction);
+                        trueNcc.processReduction(reduction);
 
                         // try to concatenate nodes as a consequence of this reduction
                         for (size_t i = 0; i < reduction.size() - 1; i++) {
                                 vector<NodeID> concatenation;
                                 concatenateAroundNode(reduction[i], concatenation);
 
-                                cout << "Concatenated nodes: " << concatenation << endl;
+                                //cout << "Concatenated nodes: " << concatenation << endl;
 
                                 ncc.processConcatentation(concatenation);
+                                trueNcc.processConcatentation(concatenation);
                         }
 
                         for (auto nodeID : reduction)
@@ -894,11 +915,7 @@ void DBGraph::loadNodeChainContainer(const LibraryContainer& libCont,
         // NodeChainContainer trueNcc(trueNodeChain);
         //ncc.updateChains(origChainv, newChainv);
 
-        /*for (const auto& reduction : reductionv) {
-                cout << reduction << " ";
-                cout << trueNcc.isNonBranchingPath(reduction) << " ";
-                cout << trueNcc.isNonBranchingPath(reduction.getReverseComplement()) << " " << endl;
-        }*/
+
 
         //ncc.printPER();
 }

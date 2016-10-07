@@ -180,6 +180,7 @@ private:
         KmerNodeTable kmerNPPTable;     // kmer node table
         KmerSpectrum kmerSpectrum;      // kmer spectrum
         NodeChainContainer ncc;         // node chain container
+        NodeChainContainer trueNcc;
 
 #ifdef DEBUG
         std::vector<size_t> trueMult;

@@ -254,8 +254,6 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                         continue;
 
                 SSNode startNode = (rightDE) ? getSSNode(-id) : getSSNode(id);
-                bool isolated = rightDE && leftDE;
-                bool joinedTip = startNode.getNumRightArcs() > 1;
                 bool remove = ((startNode.getAvgKmerCov() <= covCutoff) &&
                                (startNode.getMarginalLength() <= maxMargLength));
                 if (remove) {
@@ -264,6 +262,9 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                 }
 
 #ifdef DEBUG
+                bool isolated = rightDE && leftDE;
+                bool joinedTip = startNode.getNumRightArcs() > 1;
+
                 if (remove) {
                         if (trueMult.size()>0&& trueMult[id] > 0) {
                                 if (isolated)
@@ -404,7 +405,10 @@ void DBGraph::concatenateAroundNode(NodeID seedID, vector<NodeID>& nodeListv)
 
 bool DBGraph::concatenateNodes()
 {
-        size_t numConcatenations = 0, numIncorrectConcatenations = 0;
+        size_t numConcatenations = 0;
+#ifdef DEBUG
+        size_t numIncorrectConcatenations = 0;
+#endif
 
         for (NodeID seedID = 1; seedID <= numNodes; seedID++) {
                 vector<NodeID> concatenation;

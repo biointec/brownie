@@ -230,8 +230,6 @@ void RecordBlock::getRecordChunk(vector< ReadRecord >& buffer,
 void RecordBlock::getReadChunk(vector< string >& buffer,
                                size_t& chunkOffset, size_t targetChunkSize)
 {
-        assert(numChunksRead < numChunks);
-
         chunkOffset = nextChunkOffset;
 
         // find out how many records to copy
@@ -376,7 +374,6 @@ bool LibraryContainer::getReadChunk(vector<string>& buffer,
                 inputLock.unlock();
         }
 
-        assert(!buffer.empty());
         return true;
 }
 
@@ -447,7 +444,9 @@ void LibraryContainer::inputThreadLibrary(ReadLibrary& input)
 
         cout << "Number of reads processed: " << totNumReads << endl;
 
-        input.setAvgReadLength(totReadLength/totNumReads);
+        double avgReadLength = (totNumReads == 0) ? 0 :
+                (double)totReadLength/(double)totNumReads;
+        input.setAvgReadLength(avgReadLength);
         input.setNumReads(totNumReads);
 
         readFile->close();

@@ -322,6 +322,7 @@ void Brownie::stageSix()
                              getMetaDataFilename(4));
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << graph.getGraphStats() << endl;
+        graph.loadKmerSpectrumFit(getSpectrumFitFilename());
 
         vector<NodeChain> trueNodeChain;
 
@@ -343,7 +344,7 @@ void Brownie::stageSix()
         Util::startChrono();
 
         graph.loadNodeChainContainer(libraries, trueNodeChain);
-        //graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytRed");
+        graph.writeCytoscapeGraph(settings.getTempDirectory() + "cytRed");
 
 #ifdef DEBUG
         graph.sanityCheck();
