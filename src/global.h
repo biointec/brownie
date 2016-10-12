@@ -29,6 +29,7 @@
 #endif
 #include "util.h"       // timing routines
 #include <thread>
+#include <cmath>
 
 // ============================================================================
 // DEFINITIONS

@@ -30,6 +30,7 @@
 #include <cstdio>
 #include <iostream>
 #include <fstream>
+#include <random>
 
 #define OUTPUT_FREQUENCY 32768
 #define NUMTABLES (KmerLSB(1) << 8*KMERBYTEREDUCTION)
