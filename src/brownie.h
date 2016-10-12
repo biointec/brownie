@@ -40,6 +40,11 @@ public:
         Brownie(int argc, char ** args);
 
         /**
+         * Execute brownie
+         */
+        void run();
+
+        /**
          * Execute stage one
          */
         void stageOne();
@@ -68,6 +73,11 @@ public:
          * Execute stage six
          */
         void stageSix();
+
+        /**
+         * Compare to reference sequences
+         */
+        void compareToReference();
 
         /**
          * Get the node filename
@@ -208,8 +218,6 @@ public:
          * @return True or false
          */
         bool stageFourNecessary() const {
-                if (settings.getSkipStage4())
-                        return false;
                 if (!Util::fileExists(getNodeFilename(4)))
                         return true;
                 if (!Util::fileExists(getArcFilename(4)))
@@ -222,9 +230,6 @@ public:
          * @return True of false
          */
         bool stageFiveNecessary() const {
-                if (settings.getSkipStage5())
-                        return false;
-
                 for (size_t i = 0; i < libraries.getSize(); i++) {
                         const ReadLibrary &input = libraries.getInput(i);
                         if (!Util::fileExists(input.getOutputFileName()))

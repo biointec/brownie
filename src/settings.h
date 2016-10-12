@@ -30,6 +30,12 @@
 class LibraryContainer;
 
 // ============================================================================
+// COMMAND CLASS (ENUM)
+// ============================================================================
+
+enum class Command { assemble, compare, visualize };
+
+// ============================================================================
 // SETTINGS CLASS
 // ============================================================================
 
@@ -37,15 +43,26 @@ class Settings
 {
 private:
         /**
-         * Print Brownie program info
+         * Print Brownie program version
          */
-        void printProgramInfo() const;
+        void printProgramVersion() const;
 
         /**
          * Print Brownie usage instructions
          */
         void printUsage() const;
 
+        /**
+         * Print Brownie usage instructions for the assemble module
+         */
+        void printUsageAssemble() const;
+
+        /**
+         * Print Brownie usage instructions for the assemble module
+         */
+        void printUsageCompare() const;
+
+        Command command;                // type of command
         unsigned int kmerSize;          // user specified kmer size
         size_t numThreads;              // number of threads
         bool doubleStranded;            // double stranded sequences
@@ -55,8 +72,6 @@ private:
         int bubbleDFSNodeLimit;         // maximum number of visited nodes during bubble detection
         int readCorrDFSNodeLimit;       // maximal number of visited nodes during read mapping
         double covCutoff;               // coverage cutoff value to separate true and false nodes based on their node-kmer-coverage
-        bool skipStage4;                // true if stage 4 should be skipped
-        bool skipStage5;                // true if stage 5 should be skipped
 
 public:
         /**
@@ -72,6 +87,32 @@ public:
          */
         void parseCommandLineArguments(int argc, char **args,
                                        LibraryContainer& libCont);
+
+        /**
+         * Parse the command line arguments for the assemble module
+         * @param argc Command line argument count
+         * @param args Command line arguments
+         * @param libCont Library container (output)
+         */
+        void parseCommandLineArgAssemble(int argc, char **args,
+                                         LibraryContainer& libCont);
+
+        /**
+         * Parse the command line arguments for the compare module
+         * @param argc Command line argument count
+         * @param args Command line arguments
+         * @param libCont Library container (output)
+         */
+        void parseCommandLineArgCompare(int argc, char **args,
+                                        LibraryContainer& libCont);
+
+        /**
+         * Get the type of command
+         * @return The type of command
+         */
+        Command getCommand() const {
+                return command;
+        }
 
         /**
          * Get the user-specified kmer hash length
@@ -151,22 +192,6 @@ public:
          */
         int getReadCorrDFSNodeLimit() const {
                 return readCorrDFSNodeLimit;
-        }
-
-        /**
-         * True if stage 4 should be skipped
-         * @return True if stage 4 should be skipped
-         */
-        bool getSkipStage4() const {
-                return skipStage4;
-        }
-
-        /**
-         * True if stage 5 should be skipped
-         * @return True if stage 5 should be skipped
-         */
-        bool getSkipStage5() const {
-                return skipStage5;
         }
 
         /**

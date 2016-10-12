@@ -358,24 +358,59 @@ void Brownie::stageSix()
         graph.clear();
 }
 
-void Brownie::writeGraphFasta()
+void Brownie::compareToReference()
 {
+        // Build a DBG from stage 4 files on disk
         DBGraph graph(settings);
-        if (settings.getSkipStage4()) {
-                graph.loadGraphBin(getBinNodeFilename(3),
-                        getBinArcFilename(3),
-                        getMetaDataFilename(3));
-                graph.writeGraph(getNodeFilename(4),
-                                 getArcFilename(4),
-                                 getMetaDataFilename(4));
-                graph.writeGraphFasta();
-        } else if (settings.getSkipStage5()) {
-                graph.loadFromFile(getNodeFilename(4),
-                        getArcFilename(4),
-                        getMetaDataFilename(4));
-                graph.writeGraphFasta();
+        Util::startChrono();
+        cout << "Creating graph... "; cout.flush();
+
+        cout << "Creating graph... "; cout.flush();
+        graph.loadGraphBin(getBinNodeFilename(3),
+                           getBinArcFilename(3),
+                           getMetaDataFilename(3));
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        cout << graph.getGraphStats() << endl;
+
+       /* graph.loadFromFile(getNodeFilename(4),
+                           getArcFilename(4),
+                           getMetaDataFilename(4));
+
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        cout << "Graph contains " << graph.getNumNodes() << " nodes and "
+             << graph.getNumArcs() << " arcs" << endl;*/
+
+        Util::startChrono();
+        cout << "Building kmer - node/position index... "; cout.flush();
+        graph.buildKmerNPPTable();      // build kmer-NPP index
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        RefComp refComp("genome.fasta");
+        refComp.validateGraph(graph);
+        vector<size_t> trueMult;
+        refComp.getNodeMultiplicity(graph, trueMult);
+        //graph.setTrueNodeMultiplicity(trueMult);
+
+        cout << "Stage 4 finished.\n" << endl;
+}
+
+void Brownie::run()
+{
+        switch (settings.getCommand()) {
+                case Command::assemble:
+                        stageOne();
+                        stageTwo();
+                        stageThree();
+                        stageFour();
+                        stageFive();
+                        stageSix();
+                        break;
+                case Command::compare:
+                        compareToReference();
+                        break;
+                case Command::visualize:
+
+                        break;
         }
-        graph.clear();
 }
 
 int main(int argc, char** args)
@@ -391,19 +426,12 @@ int main(int argc, char** args)
                 cout << " (release mode)" << endl;
 #endif
                 cout << "Today is " << Util::getDateTime() << endl;
-
-                brownie.stageOne();
-                brownie.stageTwo();
-                brownie.stageThree();
-                brownie.stageFour();
-                brownie.stageFive();
-                brownie.stageSix();
-
-                brownie.writeGraphFasta();
+                brownie.run();
         } catch (exception &e) {
                 cerr << "Fatal error: " << e.what() << endl;
                 return EXIT_FAILURE;
         }
+
         cout << "Exiting... bye!" << endl << endl;
         return EXIT_SUCCESS;
 }
