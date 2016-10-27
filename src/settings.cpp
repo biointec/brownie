@@ -94,14 +94,32 @@ void Settings::printUsageAssemble() const
         cout << "Report bugs to Jan Fostier <jan.fostier@ugent.be>\n";
 }
 
+void Settings::printUsageVisualize() const
+{
+        cout << "Usage: brownie visualize [options] output_file\n\n";
+
+        cout << " [options]\n";
+        cout << "  -h\t--help\t\tdisplay help page\n";
+        cout << "  -sX\t--stageX\tcompare with stage X (X = 3,4) [default = -s4]\n\n";
+
+        cout << " [options arg]\n";
+        cout << "  -s\t--seed\t\tseed node ID [default = first valid node]\n";
+        cout << "  -d\t--depth\t\tmaximum depth from seed node [default = 10]\n\n";
+
+        cout << " examples:\n";
+        cout << "  ./brownie visualize output\n";
+        cout << "  ./brownie visualize -s 10 -d 20 output\n\n";
+
+        cout << "Report bugs to Jan Fostier <jan.fostier@ugent.be>\n";
+}
+
 void Settings::printUsageCompare() const
 {
         cout << "Usage: brownie compare [options] reference.fasta\n\n";
 
         cout << " [options]\n";
         cout << "  -h\t--help\t\tdisplay help page\n";
-        //cout << "  -s\t--singlestranded\tenable single-stranded DNA [default = false]\n";  // This has never been tested!
-        cout << "  -sX\t--stageX\tcompare with stage X (X = 1,2,...,6)\n\n";
+        cout << "  -sX\t--stageX\tcompare with stage X (X = 3,4) [default = -s4]\n\n";
 
         cout << " [options arg]\n";
         cout << "  -k\t--kmersize\tkmer size [default = 31]\n";
@@ -126,8 +144,9 @@ void Settings::printUsageCompare() const
 // SETTINGS CLASS PUBLIC
 // ============================================================================
 
-Settings::Settings() : command(Command::assemble), kmerSize(31),
+Settings::Settings() : command(Command::none), kmerSize(31),
         numThreads(std::thread::hardware_concurrency()), doubleStranded(true),
+        runSpecificStage(0),
         essaMEMSparsenessFactor(1), bubbleDFSNodeLimit(1000),
         readCorrDFSNodeLimit(1000), covCutoff(0) {}
 
@@ -147,15 +166,12 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                         command = Command::assemble;
                         parseCommandLineArgAssemble(argc, args, libCont);
                 } else if (arg == "visualize") {
-                        cout << "This option is not available yet";
+                        command = Command::visualize;
+                        parseCommandLineArgVisualize(argc, args, libCont);
                         exit(EXIT_SUCCESS);
                 } else if (arg == "compare") {
                         command = Command::compare;
                         parseCommandLineArgCompare(argc, args, libCont);
-                } else {
-                        cerr << "brownie: no command specified\n";
-                        cerr << "Try 'brownie --help' for more information" << endl;
-                        exit(EXIT_FAILURE);
                 }
         }
 }
@@ -172,6 +188,18 @@ void Settings::parseCommandLineArgAssemble(int argc, char** args,
                 if ((arg == "-h") || (arg == "--help")) {
                         printUsageAssemble();
                         exit(EXIT_SUCCESS);
+                } else if ((arg == "-s1") || (arg == "--stage1")) {
+                        runSpecificStage = 1;
+                } else if ((arg == "-s2") || (arg == "--stage2")) {
+                        runSpecificStage = 2;
+                } else if ((arg == "-s3") || (arg == "--stage3")) {
+                        runSpecificStage = 3;
+                } else if ((arg == "-s4") || (arg == "--stage4")) {
+                        runSpecificStage = 4;
+                } else if ((arg == "-s5") || (arg == "--stage5")) {
+                        runSpecificStage = 5;
+                } else if ((arg == "-s6") || (arg == "--stage6")) {
+                        runSpecificStage = 6;
                 } else if ((arg == "-k") || (arg == "--kmersize")) {
                         i++;
                         if (i < argc)
@@ -180,10 +208,6 @@ void Settings::parseCommandLineArgAssemble(int argc, char** args,
                         i++;
                         if (i < argc)
                                 numThreads = atoi(args[i]);
-                } else if ((arg == "-e") || (arg == "--essa")) {
-                        i++;
-                        if (i < argc)
-                                essaMEMSparsenessFactor = atoi(args[i]);
                 } else if ((arg == "-v") || (arg == "--visits")) {
                         i++;
                         if (i < argc)
@@ -192,6 +216,10 @@ void Settings::parseCommandLineArgAssemble(int argc, char** args,
                         i++;
                         if (i < argc)
                                 readCorrDFSNodeLimit = atoi(args[i]);
+                } else if ((arg == "-e") || (arg == "--essa")) {
+                        i++;
+                        if (i < argc)
+                                essaMEMSparsenessFactor = atoi(args[i]);
                 } else if ((arg == "-c") || (arg == "--cutoff")) {
                         i++;
                         if (i < argc)
@@ -275,8 +303,8 @@ void Settings::parseCommandLineArgAssemble(int argc, char** args,
         libCont.readMetadata(getTempDirectory());
 }
 
-void Settings::parseCommandLineArgCompare(int argc, char** args,
-                                          LibraryContainer& libCont)
+void Settings::parseCommandLineArgVisualize(int argc, char** args,
+                                            LibraryContainer& libCont)
 {
         // parse all input arguments
         string inputFilename, outputFilename;
@@ -285,8 +313,31 @@ void Settings::parseCommandLineArgCompare(int argc, char** args,
                 string arg(args[i]);
 
                 if ((arg == "-h") || (arg == "--help")) {
-                        printUsageAssemble();
+                        printUsageVisualize();
                         exit(EXIT_SUCCESS);
+                }
+        }
+}
+
+void Settings::parseCommandLineArgCompare(int argc, char** args,
+                                          LibraryContainer& libCont)
+{
+        // set default values
+        runSpecificStage = 4;
+
+        // parse all input arguments
+        string inputFilename, outputFilename;
+        vector<pair<string, string> > libraries;
+        for (int i = 2; i < argc; i++) {
+                string arg(args[i]);
+
+                if ((arg == "-h") || (arg == "--help")) {
+                        printUsageCompare();
+                        exit(EXIT_SUCCESS);
+                } else if ((arg == "-s3") || (arg == "--stage3")) {
+                        runSpecificStage = 3;
+                } else if ((arg == "-s4") || (arg == "--stage4")) {
+                        runSpecificStage = 4;
                 } else if ((arg == "-k") || (arg == "--kmersize")) {
                         i++;
                         if (i < argc)
@@ -295,6 +346,8 @@ void Settings::parseCommandLineArgCompare(int argc, char** args,
                         i++;
                         if (i < argc)
                                 pathtotemp = args[i];
+                } else {        // it must be a reference filename
+                        referenceFilename = string(args[i]);
                 }
         }
 

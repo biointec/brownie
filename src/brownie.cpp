@@ -41,13 +41,9 @@ void Brownie::stageOne()
         // STAGE 1 : PARSE THE READS
         // ============================================================
 
-        cout << "Entering stage 1" << endl;
+        cout << "\nEntering stage 1" << endl;
         cout << "================" << endl;
-        if (!stageOneNecessary()) {
-                cout << "Files produced by this stage appear to be present, "
-                "skipping stage 1..." << endl << endl;
-                return;
-        }
+
         KmerTable *readParser = new KmerTable(settings);
         cout << "Generating kmers with k = " << Kmer::getK()
              << " from input files..." << endl;
@@ -85,14 +81,8 @@ void Brownie::stageTwo()
         // STAGE 2 : KMER OVERLAP TABLE
         // ============================================================
 
-        cout << "Entering stage 2" << endl;
+        cout << "\nEntering stage 2" << endl;
         cout << "================" << endl;
-
-        if (!stageTwoNecessary()) {
-                cout << "Files produced by this stage appear to be present, "
-                "skipping stage 2..." << endl << endl;
-                return;
-        }
 
         // create a kmer table from the reads
         KmerOverlapTable overlapTable(settings);
@@ -130,14 +120,8 @@ void Brownie::stageThree()
         // STAGE 3 : MULTIPLICITY COUNTING - KMER SPECTRUM FITTING
         // ============================================================
 
-        cout << "Entering stage 3" << endl;
+        cout << "\nEntering stage 3" << endl;
         cout << "================" << endl;
-
-        if (!stageThreeNecessary()) {
-                cout << "Files produced by this stage appear to be present, "
-                "skipping stage 3..." << endl << endl;
-                return;
-        }
 
         // build pre graph and simplify it
         DBGraph graph(settings);
@@ -145,9 +129,9 @@ void Brownie::stageThree()
         Util::startChrono();
         cout << "Loading graph... ";
         cout.flush();
-        graph.loadFromFile(getNodeFilename(2),
-                             getArcFilename(2),
-                             getMetaDataFilename(2));
+        graph.loadGraph(getNodeFilename(2),
+                        getArcFilename(2),
+                        getMetaDataFilename(2));
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << graph.getGraphStats() << endl;
 
@@ -156,9 +140,9 @@ void Brownie::stageThree()
         cout << "Done generating spectrum (" << Util::stopChronoStr() << ")" << endl;
 
         cout << "Writing graph..." << endl;
-        graph.writeGraphBin(getBinNodeFilename(3),
-                            getBinArcFilename(3),
-                            getMetaDataFilename(3));
+        graph.writeGraph(getNodeFilename(3),
+                         getArcFilename(3),
+                         getMetaDataFilename(3));
 
 #ifdef DEBUG
         graph.sanityCheck();
@@ -173,21 +157,15 @@ void Brownie::stageFour()
         // STAGE 4 : GRAPH SIMPLIFICATION
         // ============================================================
 
-        cout << "Entering stage 4" << endl;
+        cout << "\nEntering stage 4" << endl;
         cout << "================" << endl;
-
-        if (!stageFourNecessary()) {
-                cout << "Files produced by this stage appear to be present, "
-                        "skipping stage 4..." << endl << endl;
-                return;
-        }
 
         DBGraph graph(settings);
         Util::startChrono();
         cout << "Creating graph... "; cout.flush();
-        graph.loadGraphBin(getBinNodeFilename(3),
-                           getBinArcFilename(3),
-                           getMetaDataFilename(3));
+        graph.loadGraph(getBinNodeFilename(3),
+                        getBinArcFilename(3),
+                        getMetaDataFilename(3));
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << graph.getGraphStats() << endl;
 
@@ -239,8 +217,6 @@ void Brownie::stageFour()
         }
         cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
-        //graph.writeCytoscapeGraph(settings.getTempDirectory() + "tip", 24450, 3);
-
 #ifdef DEBUG
         Util::startChrono();
         cout << "Building kmer - node/position index... "; cout.flush();
@@ -276,22 +252,16 @@ void Brownie::stageFour()
 
 void Brownie::stageFive()
 {
-        cout << "Entering stage 5" << endl;
+        cout << "\nEntering stage 5" << endl;
         cout << "================" << endl;
-
-        if (!stageFiveNecessary()) {
-                cout << "Files produced by this stage appear to be present, "
-                        "skipping stage 5..." << endl << endl;
-                return;
-        }
 
         // Build a DBG from stage 4 files on disk
         DBGraph graph(settings);
         Util::startChrono();
         cout << "Creating graph... "; cout.flush();
-        graph.loadFromFile(getNodeFilename(4),
-                             getArcFilename(4),
-                             getMetaDataFilename(4));
+        graph.loadGraph(getNodeFilename(4),
+                        getArcFilename(4),
+                        getMetaDataFilename(4));
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << "Graph contains " << graph.getNumNodes() << " nodes and "
              << graph.getNumArcs() << " arcs" << endl;
@@ -317,9 +287,9 @@ void Brownie::stageSix()
         DBGraph graph(settings);
         Util::startChrono();
         cout << "Creating graph... "; cout.flush();
-        graph.loadFromFile(getNodeFilename(4),
-                             getArcFilename(4),
-                             getMetaDataFilename(4));
+        graph.loadGraph(getNodeFilename(4),
+                        getArcFilename(4),
+                        getMetaDataFilename(4));
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << graph.getGraphStats() << endl;
         graph.loadKmerSpectrumFit(getSpectrumFitFilename());
@@ -358,13 +328,45 @@ void Brownie::stageSix()
         graph.clear();
 }
 
-void Brownie::compareToReference()
+void Brownie::assembleModule()
+{
+        if (stageOneNecessary())
+                stageOne();
+        else
+                cout << "Files produced by this stage appear to"
+                        " be present, skipping stage 1...\n";
+        if (stageTwoNecessary())
+                stageTwo();
+        else
+                cout << "Files produced by this stage appear to"
+                        " be present, skipping stage 2...\n";
+        if (stageThreeNecessary())
+                stageThree();
+        else
+                cout << "Files produced by this stage appear to"
+                        " be present, skipping stage 3...\n";
+        if (stageFourNecessary())
+                stageFour();
+        else
+                cout << "Files produced by this stage appear to"
+                        " be present, skipping stage 4...\n";
+        if (stageFiveNecessary())
+                stageFive();
+        else
+                cout << "Files produced by this stage appear to"
+                        " be present, skipping stage 5...\n";
+        if (stageSixNecessary())
+                stageSix();
+        else
+                cout << "Files produced by this stage appear to"
+                        " be present, skipping stage 6...\n";
+}
+
+void Brownie::visualizeModule()
 {
         // Build a DBG from stage 4 files on disk
         DBGraph graph(settings);
         Util::startChrono();
-        cout << "Creating graph... "; cout.flush();
-
         cout << "Creating graph... "; cout.flush();
         graph.loadGraphBin(getBinNodeFilename(3),
                            getBinArcFilename(3),
@@ -372,43 +374,60 @@ void Brownie::compareToReference()
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << graph.getGraphStats() << endl;
 
-       /* graph.loadFromFile(getNodeFilename(4),
-                           getArcFilename(4),
-                           getMetaDataFilename(4));
+        graph.writeCytoscapeGraph(settings.getTempDirectory() + "graph", 1, 10);
 
+        graph.clear();
+}
+
+void Brownie::compareModule()
+{
+        int stage = settings.getRunSpecificStage();
+
+        // load the DBG
+        DBGraph graph(settings);
+        Util::startChrono();
+        cout << "Loading stage " << stage << " graph... "; cout.flush();
+        graph.loadGraph(getNodeFilename(stage),
+                        getArcFilename(stage),
+                        getMetaDataFilename(stage));
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
-        cout << "Graph contains " << graph.getNumNodes() << " nodes and "
-             << graph.getNumArcs() << " arcs" << endl;*/
+        cout << graph.getGraphStats() << "\n\n";
+
+        // load the reference filename
+        Util::startChrono();
+        cout << "Loading reference file " << settings.getReferenceFilename() << "..."; cout.flush();
+        RefComp refComp(settings.getReferenceFilename());
+        cout << "done (" << Util::stopChronoStr() << ")" << endl;
+        cout << "Reference file contains " << refComp.getNumContigs()
+             << " contigs with a total size of " << refComp.getSize() << " bp.\n";
 
         Util::startChrono();
         cout << "Building kmer - node/position index... "; cout.flush();
         graph.buildKmerNPPTable();      // build kmer-NPP index
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
-        RefComp refComp("genome.fasta");
         refComp.validateGraph(graph);
         vector<size_t> trueMult;
         refComp.getNodeMultiplicity(graph, trueMult);
-        //graph.setTrueNodeMultiplicity(trueMult);
 
-        cout << "Stage 4 finished.\n" << endl;
+        cout << "Compare module finished.\n" << endl;
 }
 
 void Brownie::run()
 {
         switch (settings.getCommand()) {
                 case Command::assemble:
-                        stageOne();
-                        stageTwo();
-                        stageThree();
-                        stageFour();
-                        stageFive();
-                        stageSix();
+                        assembleModule();
                         break;
                 case Command::compare:
-                        compareToReference();
+                        compareModule();
                         break;
                 case Command::visualize:
-
+                        visualizeModule();
+                        break;
+                case Command::none:
+                        cerr << "brownie: no command specified\n";
+                        cerr << "Try 'brownie --help' for more information" << endl;
+                        exit(EXIT_FAILURE);
                         break;
         }
 }

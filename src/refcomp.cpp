@@ -35,6 +35,47 @@ std::ostream &operator<<(std::ostream &out, const BreakPoint &bp)
         return out;
 }
 
+std::ostream &operator<<(std::ostream &out, const RefSegment &rs)
+{
+        out << "\tRefSeq " << rs.getRefID() << " ";
+        switch (rs.getType()) {
+                case RefSegmentType::DELETION:
+                        out << "DELETION  ";
+                        break;
+                case RefSegmentType::INSERTION:
+                        out << "INSERTION ";
+                        break;
+                case RefSegmentType::PARALLEL:
+                        out << "PARALLEL  ";
+                        break;
+                case RefSegmentType::BREAK:
+                        out << "BREAK     ";
+                        break;
+                case RefSegmentType::CONTIG:
+                        out << "CONTIG    ";
+                        break;
+        }
+
+        out << "[" <<  rs.getRefBegin() << " - " << rs.getRefEnd() << "[ ";
+        if (rs.getStartNodeID() == 0)
+                out << "**" << " - ";
+        else
+                out << rs.getStartNodeID() << " (" << rs.getStartNodeBegin() << ") - ";
+
+        if (rs.getEndNodeID() == 0)
+                out << "**";
+        else
+                out << rs.getEndNodeID() << " (" << rs.getEndNodeEnd() << ")";
+
+        return out;
+}
+
+void RefComp::printSegments(const std::vector<RefSegment>& segment_v) const
+{
+        for (const RefSegment& refSeg : segment_v)
+                cout << refSeg << endl;
+}
+
 RefComp::RefComp(const std::string& refFilename)
 {
         FastAFile ifs(false);
@@ -42,9 +83,131 @@ RefComp::RefComp(const std::string& refFilename)
 
         string read;
         while (ifs.getNextRead(read))
-                reference.push_back(read);
+                refSeq_v.push_back(read);
 
         ifs.close();
+}
+
+size_t RefComp::getSize()
+{
+        size_t ret = 0;
+
+        for (size_t i = 0; i < refSeq_v.size(); i++)
+                ret += refSeq_v[i].size();
+        return ret;
+}
+
+void RefComp::alignReference(const DBGraph& dbg,
+                             std::vector<RefSegment>& refSegment_v) const
+{
+        refSegment_v.clear();
+
+        for (size_t refID = 0; refID < refSeq_v.size(); refID++) {
+                const string& refSeq = refSeq_v[refID];
+
+                KmerIt it(refSeq);
+                NodePosPair prev = dbg.findNPP(it.getKmer());
+                RefSegmentType type = (prev.isValid()) ? RefSegmentType::CONTIG : RefSegmentType::BREAK;
+
+                refSegment_v.push_back(RefSegment(refID));
+                refSegment_v.back().setBeginPos(it.getOffset(),
+                                                prev.getNodeID(),
+                                                prev.getPosition());
+                refSegment_v.back().setType(type);
+
+                // handle the other kmers in the reference sequence
+                for (it++; it.isValid(); it++) {
+                        NodePosPair curr = dbg.findNPP(it.getKmer());
+
+                        // NOTE: it is possible that both if-statements below
+                        // are executed consecutively. Do not change the order!
+
+                        // encounter a breakpoint on a contig -> switch to break
+                        if (type == RefSegmentType::CONTIG && !dbg.consecutiveNPP(prev, curr)) {
+                                // close the contig
+                                refSegment_v.back().setEndPos(it.getOffset(),
+                                                              prev.getNodeID(),
+                                                              prev.getPosition()+1);
+
+                                // push a breakpoint
+                                type = RefSegmentType::BREAK;
+                                refSegment_v.push_back(RefSegment(refID));
+                                refSegment_v.back().setBeginPos(it.getOffset(), 0, 0);
+                                refSegment_v.back().setType(type);
+                        }
+
+                        // encounter a valid kmer with no open segment -> switch to contig
+                        if (type == RefSegmentType::BREAK && curr.isValid()) {
+                                // close the breakpoint
+                                refSegment_v.back().setEndPos(it.getOffset(), 0, 0);
+
+                                // push a contig
+                                type = RefSegmentType::CONTIG;
+                                refSegment_v.push_back(RefSegment(refID));
+                                refSegment_v.back().setBeginPos(it.getOffset(),
+                                                                curr.getNodeID(),
+                                                                curr.getPosition());
+                                refSegment_v.back().setType(type);
+                        }
+
+                        prev = curr;
+                }
+
+                // close open segment at the end of a sequence
+                refSegment_v.back().setEndPos(refSeq.size(),
+                                              prev.getNodeID(),
+                                              prev.getPosition()+1);
+        }
+}
+
+void RefComp::annotateBreakpoints(const DBGraph& dbg,
+                                  std::vector<RefSegment>& refSegment_v) const
+{
+        for (size_t i = 0; i < refSegment_v.size(); i++) {
+                RefSegment& rs = refSegment_v[i];
+
+                if (rs.getType() != RefSegmentType::BREAK)
+                        continue;
+
+                size_t refID = rs.getRefID();
+                bool haveLeft = ((i > 0) && (refSegment_v[i-1].getRefID() == refID));
+                bool haveRight = ((i+1 < refSegment_v.size()) && (refSegment_v[i+1].getRefID() == refID));
+
+                if (!haveLeft || !haveRight) {
+                        rs.setType(RefSegmentType::DELETION);
+                        continue;
+                }
+
+                NodeID srcID = refSegment_v[i-1].getEndNodeID();
+                size_t srcPos = refSegment_v[i-1].getEndNodeEnd()-1;
+                NodeID dstID = refSegment_v[i+1].getStartNodeID();
+                size_t dstPos = refSegment_v[i+1].getStartNodeBegin();
+                size_t refBegin = refSegment_v[i-1].getRefEnd();
+                size_t refEnd = refSegment_v[i+1].getRefBegin();
+                NodePosPair srcNPP(srcID, srcPos), dstNPP(dstID, dstPos);
+
+                // try and find a path accross the breakpoint
+                size_t maxLen = max<size_t>(1000, 2*(refEnd - refBegin));
+                bool pathExists = dbg.findPath(srcNPP, dstNPP, maxLen);
+                if (!pathExists) {
+                        dbg.revCompNPP(srcNPP);
+                        dbg.revCompNPP(dstNPP);
+                        pathExists = dbg.findPath(srcNPP, dstNPP, maxLen);
+                }
+
+                // no path found -> breakpoint
+                if (!pathExists)
+                        continue;
+
+                if (refBegin == refEnd) {  // ref is fully present
+                        rs.setType(RefSegmentType::INSERTION);
+                } else {                   // ref is partially missing
+                        if (srcNPP == dstNPP)
+                                rs.setType(RefSegmentType::DELETION);
+                        else
+                                rs.setType(RefSegmentType::PARALLEL);
+                }
+        }
 }
 
 void RefComp::validateGraph(const DBGraph& dbg, size_t minContigSize)
@@ -53,9 +216,9 @@ void RefComp::validateGraph(const DBGraph& dbg, size_t minContigSize)
         vector<BreakPoint> breakpoint;
 
         // align the reference sequences to the DBG to figure out breakpoints
-        for (size_t refID = 0; refID < reference.size(); refID++) {
+        for (size_t refID = 0; refID < refSeq_v.size(); refID++) {
                 bool breakPointOpen = false;
-                const string& refSeq = reference[refID];
+                const string& refSeq = refSeq_v[refID];
                 size_t currContigSize = 0;
 
                 // handle the first kmer separately
@@ -103,7 +266,7 @@ void RefComp::validateGraph(const DBGraph& dbg, size_t minContigSize)
                 }
         }
 
-        double fracFound = 100.0*(double)numKmerFound/(double) numKmers;
+        double fracFound = Util::toPercentage(numKmerFound, numKmers);
 
         cout.precision(5);
         cout << "\tValidation report: " << endl;
@@ -116,7 +279,7 @@ void RefComp::validateGraph(const DBGraph& dbg, size_t minContigSize)
 
                 size_t begin = it.getBegin();
                 size_t end = it.getEnd();
-                const string& refSeq = reference[it.getRefID()];
+                const string& refSeq = refSeq_v[it.getRefID()];
 
                 cout << "\t" << it << " ";
 
@@ -136,13 +299,20 @@ void RefComp::validateGraph(const DBGraph& dbg, size_t minContigSize)
                         cout << npp.getNodeID() << " (" << npp.getPosition() << ")" << endl;
                 }
         }
+
+        cout << " =================================================== " << endl;
+        vector<RefSegment> refSegments_v;
+
+        alignReference(dbg, refSegments_v);
+        annotateBreakpoints(dbg, refSegments_v);
+        printSegments(refSegments_v);
 }
 
 void RefComp::getTrueNodeChain(const DBGraph& dbg, vector<NodeChain>& nodeChain)
 {
         // align the reference sequences to the DBG to figure out true node chains
-        for (size_t refID = 0; refID < reference.size(); refID++) {
-                const string& refSeq = reference[refID];
+        for (size_t refID = 0; refID < refSeq_v.size(); refID++) {
+                const string& refSeq = refSeq_v[refID];
 
                 // handle the other kmers
                 NodePosPair prev;
@@ -176,9 +346,9 @@ void RefComp::getNodeMultiplicity(const DBGraph& dbg,
         multiplicity.resize(dbg.getNumNodes()+1, 0);
 
         // count the number of true kmers in each node
-        for (size_t refID = 0; refID < reference.size(); refID++) {
+        for (size_t refID = 0; refID < refSeq_v.size(); refID++) {
 
-                const string& refSeq = reference[refID];
+                const string& refSeq = refSeq_v[refID];
 
                 // handle the first kmer separately
                 KmerIt it(refSeq);
@@ -223,6 +393,7 @@ void RefComp::getNodeMultiplicity(const DBGraph& dbg,
                         numErrNodes++;
         }
 
-        cout << "Number of true nodes in the graph: " << numTrueNodes
-             << " number of false nodes: " << numErrNodes << endl;
+
+        cout << "Number of true nodes: " << numTrueNodes << "/" << dbg.getNumNodes() << " (" << Util::toPercentage(numTrueNodes, dbg.getNumNodes()) << "%)" << endl;
+        cout << "Number of false nodes: " << numErrNodes << "/" << dbg.getNumNodes() << " (" << Util::toPercentage(numErrNodes, dbg.getNumNodes()) << "%)" << endl;
 }

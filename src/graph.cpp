@@ -208,8 +208,8 @@ void DBGraph::increaseCoverage(const NodeEndRef &left, const NodeEndRef &right)
                         if (lNode.getLeftKmer() == left.getKmer())
                                 return;
 
-                        lNode.getRightArc(right.getNodeID())->incReadCov();
-                rNode.getLeftArc(left.getNodeID())->incReadCov();
+        lNode.getRightArc(right.getNodeID())->incReadCov();
+        rNode.getLeftArc(left.getNodeID())->incReadCov();
 }
 
 void DBGraph::convertNodesToString(const vector<NodeID> &nodeSeq,
@@ -384,9 +384,9 @@ void DBGraph::writeCytoscapeGraph(const std::string& filename,
         ofs.close();
 }
 
-void DBGraph::loadFromFile(const string& nodeFilename,
-                           const string& arcFilename,
-                           const string& metaDataFilename)
+void DBGraph::loadGraph(const string& nodeFilename,
+                        const string& arcFilename,
+                        const string& metaDataFilename)
 {
         // auxiliary variables
         string dS, descriptor;
@@ -686,6 +686,98 @@ void DBGraph::writeGraphFasta() const
         }
 
         nodeFile.close();
+}
+
+bool DBGraph::dijkstra(NodeID srcID, NodeID dstID, size_t maxLen,
+                       vector<size_t>& dist_v, vector<bool>& visited_v) const
+{
+        vector<NodeID> modifiedNodes_v;        // which entries are modified?
+        bool returnValue = false;
+
+        // seed priority queue with source node
+        priority_queue<PathDFS, vector<PathDFS>, PathDFSComp> heap;
+        heap.push( PathDFS(srcID, 0) );
+        modifiedNodes_v.push_back(srcID);
+
+        while(!heap.empty()) {
+                // get the top node
+                PathDFS currTop = heap.top();
+                heap.pop();
+                NodeID currID = currTop.nodeID;
+                size_t currLength = currTop.length;
+                SSNode curr = getSSNode(currID);
+
+                // if node was visited before, get out: this is possible because
+                // we don't update distances in the PQ but rather insert doubles
+                if (visited_v[currID + numNodes])
+                        continue;
+                visited_v[currID + numNodes] = true;
+
+                for (ArcIt it = curr.rightBegin(); it != curr.rightEnd(); it++) {
+                        NodeID nextID = it->getNodeID();
+                        SSNode next = getSSNode(nextID);
+                        size_t nextLength = currLength + next.getMarginalLength();
+
+                        // we found a path to the destination
+                        if (nextID == dstID) {
+                                returnValue = true;
+                                goto exitRoutine;
+                        }
+
+                        // if the node was visited before OR path is too long
+                        if (visited_v[nextID + numNodes] || nextLength > maxLen)
+                                continue;
+
+                        // if we can reach the node in a shorter distance
+                        if (nextLength < dist_v[nextID + numNodes]) {
+                                dist_v[nextID + numNodes] = nextLength;
+                                heap.push( PathDFS(nextID, nextLength) );
+                                modifiedNodes_v.push_back(nextID);
+                        }
+                }
+        }
+
+        // label definition to break out of nested loops
+        exitRoutine:
+
+        // undo all modifications to dist_v and visited_v
+        for (auto it : modifiedNodes_v) {
+                dist_v[it + numNodes] = numeric_limits<size_t>::max();
+                visited_v[it + numNodes] = false;
+        }
+
+        return returnValue;
+}
+
+bool DBGraph::findPath(const NodePosPair& srcNpp, const NodePosPair& dstNpp,
+                       size_t maxLen) const
+{
+        // shortcut notation
+        NodeID srcID = srcNpp.getNodeID();
+        NodeID dstID = dstNpp.getNodeID();
+
+        // assert valid positions in the graph
+        assert(getSSNode(srcID).isValid());
+        assert(getSSNode(dstID).isValid());
+        assert(srcNpp.getPosition() < getSSNode(srcID).getMarginalLength());
+        assert(dstNpp.getPosition() < getSSNode(dstID).getMarginalLength());
+
+        // handle case in which path exists within a node
+        if ((srcID == dstID) && (srcNpp.getPosition() <= dstNpp.getPosition()))
+                return (srcNpp.getPosition() + maxLen >= dstNpp.getPosition());
+
+        // correct maxLen for source node
+        size_t correction = getSSNode(srcID).getMarginalLength() -
+                srcNpp.getPosition() + dstNpp.getPosition();
+        if (correction > maxLen)
+                return false;
+        maxLen -= correction;
+
+        // is the dijkstra algorithm to figure out if there exists a path
+        vector<size_t> dist_v(2*numNodes+1, numeric_limits<size_t>::max());
+        vector<bool> visited_v(2*numNodes+1, false);
+
+        return dijkstra(srcID, dstID, maxLen, dist_v, visited_v);
 }
 
 void DBGraph::performReduction(const NodeChain& reduction)

@@ -348,7 +348,7 @@ public:
          * @param arcFilename Filename for the arcs
          * @param metaDataFilename Filename for the metadata
          */
-        void loadFromFile(const std::string& nodeFilename,
+        void loadGraph(const std::string& nodeFilename,
                             const std::string& arcFilename,
                             const std::string& metaDataFilename);
 
@@ -383,6 +383,31 @@ public:
          * FIXME: USE A FILENAME
          */
         void writeGraphFasta() const;
+
+        /**
+         * @brief Dijkstra algorithm to check if there exists a path between
+         * srcID and dstID that is shorter than maxLength. If srcID == dstID
+         * then a loop will be sought. Maximum length excludes the lengths of
+         * src and dst nodes, i.e., only the intermediate path is accounted for
+         * @param srcID Node identifier for the source node
+         * @param dstID Node identifier for the destination node
+         * @param maxLen Maximum length of the intermediate path
+         * @param dist_v Pre-allocated vector initialized to limits::max()
+         * @param visited_v Pre-allocated vector intialized to false
+         * @return True of false
+         */
+        bool dijkstra(NodeID srcID, NodeID dstID, size_t maxLen,
+                      std::vector<size_t>& dist_v, std::vector<bool>& visited_v) const;
+
+        /**
+         * @brief Find a path in the de Bruijn graph from src to dst
+         * @param src Source position
+         * @param dst Desintation position
+         * @param maxLen Maximum length of the path
+         * @return bool True if the path exists
+         */
+        bool findPath(const NodePosPair& src, const NodePosPair& dst,
+                      size_t maxLen) const;
 
         // ====================================================================
         // CORRECTGRAPH.CPP (STAGE 4 ROUTINES)

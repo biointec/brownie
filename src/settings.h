@@ -33,7 +33,7 @@ class LibraryContainer;
 // COMMAND CLASS (ENUM)
 // ============================================================================
 
-enum class Command { assemble, compare, visualize };
+enum class Command { none, assemble, compare, visualize };
 
 // ============================================================================
 // SETTINGS CLASS
@@ -58,6 +58,11 @@ private:
         void printUsageAssemble() const;
 
         /**
+         * Print Brownie usage instructions for the visualize module
+         */
+        void printUsageVisualize() const;
+
+        /**
          * Print Brownie usage instructions for the assemble module
          */
         void printUsageCompare() const;
@@ -67,6 +72,8 @@ private:
         size_t numThreads;              // number of threads
         bool doubleStranded;            // double stranded sequences
         std::string pathtotemp;         // directory specified by user
+        int runSpecificStage;           // takes a non-zero value to run a specific stage
+        std::string referenceFilename;  // reference filename
 
         int essaMEMSparsenessFactor;    // sparseness factor for essaMEM
         int bubbleDFSNodeLimit;         // maximum number of visited nodes during bubble detection
@@ -98,6 +105,15 @@ public:
                                          LibraryContainer& libCont);
 
         /**
+         * Parse the command line arguments for the vizualize module
+         * @param argc Command line argument count
+         * @param args Command line arguments
+         * @param libCont Library container (output)
+         */
+        void parseCommandLineArgVisualize(int argc, char **args,
+                                          LibraryContainer& libCont);
+
+        /**
          * Parse the command line arguments for the compare module
          * @param argc Command line argument count
          * @param args Command line arguments
@@ -112,6 +128,22 @@ public:
          */
         Command getCommand() const {
                 return command;
+        }
+
+        /**
+         * Get the specific stage to run
+         * @return The specific stage to run
+         */
+        int getRunSpecificStage() const {
+                return runSpecificStage;
+        }
+
+        /**
+         * Get the reference filename
+         * @return The reference filename
+         */
+        std::string getReferenceFilename() const {
+                return referenceFilename;
         }
 
         /**

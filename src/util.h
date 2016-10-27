@@ -182,6 +182,8 @@ public:
          * @return The percentage
          */
         static double toPercentage(size_t nom, size_t den) {
+                if (den == 0)
+                        return 0;
                 return 100.0 * double(nom) / double(den);
         }
 

@@ -45,6 +45,21 @@ public:
         void run();
 
         /**
+         * Run the assemble module
+         */
+        void assembleModule();
+
+        /**
+         * Run the compare
+         */
+        void compareModule();
+
+        /**
+         * Run the visualize module
+         */
+        void visualizeModule();
+
+        /**
          * Execute stage one
          */
         void stageOne();
@@ -73,11 +88,6 @@ public:
          * Execute stage six
          */
         void stageSix();
-
-        /**
-         * Compare to reference sequences
-         */
-        void compareToReference();
 
         /**
          * Get the node filename
@@ -176,6 +186,9 @@ public:
          * @return True of false
          */
         bool stageOneNecessary() const {
+                if (settings.getRunSpecificStage() != 0)
+                        return settings.getRunSpecificStage() == 1;
+
                 /*for (size_t i = 0; i < container.size(); i++) {
                         const ReadLibrary &input = container[i];
                         if (!ReadLibrary::fileExists(input.getMetadataFilename()))
@@ -194,6 +207,9 @@ public:
          * @return True of false
          */
         bool stageTwoNecessary() const {
+                if (settings.getRunSpecificStage() != 0)
+                        return settings.getRunSpecificStage() == 2;
+
                 if (!Util::fileExists(getNodeFilename(2)))
                         return true;
                 if (!Util::fileExists(getArcFilename(2)))
@@ -206,9 +222,12 @@ public:
          * @return True or false
          */
         bool stageThreeNecessary() const {
-                if (!Util::fileExists(getBinNodeFilename(3)))
+                if (settings.getRunSpecificStage() != 0)
+                        return settings.getRunSpecificStage() == 3;
+
+                if (!Util::fileExists(getNodeFilename(3)))
                         return true;
-                if (!Util::fileExists(getBinArcFilename(3)))
+                if (!Util::fileExists(getArcFilename(3)))
                         return true;
                 return !Util::fileExists(getMetaDataFilename(3));
         }
@@ -218,6 +237,9 @@ public:
          * @return True or false
          */
         bool stageFourNecessary() const {
+                if (settings.getRunSpecificStage() != 0)
+                        return settings.getRunSpecificStage() == 4;
+
                 if (!Util::fileExists(getNodeFilename(4)))
                         return true;
                 if (!Util::fileExists(getArcFilename(4)))
@@ -230,6 +252,9 @@ public:
          * @return True of false
          */
         bool stageFiveNecessary() const {
+                if (settings.getRunSpecificStage() != 0)
+                        return settings.getRunSpecificStage() == 5;
+
                 for (size_t i = 0; i < libraries.getSize(); i++) {
                         const ReadLibrary &input = libraries.getInput(i);
                         if (!Util::fileExists(input.getOutputFileName()))
@@ -239,6 +264,17 @@ public:
                 }
 
                 return false;
+        }
+
+        /**
+         * Check if it is necessary to perform stage six
+         * @return True of false
+         */
+        bool stageSixNecessary() const {
+                if (settings.getRunSpecificStage() != 0)
+                        return settings.getRunSpecificStage() == 6;
+
+                return true;
         }
 
         /**
