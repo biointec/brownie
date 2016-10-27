@@ -404,10 +404,13 @@ public:
          * @param src Source position
          * @param dst Desintation position
          * @param maxLen Maximum length of the path
+         * @param dist_v Pre-allocated vector initialized to limits::max()
+         * @param visited_v Pre-allocated vector intialized to false
          * @return bool True if the path exists
          */
         bool findPath(const NodePosPair& src, const NodePosPair& dst,
-                      size_t maxLen) const;
+                      size_t maxLen, std::vector<size_t>& dist_v,
+                      std::vector<bool>& visited_v) const;
 
         // ====================================================================
         // CORRECTGRAPH.CPP (STAGE 4 ROUTINES)

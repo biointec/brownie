@@ -22,6 +22,8 @@
 #include "graph.h"
 #include "readfile/fastafile.h"
 
+#include <iomanip>
+
 using namespace std;
 
 // ============================================================================
@@ -88,7 +90,7 @@ RefComp::RefComp(const std::string& refFilename)
         ifs.close();
 }
 
-size_t RefComp::getSize()
+size_t RefComp::getSize() const
 {
         size_t ret = 0;
 
@@ -100,6 +102,7 @@ size_t RefComp::getSize()
 void RefComp::alignReference(const DBGraph& dbg,
                              std::vector<RefSegment>& refSegment_v) const
 {
+        size_t currSize = 0, totSize = getSize();
         refSegment_v.clear();
 
         for (size_t refID = 0; refID < refSeq_v.size(); refID++) {
@@ -116,8 +119,13 @@ void RefComp::alignReference(const DBGraph& dbg,
                 refSegment_v.back().setType(type);
 
                 // handle the other kmers in the reference sequence
-                for (it++; it.isValid(); it++) {
+                for (it++; it.isValid(); it++, currSize++) {
                         NodePosPair curr = dbg.findNPP(it.getKmer());
+
+                        if (currSize % OUTPUT_FREQUENCY == 0)
+                                cout << "Aligning reference to de Bruijn graph ("
+                                     << setprecision(2)
+                                     << Util::toPercentage(currSize, totSize) << "%)  \r";
 
                         // NOTE: it is possible that both if-statements below
                         // are executed consecutively. Do not change the order!
@@ -158,13 +166,21 @@ void RefComp::alignReference(const DBGraph& dbg,
                                               prev.getNodeID(),
                                               prev.getPosition()+1);
         }
+
+        cout << "Aligning reference to de Bruijn graph (100%)  " << endl;
 }
 
 void RefComp::annotateBreakpoints(const DBGraph& dbg,
                                   std::vector<RefSegment>& refSegment_v) const
 {
+        vector<size_t> dist_v(2*dbg.getNumNodes()+1, numeric_limits<size_t>::max());
+        vector<bool> visited_v(2*dbg.getNumNodes()+1, false);
+
         for (size_t i = 0; i < refSegment_v.size(); i++) {
                 RefSegment& rs = refSegment_v[i];
+
+                cout << "Annotating breakpoints (" << setprecision(2)
+                     << Util::toPercentage(i, refSegment_v.size()) << "%)  \r";
 
                 if (rs.getType() != RefSegmentType::BREAK)
                         continue;
@@ -187,12 +203,12 @@ void RefComp::annotateBreakpoints(const DBGraph& dbg,
                 NodePosPair srcNPP(srcID, srcPos), dstNPP(dstID, dstPos);
 
                 // try and find a path accross the breakpoint
-                size_t maxLen = max<size_t>(1000, 2*(refEnd - refBegin));
-                bool pathExists = dbg.findPath(srcNPP, dstNPP, maxLen);
+                size_t maxLen = max<size_t>(100, 2*(refEnd - refBegin));
+                bool pathExists = dbg.findPath(srcNPP, dstNPP, maxLen, dist_v, visited_v);
                 if (!pathExists) {
                         dbg.revCompNPP(srcNPP);
                         dbg.revCompNPP(dstNPP);
-                        pathExists = dbg.findPath(srcNPP, dstNPP, maxLen);
+                        pathExists = dbg.findPath(srcNPP, dstNPP, maxLen, dist_v, visited_v);
                 }
 
                 // no path found -> breakpoint
@@ -208,102 +224,17 @@ void RefComp::annotateBreakpoints(const DBGraph& dbg,
                                 rs.setType(RefSegmentType::PARALLEL);
                 }
         }
+
+        cout << "Aligning reference to de Bruijn graph (100%)" << endl;
 }
 
 void RefComp::validateGraph(const DBGraph& dbg, size_t minContigSize)
 {
-        size_t numKmers = 0, numKmerFound = 0;
-        vector<BreakPoint> breakpoint;
-
-        // align the reference sequences to the DBG to figure out breakpoints
-        for (size_t refID = 0; refID < refSeq_v.size(); refID++) {
-                bool breakPointOpen = false;
-                const string& refSeq = refSeq_v[refID];
-                size_t currContigSize = 0;
-
-                // handle the first kmer separately
-                KmerIt it(refSeq);
-                NodePosPair prev = dbg.findNPP(it.getKmer());
-                if (prev.isValid()) {
-                        numKmerFound++;
-                        currContigSize++;
-                } else {
-                        breakpoint.push_back(BreakPoint(refID, 0));
-                        breakPointOpen = true;
-                }
-
-                // handle the other kmers
-                for (it++; it.isValid(); it++) {
-                        Kmer kmer = it.getKmer();
-
-                        NodePosPair curr = dbg.findNPP(kmer);
-
-                        // update kmer counters
-                        numKmers++;
-                        if (curr.isValid())
-                                numKmerFound++;
-
-                        // if the kmer is connected to the previous one, get out
-                        if (dbg.consecutiveNPP(prev, curr)) {
-                                currContigSize++;
-                                if (currContigSize >= minContigSize)
-                                        breakPointOpen = false;
-                                prev = curr;
-                                continue;
-                        }
-
-                        // update or create a new breakpoint
-                        if (breakPointOpen) {
-                                for (size_t i = 0; i < currContigSize + 1; i++)
-                                        breakpoint.back().extendBreakPoint();
-                        } else {
-                                breakpoint.push_back(BreakPoint(refID, it.getOffset()));
-                                breakPointOpen = true;
-                        }
-
-                        currContigSize = 0;
-                        prev = curr;
-                }
-        }
-
-        double fracFound = Util::toPercentage(numKmerFound, numKmers);
-
-        cout.precision(5);
-        cout << "\tValidation report: " << endl;
-        cout << "\tNumber of k-mers in the DBG: " << numKmerFound << "/" << numKmers
-             << " (" << fracFound << "%)" << endl;
-        cout << "\tNumber of breakpoints: " << breakpoint.size() << endl;
-
-        // figure out what kind of breakpoints we have
-        for (const auto& it : breakpoint) {
-
-                size_t begin = it.getBegin();
-                size_t end = it.getEnd();
-                const string& refSeq = refSeq_v[it.getRefID()];
-
-                cout << "\t" << it << " ";
-
-                if (begin == 0) {
-                        cout << "**" << " - ";
-                } else {
-                        Kmer kmer(refSeq, begin-1);
-                        NodePosPair npp = dbg.findNPP(kmer);
-                        cout << npp.getNodeID() << " (" << npp.getPosition() << ") - ";
-                }
-
-                if (end >= (refSeq.size() - Kmer::getK() + 1)) {
-                        cout << "**" << endl;
-                } else {
-                        Kmer kmer(refSeq, end);
-                        NodePosPair npp = dbg.findNPP(kmer);
-                        cout << npp.getNodeID() << " (" << npp.getPosition() << ")" << endl;
-                }
-        }
-
-        cout << " =================================================== " << endl;
         vector<RefSegment> refSegments_v;
 
         alignReference(dbg, refSegments_v);
+
+        cout << "Annotating alignments" << endl;
         annotateBreakpoints(dbg, refSegments_v);
         printSegments(refSegments_v);
 }

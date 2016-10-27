@@ -570,6 +570,8 @@ bool DBGraph::bubbleDetection(NodeID srcID, vector<NodeID>& visited,
                               double covCutoff,
                               size_t maxMargLength, size_t maxNodesVisited)
 {
+        if (getSSNode(srcID).getNumRightArcs() < 2)
+                return false;
         priority_queue<PathDFS, vector<PathDFS>, PathDFSComp> heap;
         heap.push(PathDFS(srcID, 0));
 
@@ -651,15 +653,11 @@ void DBGraph::bubbleDetectionThread(size_t threadID, ParGraph& wlb,
                                 continue;
 
                         // handle the positive node
-                        if (node.getNumRightArcs() < 2)
-                                continue;
                         bubbleDetection(id, visited, prevNode, nodeColor,
                                         covCutoff, maxMargLength,
                                         settings.getBubbleDFSNodeLimit());
 
                         // handle the negative node
-                        if (node.getNumLeftArcs() < 2)
-                                continue;
                         bubbleDetection(-id, visited, prevNode, nodeColor,
                                         covCutoff, maxMargLength,
                                         settings.getBubbleDFSNodeLimit());

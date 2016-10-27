@@ -246,13 +246,13 @@ public:
          * @brief Get the size of the reference contigs
          * @return The size of the reference contigs
          */
-        size_t getSize();
+        size_t getSize() const;
 
         /**
          * @brief Get the number of contigs
          * @return The number of contigs
          */
-        size_t getNumContigs() { return refSeq_v.size(); }
+        size_t getNumContigs() const { return refSeq_v.size(); }
 
         /**
          * @brief Align reference to a de Bruijn graph

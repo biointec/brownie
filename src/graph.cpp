@@ -750,7 +750,8 @@ bool DBGraph::dijkstra(NodeID srcID, NodeID dstID, size_t maxLen,
 }
 
 bool DBGraph::findPath(const NodePosPair& srcNpp, const NodePosPair& dstNpp,
-                       size_t maxLen) const
+                       size_t maxLen, vector<size_t>& dist_v,
+                       vector<bool>& visited_v) const
 {
         // shortcut notation
         NodeID srcID = srcNpp.getNodeID();
@@ -773,10 +774,7 @@ bool DBGraph::findPath(const NodePosPair& srcNpp, const NodePosPair& dstNpp,
                 return false;
         maxLen -= correction;
 
-        // is the dijkstra algorithm to figure out if there exists a path
-        vector<size_t> dist_v(2*numNodes+1, numeric_limits<size_t>::max());
-        vector<bool> visited_v(2*numNodes+1, false);
-
+        // use the dijkstra algorithm to figure out if there exists a path
         return dijkstra(srcID, dstID, maxLen, dist_v, visited_v);
 }
 
