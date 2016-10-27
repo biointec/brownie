@@ -163,8 +163,8 @@ void Brownie::stageFour()
         DBGraph graph(settings);
         Util::startChrono();
         cout << "Creating graph... "; cout.flush();
-        graph.loadGraph(getBinNodeFilename(3),
-                        getBinArcFilename(3),
+        graph.loadGraph(getNodeFilename(3),
+                        getArcFilename(3),
                         getMetaDataFilename(3));
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << graph.getGraphStats() << endl;
