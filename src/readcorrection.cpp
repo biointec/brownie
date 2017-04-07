@@ -232,7 +232,7 @@ void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& n
 
                 int thisScore = alignment.align(readOL, nodeOL);
                 int nextScore = currScore + thisScore;
-                float nextRelScore = (float)thisScore / (float)nextNode.getMarginalLength();
+                float nextRelScore = (float)thisScore / (float)OLSize;
 
                 dfsNode.push_back(DFSNode(nextID, nextReadPos, nextScore, nextRelScore));
 
@@ -258,7 +258,7 @@ void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& n
 
                 // save and, if necessary, update the best score
                 int prevBestScore = bestScore;
-                if ((nextScore > bestScore) && (currReadPos + OLSize > seedLast)) {
+                if ((nextScore > bestScore) /*&& (currReadPos + OLSize > seedLast)*/) {
                         bestScore = nextScore;
                         seedLast = currReadPos + OLSize;
                 }
