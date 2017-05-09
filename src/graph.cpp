@@ -23,6 +23,7 @@
 #include "settings.h"
 #include "nodeendstable.h"
 #include "library.h"
+#include <cmath>
 
 #include <mutex>
 #include <queue>

@@ -25,6 +25,7 @@
 #include "kmertable.h"
 #include "readcorrection.h"
 #include "refcomp.h"
+#include <cmath>
 
 using namespace std;
 

@@ -21,6 +21,7 @@
 #include "graph.h"
 #include "settings.h"
 #include "library.h"
+#include <cmath>
 
 using namespace std;
 
