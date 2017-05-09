@@ -117,7 +117,7 @@ void Settings::parseCommandLineArguments(int argc, char** args,
                         // exit(EXIT_SUCCESS);
                 } else if (arg == "graphCorrection"){
                         skipStage5 = true;
-                } else if (arg == "errorCorrection") {
+                } else if (arg == "readCorrection") {
                         // default conditions, do nothing
                 } else if (arg == "graphConstruction"){
                         skipStage4 = true;
