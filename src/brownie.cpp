@@ -27,6 +27,7 @@
 #include "kmeroverlaptable.h"
 #include "kmertable.h"
 #include "readcorrection.h"
+#include <cmath>
 
 using namespace std;
 
