@@ -24,7 +24,6 @@
 
 #include <queue>
 #include <map>
-
 using namespace std;
 
 // ============================================================================
@@ -128,7 +127,14 @@ void DBGraph::getUniquePath(const std::vector<NodeID>& path,
                 break;
         }
 }
+string DBGraph::getPathSeq(const vector<NodeID>& path){
+        string seq = "";
+        for (auto it : path) {
+                seq = seq + getSSNode(it).substr(Kmer::getK()-1, getSSNode(it).getMarginalLength());
+        }
+        return seq;
 
+}
 double DBGraph::getPathAvgKmerCov(const vector<NodeID>& path)
 {
         double totKmer = 0, totLen = 0;
@@ -233,6 +239,7 @@ bool DBGraph::flowCorrection(NodeID nodeID, double covCutoff)
 // PUBLIC CORRECTGRAPH.CPP (STAGE 4 ROUTINES)
 // ============================================================================
 
+
 bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
 {
 #ifdef DEBUG
@@ -240,7 +247,6 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
         size_t tps=0, tns=0, fps=0,fns=0;
         size_t tpj=0, tnj=0, fpj=0,fnj=0;
 #endif
-
         size_t numDeleted = 0;
         for (NodeID id = 1; id <= numNodes; id++) {
                 SSNode node = getSSNode(id);
@@ -254,17 +260,88 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                         continue;
 
                 SSNode startNode = (rightDE) ? getSSNode(-id) : getSSNode(id);
-                bool remove = ((startNode.getAvgKmerCov() <= covCutoff) &&
-                               (startNode.getMarginalLength() <= maxMargLength));
+
+                bool realPathExist=false;
+
+                //normal tips
+                if (startNode.getNumRightArcs()==1){
+                        SSNode alternative;
+                        SSNode currNode = getSSNode(startNode.rightBegin()->getNodeID());
+                        if (currNode.getNumLeftArcs()<=1)
+                                continue;
+                        ArcIt it = currNode.leftBegin();
+                        do{
+                                alternative = getSSNode(it->getNodeID());
+                                if (startNode.getNodeID()!=alternative.getNodeID() && alternative.getAvgKmerCov()>=startNode.getAvgKmerCov()){
+                                        string currStr="", altStr="";
+                                        currStr = startNode.getSequence();
+                                        altStr = alternative.getSequence();
+                                        currStr = currStr.substr(currStr.length() - min (currStr.length(),altStr.length() ),min (currStr.length(),altStr.length() ));
+                                        altStr = altStr.substr(altStr.length()- min( currStr.length(),altStr.length() ),min (currStr.length(),altStr.length() ));
+
+                                        if ( alignment.align(currStr,altStr)> ( (int) max( currStr.length(),altStr.length() ) / 3)){
+                                                realPathExist=true;
+                                                break;
+                                        }
+
+                                }
+                                it++;
+                        }
+                        while (it != currNode.leftEnd());
+
+                }
+                bool isolated = false;
+                bool joinedTip = false;
+                //isolated tips
+                if (startNode.getNumRightArcs()==0 ){
+                        isolated = true;
+                        realPathExist=true;
+                }
+                // joined Tip
+                if ( startNode.getNumRightArcs()>1 ){
+                        joinedTip = true;
+                        realPathExist = true;
+                }
+                // joined Tip
+                // if both arcs have less cov than the cutoff then remove the join tips, otherwise remove only the less covered link
+                if ( startNode.getNumRightArcs()>1 ){
+                        joinedTip = true;
+                        realPathExist = true;
+                        ArcIt it = startNode.rightBegin();
+                        while (it != startNode.rightEnd()){
+                                double arcCov = startNode.getRightArc(getSSNode(it->getNodeID()).getNodeID())->getCoverage();
+                                if (arcCov > covCutoff)
+                                        realPathExist = false;
+                                it++;
+                        }
+                }
+                if (joinedTip && !realPathExist){
+                        ArcIt it = startNode.rightBegin();
+                        SSNode nodeBefore;
+                        double arcCovMin = startNode.getRightArc(getSSNode(it->getNodeID()).getNodeID())->getCoverage();
+                        while (it != startNode.rightEnd()){
+                                double arcCov = startNode.getRightArc(getSSNode(it->getNodeID()).getNodeID())->getCoverage();
+                                if (arcCov <= arcCovMin){
+                                        nodeBefore = getSSNode(it->getNodeID());
+                                        arcCovMin = arcCov;
+                                }
+                                it++;
+                        }
+                        if (arcCovMin <= covCutoff){
+                                removeArc(startNode.getNodeID(),nodeBefore.getNodeID());
+                        }
+                }
+
+                bool remove = ((startNode.getAvgKmerCov() <= (covCutoff)) &&
+                (startNode.getMarginalLength() <= maxMargLength)&& realPathExist);
                 if (remove) {
                         removeNode(startNode.getNodeID());
                         numDeleted++;
                 }
 
-#ifdef DEBUG
-                bool isolated = rightDE && leftDE;
-                bool joinedTip = startNode.getNumRightArcs() > 1;
 
+
+#ifdef DEBUG
                 if (remove) {
                         if (trueMult.size()>0&& trueMult[id] > 0) {
                                 if (isolated)
@@ -300,11 +377,10 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                 }
 #endif
         }
-
         cout << "\tClipped " << numDeleted << " nodes" << endl;
 
 #ifdef DEBUG
-        /*cout << "\t===== DEBUG: tip clipping report =====" << endl;
+        cout << "\t===== DEBUG: tip clipping report =====" << endl;
         cout << "\tIsolated TP: " << tps << "\tTN: "<< tns << "\tFP: " << fps << "\tFN: "<< fns << endl;
         cout << "\tSensitivity: " << 100.0 * Util::getSensitivity(tps, fns) << "%" << endl;
         cout << "\tSpecificity: " << 100.0 * Util::getSpecificity(tns, fps) << "%" << endl;
@@ -316,10 +392,10 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
         cout << "\tTip TP: " << tp << "\tTN: " << tn << "\tFP: " << fp << "\tFN: " << fn << endl;
         cout << "\tSensitivity: " << 100.0 * Util::getSensitivity(tp, fn) << "%" << endl;
         cout << "\tSpecificity: " << 100.0 * Util::getSpecificity(tn, fp) << "%" << endl;
-        cout << "\t===== DEBUG: end =====" << endl;*/
+        cout << "\t===== DEBUG: end =====" << endl;
 #endif
 
-        return  numDeleted > 0;
+        return  numDeleted > 10;
 }
 
 void DBGraph::concatenateAroundNode(NodeID seedID, vector<NodeID>& nodeListv)
@@ -525,7 +601,17 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
         cout << subPathB << endl;
         cout << covSubPathB << endl;*/
 
-        if ((lowCov <= covCutoff) && !lowCovPath.empty()) {
+       AlignmentJan ali(1000, 2, 1, -1, -3);
+       string pathAstr = getPathSeq(pathA);
+       string pathBstr = getPathSeq(pathB);
+       pathAstr = pathAstr.substr(0,min (pathAstr.length(),pathBstr.length() ));
+       pathBstr = pathBstr.substr(0,min (pathAstr.length(),pathBstr.length() ));
+       if ( ali.align(pathAstr,pathBstr)<((int)min( pathAstr.length(),pathBstr.length() ) / 3)){
+               return false;
+       }  
+
+
+       if ((lowCov <= covCutoff) && !lowCovPath.empty()) {
                 //removePath(lowCovPath);
                 flagPath(lowCovPath);
                 return true;
