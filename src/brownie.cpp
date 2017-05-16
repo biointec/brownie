@@ -63,8 +63,8 @@ void Brownie::stageOne()
         cout << "Writing kmer file...";
         cout.flush();
         Util::startChrono();
-        //readParser->writeAllKmers(getKmerFilename());
-        readParser->writeKmersWithCovGTOne(getKmerFilename());
+        readParser->writeAllKmers(getKmerFilename());
+        //readParser->writeKmersWithCovGTOne(getKmerFilename());
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
         delete readParser;
@@ -170,7 +170,11 @@ void Brownie::stageFour()
         cout << graph.getGraphStats() << endl;
 
         graph.loadKmerSpectrumFit(getSpectrumFitFilename());
-        double cutoff = graph.getCovCutoff();
+        double cutoff = settings.getCutOffValue();
+        graph.loadKmerSpectrumFit(getSpectrumFitFilename());
+        if (cutoff == 0){
+                cutoff = graph.getCovCutoff();
+        }   
 
 #ifdef DEBUG
 {
@@ -185,37 +189,44 @@ void Brownie::stageFour()
         graph.setTrueNodeMultiplicity(trueMult);
 }
 #endif
+        bool change = true;
+        while (change){
+                change = false;
+                // TIP CLIPPING
+                Util::startChrono();
+                cout << "Cleaning graph (tips, cov-cutoff = " << cutoff
+                << ", lmax = " << libraries.getAvgReadLength() << ")\n";
+                while (graph.clipTips(cutoff, libraries.getAvgReadLength())) {
+                        graph.concatenateNodes();
+                        cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" << endl;
+                        change = true;
+                }
+                cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
-        // TIP CLIPPING
-        Util::startChrono();
-        cout << "Cleaning graph (tips, cov-cutoff = " << cutoff
-             << ", lmax = " << libraries.getAvgReadLength() << ")\n";
-        while (graph.clipTips(cutoff, libraries.getAvgReadLength())) {
-                graph.concatenateNodes();
-                cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" << endl;
-        }
-        cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
+                // BUBBLE DETECTION
+                Util::startChrono();
+                cout << "Cleaning graph (bubbles, cov-cutoff = " << cutoff
+                << ", lmax = " << libraries.getAvgReadLength() << ", maxvisits = "
+                << settings.getBubbleDFSNodeLimit() << ", threads = "
+                << settings.getNumThreads() << ")\n";
+                while (graph.bubbleDetection(cutoff, libraries.getAvgReadLength())) {
+                        graph.concatenateNodes();
+                        cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
+                        change = true;
+                }
+                cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
-        // BUBBLE DETECTION
-        Util::startChrono();
-        cout << "Cleaning graph (bubbles, cov-cutoff = " << cutoff
-             << ", lmax = " << libraries.getAvgReadLength() << ", maxvisits = "
-             << settings.getBubbleDFSNodeLimit() << ", threads = "
-             << settings.getNumThreads() << ")\n";
-        while (graph.bubbleDetection(cutoff, libraries.getAvgReadLength())) {
-                graph.concatenateNodes();
-                cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
-        }
-        cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
+                // FLOW CORRECTION
+                Util::startChrono();
+                cout << "Cleaning graph (flow correction)\n";
+                while (graph.flowCorrection()) {
+                        graph.concatenateNodes();
+                        cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
+                        change = true;
+                }
+                cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
+        }      
 
-        // FLOW CORRECTION
-        Util::startChrono();
-        cout << "Cleaning graph (flow correction)\n";
-        while (graph.flowCorrection()) {
-                graph.concatenateNodes();
-                cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
-        }
-        cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
 #ifdef DEBUG
         Util::startChrono();
@@ -355,11 +366,11 @@ void Brownie::assembleModule()
         else
                 cout << "Files produced by this stage appear to"
                         " be present, skipping stage 5...\n";
-        if (stageSixNecessary())
+        /*if (stageSixNecessary())
                 stageSix();
         else
                 cout << "Files produced by this stage appear to"
-                        " be present, skipping stage 6...\n";
+                        " be present, skipping stage 6...\n";*/
 }
 
 void Brownie::visualizeModule()
