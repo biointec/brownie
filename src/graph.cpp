@@ -87,7 +87,7 @@ void ParGraph::getNodeChunk(size_t& chunkOffset, size_t& chunkSize)
 // ============================================================================
 
 DBGraph::DBGraph(const Settings& settings) : settings(settings),
-nodes(NULL), arcs(NULL), numNodes(0), numArcs(0) {
+nodes(NULL), arcs(NULL), numNodes(0), numArcs(0), alignment(1000, 2, 1, -1, -3) {
         DBGraph::graph = this;
 }
 

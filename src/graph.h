@@ -20,7 +20,7 @@
 
 #ifndef DBGRAPH_H
 #define DBGRAPH_H
-
+#include "alignment.h"
 #include "global.h"
 #include "ssnode.h"
 #include "dsnode.h"
@@ -181,7 +181,7 @@ private:
         KmerSpectrum kmerSpectrum;      // kmer spectrum
         NodeChainContainer ncc;         // node chain container
         NodeChainContainer trueNcc;
-
+	AlignmentJan alignment;
 #ifdef DEBUG
         std::vector<size_t> trueMult;
 #endif
@@ -442,6 +442,13 @@ private:
          */
         void flagArc(NodeID leftID, NodeID rightID);
 
+         /**
+         * Get the content sequence of a path
+         * @param path Input path sequence
+         * @return A Concatination of sequences in the path
+         */
+
+         string getPathSeq(const vector<NodeID>& path);
         /**
          * Given a node and a list of previous nodes, extract the path
          * @param dstID Identifier of the last node
