@@ -93,6 +93,13 @@ public:
          * Print matrix to stdout
          */
         void printAlignment(const string &s1, const string &s2) const;
+	 /**
+         * compare two sequences based on the alignment and return true if the errors happened locally
+         * @param s1 First string
+         * @param s2 Second string
+         * @return true if erros are locally distributed
+         */
+        bool detectLocalHammering(const string& s1, const string& s2)const;
 };
 
 #endif
