@@ -123,15 +123,6 @@ bool cmssn(const SSNode& first, const SSNode & second ) {
 
 
 }
-/**
- * this routine do the following things
- * 1. calculation of avg and std of node kmer coverage
- * 2. calculation of read start coverage mean
- * 3. for every node it calculates the MULTIPLICITY
- * 4. for every node it calculates the certainity of our guess about MULTIPLICITY
- * 5. for every node it calculates the inCorrctnessRatio of our guess about MULTIPLICITY
- *
- */
 
 
 void DBGraph::extractStatistic(int round) {
@@ -240,13 +231,7 @@ void DBGraph::extractStatistic(int round) {
         }
 
 }
-/**
- * this routine is used to check if the currNode can be a parallel path to some other nodes
- * the root node is also given.
- * this routine is used as a subroutin of deleteUnreliableNodes
- * @return true if the given nodes is a bubble initiate from rootNode
- *
- */
+
 
 bool DBGraph::nodeIsBubble(SSNode rootNode, SSNode currNode){
         if(rootNode.getNumRightArcs()>1&& hasLowCovNode(rootNode)){
@@ -260,6 +245,7 @@ bool DBGraph::nodeIsBubble(SSNode rootNode, SSNode currNode){
                                 continue;
                         if(up.isValid()&&down.isValid())
                         {
+
                                 bool upIsBubble=true;
                                 if (whichOneIsbubble(rootNode,upIsBubble,up, down,false,this->estimatedKmerCoverage)){
                                         if (upIsBubble&& up.getNodeID()==currNode.getNodeID())
@@ -275,13 +261,6 @@ bool DBGraph::nodeIsBubble(SSNode rootNode, SSNode currNode){
         }
         return false;
 }
-/**
- * check nodes to see wether is reliable or not
- * a node is reliable if it has a high confidenceRatio and low inCorrctnessRatio
- * these terms are defined in extractStatistic routine
- * @return true if the node is reliable
- */
-
 
 bool DBGraph::checkNodeIsReliable(SSNode node){
         if (node.getMarginalLength()< Kmer::getK()) // smaller nodes might not be correct, these ndoes can never be deleted
@@ -289,7 +268,7 @@ bool DBGraph::checkNodeIsReliable(SSNode node){
         pair<int, pair<double,double> > result=nodesExpMult[abs( node.getNodeID())];
         double confidenceRatio=result.second.first;
         double inCorrctnessRatio=result.second.second;
-        if (node.getNumRightArcs()<2)
+        if(node.getNodeKmerCov()<cutOffvalue)
                 return false;
         if (1/confidenceRatio>.001)
                 return false;
@@ -297,15 +276,7 @@ bool DBGraph::checkNodeIsReliable(SSNode node){
                 return false;
         return true;
 }
-/**
- * this routine loops over all nodes, for a reliable node N with MULTIPLICITY(M)
- * it should have at most M outgoing arcs. Therefore we find extra nodes with low coverage
- * or extra nodes wich are appeared as tips or bubbles.
- * @return true if any changes happens
- * the second part of this routine looks for the adjacent nodes with same MULTIPLICITY
- * if they have some outgoing or ingoing arcs with low coverage those nodes should be
- * deleted and these two adjacent reliable nodes should be connected later.
- */
+
 bool DBGraph::deleteUnreliableNodes(){
       bool changeIn1=deleteExtraAttachedNodes();
       bool changeIn2=connectSameMulNodes();
@@ -326,41 +297,54 @@ bool DBGraph::deleteExtraAttachedNodes(){
                         continue;
                 if (!checkNodeIsReliable(node))
                         continue;
-                if(node.getExpMult()<node.getNumRightArcs())
+                if (node.getNumRightArcs()<2)
                         continue;
+                if(node.getExpMult()>=node.getNumRightArcs()){
+                        continue;
+                }
 
                 ArcIt it = node.rightBegin();
-                SSNode currNode = getSSNode(it->getNodeID());
-                while(it != node.rightEnd()) {
+                do {
+                        SSNode currNode = getSSNode(it->getNodeID());
                         bool tip=currNode.getNumRightArcs()==0&&currNode.getNumLeftArcs()==1;
-                        SSNode firstNodeInUpPath;
-                        SSNode firstNodeInDoPath;
                         bool bubble=nodeIsBubble(node,currNode);
-                        double threshold=(!tip&& !bubble)? this->redLineValueCov:(this->estimatedKmerCoverage-this->estimatedMKmerCoverageSTD*2>this->redLineValueCov)?this->estimatedKmerCoverage-this->estimatedMKmerCoverageSTD*2:this->redLineValueCov;
-                        if (currNode.getNodeKmerCov()<threshold &&removeNode(currNode)){
-                                #ifdef DEBUG
-                                if (trueMult[abs(currNode.getNodeID())]>0 ){
-                                        fp++;
+                        double threshold =redLineValueCov;
+                        bool nodeIsSingle=true;
+                        if (currNode.getNumLeftArcs()>1 ||currNode.getNumRightArcs()>1)
+                                nodeIsSingle=false;
+                        if (nodeIsSingle){
+
+                                if (currNode.getNodeKmerCov()<threshold &&removeNode(currNode)){
+                                        #ifdef DEBUG
+                                        if (trueMult[abs(currNode.getNodeID())]>0 ){
+                                                fp++;
+                                        }
+                                        else{
+                                                tp++;
+                                        }
+                                        #endif
+                                        numOfDel++;
+                                        break;
                                 }
                                 else{
-                                        tp++;
+                                        #ifdef DEBUG
+                                        if (trueMult[abs(currNode.getNodeID())]>0){
+                                                tn++;
+                                        }
+                                        else{
+                                                fn++;
+                                        }
+                                        #endif
                                 }
-                                #endif
-                                numOfDel++;
-                                break;
-                        }
-                        else{
-                                #ifdef DEBUG
-                                if (trueMult[abs(currNode.getNodeID())]>0){
-                                        tn++;
+
+                        }else{
+                                if (currNode.getNodeKmerCov()<threshold){
+                                        removeLinks(node, currNode);
+                                        break;
                                 }
-                                else{
-                                        fn++;
-                                }
-                                #endif
                         }
                         it++;
-                }
+                }while(it != node.rightEnd());
         }
         cout<<endl;
         if (numOfDel>0)
@@ -385,51 +369,76 @@ bool DBGraph::connectSameMulNodes(){
                         continue;
                 if (!checkNodeIsReliable(node))
                         continue;
+                if (node.getNumRightArcs()<2 )
+                        continue;
                 ArcIt it = node.rightBegin();
                 SSNode currNode = getSSNode(it->getNodeID());
                 bool found=false;
-                while(it != node.rightEnd()) {
-                        if (!checkNodeIsReliable(currNode))
+                do{
+                        if (!checkNodeIsReliable(currNode)||
+                                currNode.getExpMult()!=node.getExpMult() )
+                        {
                                 it++;
-                        if (currNode.getExpMult()!=node.getExpMult() ||currNode.getExpMult()<2)
-                                it++;
+                                continue;
+                        }
+                        SSNode currNode = getSSNode(it->getNodeID());
                         found=true;
                         break;
-                }
+                } while (it != node.rightEnd());
                 if (found)
                 {
                         ArcIt it = node.rightBegin();
-                        while(it != node.rightEnd()) {
+                        do {
                                 SSNode victim=getSSNode(it->getNodeID());
-                                if(victim.getNodeID()!=currNode.getNodeID()&&victim.getNodeKmerCov()<threshold&& removeNode(victim)){
-                                        numOfDel++;
-                                        #ifdef DEBUG
-                                        if (trueMult[abs(victim.getNodeID())]>0)
-                                                secondFP++;
-                                        else
-                                                secondTP++;
-                                        #endif
-                                        break;
+                                bool nodeIsSingle=true;
+                                if (victim.getNumLeftArcs()>1 ||victim.getNumRightArcs()>1)
+                                        nodeIsSingle=false;
+
+                                if(victim.getNodeID()!=currNode.getNodeID()&&victim.getNodeKmerCov()<threshold){
+
+                                        if (nodeIsSingle && removeNode(victim)){
+                                                numOfDel++;
+                                                #ifdef DEBUG
+                                                if (trueMult[abs(victim.getNodeID())]>0)
+                                                        secondFP++;
+                                                else
+                                                        secondTP++;
+                                                #endif
+                                                break;
+                                        }
+                                        if (!nodeIsSingle){
+                                                removeLinks(node,victim);
+                                                break;
+                                        }
                                 }
                                 it++;
-                        }
+                        }while(it != node.rightEnd());
                         it = currNode.leftBegin();
-                        while(it!=currNode.leftEnd()){
+                        do{
                                 SSNode victim=getSSNode(it->getNodeID());
+                                bool nodeIsSingle=true;
+                                if (victim.getNumLeftArcs()>1 ||victim.getNumRightArcs()>1)
+                                        nodeIsSingle=false;
                                 if (!victim.isValid())
                                         it++;
-                                if(victim.getNodeID()!=node.getNodeID()&&victim.getNodeKmerCov()<threshold &&removeNode(victim)){
-                                        numOfDel++;
-                                        #ifdef DEBUG
-                                        if (trueMult[abs(victim.getNodeID())]>0)
-                                                secondFP++;
-                                        else
-                                                secondTP++;
-                                        #endif
-                                        break;
+                                if(victim.getNodeID()!=node.getNodeID()&&victim.getNodeKmerCov()<threshold ){
+                                        if (nodeIsSingle &&removeNode(victim)){
+                                                numOfDel++;
+                                                #ifdef DEBUG
+                                                if (trueMult[abs(victim.getNodeID())]>0)
+                                                        secondFP++;
+                                                else
+                                                        secondTP++;
+                                                #endif
+                                                break;
+                                        }
+                                        else{
+                                                removeLinks(node,victim);
+                                                 break;
+                                        }
                                 }
                                 it++;
-                        }
+                        }while(it!=currNode.leftEnd());
                 }
 
         }
@@ -451,7 +460,7 @@ bool DBGraph::connectSameMulNodes(){
  * @return true if they merge any nodes.
  *
  */
-bool DBGraph::mergeSingleNodes(bool force)
+bool DBGraph::mergeSingleNodes()
 {
         size_t numDeleted = 0;
         size_t numOfIncorrectConnection=0;
@@ -480,14 +489,31 @@ bool DBGraph::mergeSingleNodes(bool force)
                 if ( right.getNumLeftArcs() != 1 ) {
                         continue;
                 }
+                double rightCov=right.getNodeKmerCov();
+                double leftCov=left.getNodeKmerCov();
 
-                if (!force&& (left.getNodeKmerCov()<cutOffvalue || right.getNodeKmerCov()<cutOffvalue))
-                        continue;
+                /*if (right.getSequence().find("GAAAATCCACGTACCTGCGGGCAAATGGGTTTTCTACGGTCTG") != std::string::npos || right.getNodeID()==1149102)
+                {
+                        cout<<right.getSequence()<<endl;
+                        int stop =0;
+                        stop++;
+                }
+
+                if (left.getSequence().find("GAAAATCCACGTACCTGCGGGCAAATGGGTTTTCTACGGTCTG") != std::string::npos|| left.getNodeID()==1149102)
+                {
+                        cout<<left.getSequence()<<endl;
+                        int stop =0;
+                        stop++;
+                }*/
+
+
+
 
                 #ifdef DEBUG
                 if (trueMult.size()>0)
                 if ( ( ( trueMult[abs ( lID )] >= 1 ) && ( trueMult[abs ( rID )] == 0 ) ) ||
                         ( ( trueMult[abs ( rID )] >= 1 ) && ( trueMult[abs ( lID )] == 0 ) ) ){
+
                                 numOfIncorrectConnection++;
                                 trueMult[abs(lID)]=0;
                                 trueMult[abs(rID)]=0;
@@ -768,7 +794,23 @@ bool DBGraph::filterCoverage(float cutOff)
  */
 
 bool DBGraph::removeNode(SSNode & rootNode) {
-        if (rootNode.getMarginalLength()>maxNodeSizeToDel)
+
+     /*if (rootNode.getSequence().find("ATCAGGCGTTGATGTCGGATGCGGCGTAAA") != std::string::npos || abs (rootNode.getNodeID())==879710)
+        {
+                writeLocalCytoscapeGraph(4, rootNode.getNodeID(), 10);
+                cout<<rootNode.getSequence();
+                int stop =0;
+                stop++;
+        }
+        if (rootNode.getSequence().find("TTTACGCCGCATCCGACATCAACGCCTGAT") != std::string::npos)
+        {
+                cout<<rootNode.getSequence();
+                int stop =0;
+                stop++;
+        }*/
+
+
+      if (rootNode.getMarginalLength()>maxNodeSizeToDel)
                 return false;
         for ( ArcIt it2 = rootNode.leftBegin(); it2 != rootNode.leftEnd(); it2++ ) {
                 SSNode llNode = getSSNode ( it2->getNodeID() );
@@ -787,5 +829,17 @@ bool DBGraph::removeNode(SSNode & rootNode) {
         rootNode.deleteAllRightArcs();
         rootNode.deleteAllLeftArcs();
         rootNode.invalidate();
+        return true;
+}
+bool DBGraph::removeLinks(SSNode & sourceNode, SSNode & rootNode) {
+        //writeLocalCytoscapeGraph(1, sourceNode.getNodeID(), 100);
+        if (sourceNode.getRightArc(rootNode.getNodeID())==nullptr)
+                return false;
+        if (!rootNode.isValid() || !sourceNode.isValid())
+                return false;
+        bool result = sourceNode.deleteRightArc ( rootNode.getNodeID() );
+        assert ( result );
+        result = rootNode.deleteLeftArc ( sourceNode.getNodeID() );
+        assert ( result );
         return true;
 }

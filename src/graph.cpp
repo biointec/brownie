@@ -33,6 +33,7 @@ DSNode* SSNode::nodes = NULL;
 const DBGraph* DBGraph::graph = NULL;
 
 
+
 DBGraph::DBGraph(const Settings& settings) : table(NULL), settings(settings),
         nodes(NULL), arcs(NULL), numNodes(0), numArcs(0), mapType(SHORT_MAP) {
     DBGraph::graph = this;
@@ -61,37 +62,26 @@ void DBGraph::initialize()
 
 
 
-/**
- * this routine manipulate graph to detect erroneous nodes and delete them
- * the firs routine is filter coverage it removes nodes with coverage 1
- * then Tips will be deleted
- * then bubbles will be deleted
- * some Statistic will be calculated in evey round to find the multiplicity of nodes and our confidence about our guess
- * then Unreliable nodes will be detected based on our Statistic parameter in pre step
- * while loop continue until no changes would be possible
- * cut off value will be inreased by one to delete nodes with low coverage
- * if the size fo graph is lower than genome size modification stops
- *
- *
- */
+
 void DBGraph::graphPurification(string trueMultFilename,
                                 const LibraryContainer& libraries)
 {
+
         int round=1;
         updateGraphSize();
         size_t maxBubbleDepth=maxNodeSizeToDel;
         size_t increamentDepth = readLength;
         bool simplified = true;
+
         while (simplified ) {// &&
                 //
                 //*******************************************************
                 updateCutOffValue(round);
+                cout << endl << " =================== Removing tips ===================" << endl;
                 bool tips=clipTips(round);
-                if(tips) {
-                        mergeSingleNodes(true);
-                        #ifdef DEBUG
-                        compareToSolution(trueMultFilename, false);
-                        #endif
+                while(tips) {
+                        mergeSingleNodes();
+                        tips=clipTips(round);
                 }
                 //*******************************************************
                 bool bubble=false;
@@ -102,7 +92,6 @@ void DBGraph::graphPurification(string trueMultFilename,
                 #endif
                 cout << endl << " ================= Bubble Detection ==================" << endl;
                 bubble= bubbleDetection(depth);
-                mergeSingleNodes(true);
                 bool continuEdit=true;
                 size_t maxDepth=(round)*increamentDepth>maxBubbleDepth?maxBubbleDepth:(round)*increamentDepth;
                 while(depth<maxDepth&& continuEdit){
@@ -110,7 +99,7 @@ void DBGraph::graphPurification(string trueMultFilename,
                         cout << "Bubble depth: " << depth << endl;
                         continuEdit= bubbleDetection(depth);
                         if (continuEdit)
-                                mergeSingleNodes(true);
+                                mergeSingleNodes();
                         bubble=false?continuEdit:bubble;
                 }
                 #ifdef DEBUG
@@ -120,14 +109,13 @@ void DBGraph::graphPurification(string trueMultFilename,
                 extractStatistic(round);
                 cout << endl << " ============= Delete Unreliable Nodes  ==============" << endl;
                 bool deleted=deleteUnreliableNodes();
-                mergeSingleNodes(true);
+                mergeSingleNodes();
                 continuEdit=deleted;
                 while(continuEdit){
                         continuEdit=deleteUnreliableNodes();
-                        mergeSingleNodes(true);
+                        mergeSingleNodes();
                         extractStatistic(round);
                 }
-                while(mergeSingleNodes(true));
                 #ifdef DEBUG
                 compareToSolution(trueMultFilename,false);
                 updateCutOffValue(round);
@@ -138,17 +126,11 @@ void DBGraph::graphPurification(string trueMultFilename,
                 updateGraphSize();
                 round++;
         }
+
+ writeCytoscapeGraph(4);
 }
 
-/*This routine calculate the value of CutOff-cov in the first call,
- * based on cutOff value three other values will be updated in each round of calling. they increase in each round
- * cutOffvalue*.3< certainValue< cutOffvalue*.8 : the most conservative value , used to remove nodes only based on coverage
- * cutOffvalue*.7< safeValue <cutOffvalue  always lower than cutOff , used for remoing joined tips or isolated nodes.
- * cutOffvalue <redLineValue< cutOffvalue*1.5, increasing incrementally in while loop
- *
- *
- *
- */
+
 void DBGraph::updateCutOffValue(int round)
 {
         #ifdef DEBUG

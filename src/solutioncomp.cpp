@@ -22,6 +22,7 @@
 #include "graph.h"
 #include "readfile/fastafile.h"
 #include "settings.h"
+#include "kmernode.h"
 extern "C" {
 #include "suffix_tree.h"
 }
@@ -45,6 +46,10 @@ void DBGraph::writeCytoscapeGraph(int ID)
     ofstream ofs(("cytArcs_" + ss2.str() + "_" +ss.str() + ".txt").c_str());
     ofs << "Source node\tTarget node\tArc coverage"<< endl;
     for (i =srcID ; i <= numNodes; i++){
+            if (i ==470295  || i ==501429) {
+                    int stop=0;
+                    stop++;
+            }
             if (!getSSNode(i).isValid())
                     continue;
             if (nodesHandled.find(i) != nodesHandled.end())
@@ -78,10 +83,7 @@ void DBGraph::writeCytoscapeGraph(int ID)
                     // if we're too far in the graph, stop
                     //if (thisDepth > maxDepth)
                     //    continue;
-                    if (thisID== 10633) {
-                            int stop=0;
-                            stop++;
-                    }
+
                     SSNode thisNode = getSSNode(thisID);
                     for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
                             SSNode rNode = getSSNode(it->getNodeID());
@@ -196,7 +198,7 @@ void DBGraph::writeLocalCytoscapeGraph(int ID, NodeID srcID, size_t maxDepth)
     ofs.close();
 //comment by mahdi , adding new parameter in output file
     ofs.open(("cytNodes_" + ss2.str() + "_" +ss.str() + ".txt").c_str());
-    ofs << "Node ID\tTrue multiplicity\tKmer coverage\tMarginal length\tReadStCov\t Multiplicity\t MulCertaintyRatio\t correctnessRatio\t tSequence" << endl;
+    ofs << "Node ID\tTrue multiplicity\tNode Kmer coverage\tMarginal length\tReadStCov\t Multiplicity\t MulCertaintyRatio\t correctnessRatio\t tSequence" << endl;
     for (set<NodeID>::iterator it = nodesHandled.begin(); it != nodesHandled.end(); it++) {
         SSNode node = getSSNode(*it);
         double confidenceRatio=0;
@@ -209,7 +211,8 @@ void DBGraph::writeLocalCytoscapeGraph(int ID, NodeID srcID, size_t maxDepth)
             correctnessRatio=result.second.second;
         }
         ofs << *it << "\t" << trueMult[abs(*it)] << "\t" << node.getNodeKmerCov() << "\t"
-            << node.getMarginalLength() << "\t"<<double(node.getReadStartCov()/node.getMarginalLength()) <<"\t"<<nodeMultiplicity<<"\t"<< confidenceRatio<<"\t"<< correctnessRatio <<"\t"<<node.getSequence() << endl;
+            << node.getMarginalLength() << "\t"<<double(node.getReadStartCov()/node.getMarginalLength())
+            <<"\t"<<nodeMultiplicity<<"\t"<< confidenceRatio<<"\t"<< correctnessRatio <<"\t"<<node.getSequence() << endl;
     }
     ofs.close();
 #endif
@@ -266,6 +269,7 @@ void DBGraph::compareToSolution(const string& filename, bool load)
                         ofs << trueMult[id] << "\n";
                 }
                 ofs.close();
+
         }
         size_t sizeCorrect = 0;
         size_t sizeIncorrect = 0;
@@ -308,10 +312,99 @@ void DBGraph::compareToSolution(const string& filename, bool load)
              << fixed << setprecision(2)
              << Util::toPercentage(sizeCorrect, sizeGenome) << "%" << endl;
         cout << "\t===== DEBUG: end =====" << endl;
+        findBreakpoint();
 
 #endif
 }
 
+
+void DBGraph::findBreakpoint(){
+
+        #ifdef DEBUG
+        // table for the kmers in the genome
+        HashSet noneExistKmers;
+        populateTable();
+        size_t numOfKmers = 0;
+        size_t numOfFoundKmers = 0;
+        size_t numOfBreakPoint=0;
+        size_t preKmerBreakpoint=0;
+        for(const auto genome : reference){
+                NodeID preNodeID=0, curNodeID=0;
+                SSNode preNode, curNode;
+                for (KmerIt it(genome); it.isValid(); it++) {
+                        Kmer kmer = it.getKmer();
+                        NodePosPair npp = getNodePosPair(kmer);
+                        numOfKmers++;
+                        if (!npp.isValid()){
+                                if (lookup(kmer , noneExistKmers))
+                                        continue;
+                                if (numOfKmers-preKmerBreakpoint>1){
+                                        numOfBreakPoint++;
+                                        //cout<<"NotExist:\t"<<kmer<<endl;
+                                }
+                                noneExistKmers.insert(kmer.str());
+                                preKmerBreakpoint=numOfKmers;
+                                continue;
+                        }
+                        NodeID nodeID = npp.getNodeID();
+                        SSNode node = getSSNode(nodeID);
+                        numOfFoundKmers++;
+                        if (curNodeID != nodeID){
+                                preNodeID=curNodeID;
+                                preNode=curNode;
+                                curNodeID=nodeID;
+                                curNode=node;
+                                //for the first time preNodeID is 0.
+                                if ( preNodeID != 0&&  !checkConnectivity(curNode , preNode)){
+                                        if (numOfKmers-preKmerBreakpoint>1){
+                                                numOfBreakPoint++;
+                                                //cout<<"wrongCon:\t"<<kmer<<endl;
+                                        }
+                                        preKmerBreakpoint=numOfKmers;
+                                }
+                        }
+                }
+        }
+        cout << "Percentage of kmers in the genome which are exist in the graph is:\t"
+             << numOfFoundKmers << "/" << numOfKmers
+             << "("<<double(numOfFoundKmers)*100/double(numOfKmers) << "%)" << endl;
+        cout << "Number of Break Points\t" << numOfBreakPoint<< endl;
+        depopulateTable();
+        noneExistKmers.clear();
+        #endif
+}
+
+
+bool DBGraph::lookup( Kmer kmer, HashSet genomeKmerSet)
+{
+        HashSetIt it=genomeKmerSet.find(kmer.str());
+        if (it != genomeKmerSet.end())
+                return true;
+        else
+        {
+
+                it=genomeKmerSet.find(kmer.getReverseComplement().str() );
+                if (it != genomeKmerSet.end())
+                        return true;
+        }
+        return false;
+}
+bool DBGraph::checkConnectivity(SSNode curNode, SSNode preNode){
+
+        ArcIt it = preNode.rightBegin();
+        while(it != preNode.rightEnd()) {
+                if (getSSNode(it->getNodeID()).getNodeID()==curNode.getNodeID())
+                        return true;
+                it++;
+        }
+        it = preNode.leftBegin();
+        while(it != preNode.leftEnd()) {
+                if (getSSNode(it->getNodeID()).getNodeID()==curNode.getNodeID())
+                        return true;
+                it++;
+        }
+        return false;
+}
 size_t DBGraph::findAllTrueOccurences(const string& P,
                                       vector<vector<size_t> >& positions,
                                       vector<vector<size_t> >& positionsRC) const

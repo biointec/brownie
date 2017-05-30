@@ -215,6 +215,7 @@ bool DBGraph::whichOneIsbubble(SSNode rootNode,bool &first, SSNode &prevFirstNod
         if(extendFirstNode.getNumLeftArcs()>1||extendFirstNode.getNumRightArcs()>1)
                 exteIsSingle=false;
         if(onlySingle){
+
                 if(preIsSingle && exteIsSingle) {
                         bool removePre=preCov<=extCov ?true:false;//&&rootNode.getNodeKmerCov()/prevFirstNode.getNodeKmerCov()>3
                         bool removeExt=extCov<preCov  ?true:false;//&&rootNode.getNodeKmerCov()/extendFirstNode.getNodeKmerCov()>3
@@ -378,10 +379,12 @@ bool DBGraph::bubbleDetection(int depth) {
                         vector<NodeID> upPath=it.first;
                         vector<NodeID> downPath=it.second;
 
+
                         SSNode upLast=getSSNode(it.first[upPath.size()-1]);
                         SSNode downLast=getSSNode(it.second[downPath.size()-1]);
                         SSNode up=getSSNode(it.first[1]);
                         SSNode down=getSSNode(it.second[1]);
+
                         if(up.isValid()&&down.isValid())
                         {
                                 bool upIsBubble=true;
@@ -391,21 +394,32 @@ bool DBGraph::bubbleDetection(int depth) {
                                                 #ifdef DEBUG
                                                 size_t mul=trueMult[abs( up.getNodeID())];
                                                 #endif
-                                                if (removeNode(up)){
-                                                        #ifdef DEBUG
-                                                        if (mul>0)
-                                                                FP++;
-                                                        else
-                                                                TP++;
-                                                        #endif
-                                                        bubbleDeleted=true;
-                                                        numOfDel++;
+                                                bool nodeIsSingle=true;
+                                                if (up.getNumLeftArcs()>1 ||up.getNumRightArcs()>1)
+                                                        nodeIsSingle=false;
+                                                if (nodeIsSingle){
+                                                        if (removeNode(up)){
+                                                                #ifdef DEBUG
+                                                                if (mul>0)
+                                                                        FP++;
+                                                                else
+                                                                        TP++;
+                                                                #endif
+                                                                bubbleDeleted=true;
+                                                                numOfDel++;
+                                                        }
+
+                                                }else{
+                                                        removeLinks(node, up);
                                                 }
                                                 if (upLast.isValid()&&upLast.getNodeKmerCov()<cutOffvalue){//&& node.getNodeKmerCov()/upLast.getNodeKmerCov()>3){
                                                         #ifdef DEBUG
                                                         mul=trueMult[abs( upLast.getNodeID())];
                                                         #endif
-                                                        if (removeNode(upLast)){
+                                                        bool nodeIsSingle=true;
+                                                        if (upLast.getNumLeftArcs()>1 ||upLast.getNumRightArcs()>1)
+                                                                nodeIsSingle=false;
+                                                        if (nodeIsSingle &&removeNode(upLast)){
                                                                 #ifdef DEBUG
                                                                 if (mul>0)
                                                                         FP++;
@@ -421,21 +435,32 @@ bool DBGraph::bubbleDetection(int depth) {
                                                 #ifdef DEBUG
                                                 size_t mul=trueMult[abs( down.getNodeID())];
                                                 #endif
-                                                if( removeNode(down)){
-                                                        #ifdef DEBUG
-                                                        if (mul>0)
-                                                                FP++;
-                                                        else
-                                                                TP++;
-                                                        #endif
-                                                        bubbleDeleted=true;
-                                                        numOfDel++;
+                                                 bool noedIsSingle=true;
+                                                if (down.getNumLeftArcs()>1 ||down.getNumRightArcs()>1)
+                                                        noedIsSingle=false;
+                                                if (noedIsSingle){
+                                                        if( removeNode(down)){
+                                                                #ifdef DEBUG
+                                                                if (mul>0)
+                                                                        FP++;
+                                                                else
+                                                                        TP++;
+                                                                #endif
+                                                                bubbleDeleted=true;
+                                                                numOfDel++;
+                                                        }
+                                                }
+                                                else{
+                                                        removeLinks(node, down);
                                                 }
                                                 if (downLast.isValid()&&downLast.getNodeKmerCov()<cutOffvalue){// && node.getNodeKmerCov()/downLast.getNodeKmerCov()>3){
                                                         #ifdef DEBUG
                                                         mul=trueMult[abs( downLast.getNodeID())];
                                                         #endif
-                                                        if( removeNode(downLast)){
+                                                        bool noedIsSingle=true;
+                                                        if (downLast.getNumLeftArcs()>1 ||downLast.getNumRightArcs()>1)
+                                                                noedIsSingle=false;
+                                                        if( noedIsSingle&&removeNode(downLast)){
                                                                 #ifdef DEBUG
                                                                 if (mul>0)
                                                                         FP++;

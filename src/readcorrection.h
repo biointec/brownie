@@ -215,7 +215,7 @@ private:
          * @param TODO
          */
         void correctRead(std::string& read, std::vector<NodePosPair> npp,
-                         size_t& first, size_t& last);
+                         size_t& first, size_t& last, string &nodeList);
 
         /**
          * Correct a specific read record
@@ -252,7 +252,7 @@ private:
          */
         void applyReadCorrection(std::string& read,
                               const std::vector<NodePosPair>& npp,
-                              size_t first, size_t last);
+                              size_t first, size_t last, string& nodeList);
 
         void recSearch(NodeID curr, string& read, vector<NodePosPair>& npp,
                        size_t currPos, size_t& counter, int score,
@@ -272,7 +272,8 @@ private:
 
         int correctRead(const std::string& read,
                         std::string& bestCorrectedRead,
-                        const std::vector<Seed>& seeds);
+                        const std::vector<Seed>& seeds,
+                        string &bestNodeList);
 
 public:
         /**

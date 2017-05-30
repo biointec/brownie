@@ -26,7 +26,7 @@ using namespace std;
 
 bool DBGraph::clipTips(int round)
 {
-        cout <<endl<< " =================== Removing tips ===================" << endl;
+
 
 #ifdef DEBUG
         size_t tp=0, tn=0, fp=0,fn=0;
@@ -36,13 +36,45 @@ bool DBGraph::clipTips(int round)
 
         size_t numDeleted = 0, numTotal = 0;
         cout << "Cut-off value for removing tips is: " << redLineValueCov << endl;
-        double threshold = redLineValueCov;
 
-        for (NodeID id = 1; id <= numNodes; id++) {
+        #ifdef DEBUG
+        size_t Rtp=0, Rfp=0;
+        #endif
+
+      for (NodeID id = 1; id <= numNodes; id++) {
+                double threshold = redLineValueCov;
                 SSNode node = getSSNode(id);
                 if (!node.isValid())
                         continue;
                 numTotal++;
+
+
+                if (    (node.getSequence().find("AAAAAAAAAAAAAAA") != std::string::npos) ||
+                        (node.getSequence().find("TTTTTTTTTTTTTTT") != std::string::npos)||
+                        (node.getSequence().find("CCCCCCCCCCCCCCC") != std::string::npos)||
+                        (node.getSequence().find("GGGGGGGGGGGGGGG") != std::string::npos))
+                {
+                        #ifdef DEBUG
+                        if ( trueMult[id] > 0) {
+
+                                Rfp++;
+                        } else {
+                                Rtp++;
+                        }
+
+                        #endif
+                        removeNode(node);
+                }
+        }
+
+        for (NodeID id = 1; id <= numNodes; id++) {
+                double threshold = redLineValueCov;
+                SSNode node = getSSNode(id);
+                if (!node.isValid())
+                        continue;
+                numTotal++;
+                double cov=node.getNodeKmerCov();
+                string con=node.getSequence();
 
                 // check for dead ends
                 bool leftDE = (node.getNumLeftArcs() == 0);
@@ -53,17 +85,40 @@ bool DBGraph::clipTips(int round)
                 SSNode startNode = (rightDE) ? getSSNode(-id) : getSSNode(id);
                 bool isolated = rightDE && leftDE;
                 bool joinedTip = startNode.getNumRightArcs() > 1;
-                if (isolated||joinedTip)
+                if (isolated)
                         threshold=this->safeValueCov;
+                if (joinedTip)
+                        threshold=this->certainVlueCov;
                 bool remove = false;
-                if ((startNode.getNodeKmerCov() <threshold) &&
-                    (startNode.getMarginalLength() < maxNodeSizeToDel))
-                        remove = removeNode(startNode);
+                if (startNode.getNumRightArcs()==1){
+                        bool alternativeExist=false;
+                        SSNode currNode = getSSNode(startNode.rightBegin()->getNodeID());
+                        int num=currNode.getNumLeftArcs();
 
+                        if (currNode.getNumLeftArcs()<=1)
+                                continue;
+                        ArcIt it = currNode.leftBegin();
+                        do{
+                                SSNode alternative = getSSNode(it->getNodeID());
+                                if (node.getNodeID()!=alternative.getNodeID() && alternative.getNodeKmerCov()<node.getNodeKmerCov()){
+                                        alternativeExist=true;
+                                        break;
+                                }
+                                it++;
+
+                        } while (it != currNode.leftEnd());
+                        if (alternativeExist)
+                                continue;
+                }
+
+                if ((startNode.getNodeKmerCov() <threshold))
+                        remove = removeNode(startNode);
                 if (remove)
                         numDeleted++;
 
-#ifdef DEBUG
+                #ifdef DEBUG
+               cov=startNode.getNodeKmerCov();
+               con=startNode.getSequence();
 
                 if (remove) {
                         if (trueMult.size()>0&& trueMult[id] > 0) {
@@ -98,23 +153,24 @@ bool DBGraph::clipTips(int round)
                                         fn++;
                         }
                 }
-#endif
+                #endif
         }
 
         cout << "Clipped " << numDeleted << "/" << numTotal << " nodes" << endl;
 #ifdef DEBUG
         cout << "****************************************" << endl;
-        cout << "Isolated TP: " << tps << "\tTN: "<< tns << "\tFP: " << fps << "\tFN: "<< fns << endl;
-        cout << "Sensitivity: " << 100.0 * Util::getSensitivity(tps, fns) << "%" << endl;
-        cout << "Specificity: " << 100.0 * Util::getSpecificity(tns, fps) << "%" << endl;
+        cout << "repeatChar  \tTP:\t" << Rtp << "\tFP: " << Rfp <<  endl;
+        cout << "Isolated  \tTP:\t" << tps << "\tTN: "<< tns << "\tFP: " << fps << "\tFN: "<< fns << endl;
+        cout << "Sensitivity:   \t" << 100.0 * Util::getSensitivity(tps, fns) << "%" << endl;
+        cout << "Specificity:   \t" << 100.0 * Util::getSpecificity(tns, fps) << "%" << endl;
         cout << "****************************************" << endl;
-        cout << "Joined TP: " << tpj << "\tTN: " << tnj << "\tFP: " << fpj << "\tFN: " << fnj << endl;
-        cout << "Sensitivity: " << 100.0 * Util::getSensitivity(tpj, fnj) << "%" << endl;
-        cout << "Specificity: " << 100.0 * Util::getSpecificity(tnj, fpj) << "%" << endl;
+        cout << "JoinedTip \tTP:\t" << tpj << "\tTN: " << tnj << "\tFP: " << fpj << "\tFN: " << fnj << endl;
+        cout << "Sensitivity:   \t" << 100.0 * Util::getSensitivity(tpj, fnj) << "%" << endl;
+        cout << "Specificity:   \t" << 100.0 * Util::getSpecificity(tnj, fpj) << "%" << endl;
         cout << "****************************************" << endl;
-        cout << "Tip TP: " << tp << "\tTN: " << tn << "\tFP: " << fp << "\tFN: " << fn << endl;
-        cout << "Sensitivity: " << 100.0 * Util::getSensitivity(tp, fn) << "%" << endl;
-        cout << "Specificity: " << 100.0 * Util::getSpecificity(tn, fp) << "%" << endl;
+        cout << "NormalTip \tTP:\t" << tp << "\tTN: " << tn << "\tFP: " << fp << "\tFN: " << fn << endl;
+        cout << "Sensitivity:   \t" << 100.0 * Util::getSensitivity(tp, fn) << "%" << endl;
+        cout << "Specificity:   \t" << 100.0 * Util::getSpecificity(tn, fp) << "%" << endl;
 #endif
 
         return  numDeleted > 0;

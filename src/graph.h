@@ -57,6 +57,10 @@ class LibraryContainer;
 class DBGraph {
 
 private:
+    // table for the kmers in the genome
+    typedef google::sparse_hash_set<string> HashSet;
+    typedef HashSet::const_iterator HashSetIt;
+
     KmerNodeTable* table;                   // kmer node table
 
     /**
@@ -227,6 +231,13 @@ public:
     bool removeNotSingleBubbles(  SSNode &prevFirstNode ,SSNode& extendFirstNode, size_t &TP,size_t &TN,size_t &FP,size_t &FN,size_t & numOfDel);
     bool whichOneIsbubble(SSNode rootNode,bool &first, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle, double threshold);
     bool whichOneIsbubble(SSNode rootNode,bool &first, SSNode &prevFirstNode ,SSNode& extendFirstNode, bool onlySingle);
+    /**
+ * this routine is used to check if the currNode can be a parallel path to some other nodes
+ * the root node is also given.
+ * this routine is used as a subroutin of deleteUnreliableNodes
+ * @return true if the given nodes is a bubble initiate from rootNode
+ *
+ */
     bool nodeIsBubble(SSNode node, SSNode currNode);
     vector<pair<vector<NodeID>, vector<NodeID>> >  searchForParallelNodes(SSNode node,vector<NodeID> &visited, vector<NodeID> &prevNode,vector<NodeID> &nodeColor, int depth);
     vector<pair<vector<NodeID>, vector<NodeID>> > searchForParallelNodes(SSNode node, int depth);
@@ -239,9 +250,43 @@ public:
  *
  */
     bool removeNode(SSNode &rootNode);
-    bool mergeSingleNodes(bool force);
+    /**
+     * remove links between two nodes
+     * @param sourceNode the first node
+     * @param rootNode the second node
+     */
+    bool removeLinks(SSNode & sourceNode, SSNode & rootNode);
+    bool mergeSingleNodes();
+    /**
+     * this routine do the following things
+     * 1. calculation of avg and std of node kmer coverage
+     * 2. calculation of read start coverage mean
+     * 3. for every node it calculates the MULTIPLICITY
+     * 4. for every node it calculates the certainity of our guess about MULTIPLICITY
+     * 5. for every node it calculates the inCorrctnessRatio of our guess about MULTIPLICITY
+     *
+     */
+
     void extractStatistic(int round);
+    /**
+     * check nodes to see wether is reliable or not
+     * a node is reliable if it has a high confidenceRatio and low inCorrctnessRatio
+     * these terms are defined in extractStatistic routine
+     * @return true if the node is reliable
+     */
+
+
     bool checkNodeIsReliable(SSNode node);
+    /**
+     *
+     * this routine loops over all nodes, for a reliable node N with MULTIPLICITY(M)
+     * it should have at most M outgoing arcs. Therefore we find extra nodes with low coverage
+     * or extra nodes wich are appeared as tips or bubbles.
+     * @return true if any changes happens
+     * the second part of this routine looks for the adjacent nodes with same MULTIPLICITY
+     * if they have some outgoing or ingoing arcs with low coverage those nodes should be
+     * deleted and these two adjacent reliable nodes should be connected later.
+     */
     bool deleteUnreliableNodes();
     bool deleteExtraAttachedNodes();
     bool connectSameMulNodes();
@@ -286,8 +331,33 @@ public:
      * @param filename Filename of file containing true multiplicities
      */
     void compareToSolution(const string& filename,bool load);
+    /**
+     * checking the continuity of kmers in the graph by
+     * looping over the kmers in the genome. and reporting breakpoints.
+     *
+     * */
+     void findBreakpoint();
+     /**
+      * Check if two nodes are connected in the graph
+      * @param curNode the current node
+      * @param preNode the previous node
+      * @return true if two nodes are connected, otherwise false
+      *
+      */
+     bool checkConnectivity(SSNode curNode, SSNode preNode);
+     /**
+      * looks inside genome set table for a given kmer
+      * @param kmer the keyword to search in the table
+      * @return true if the word exists in the table otherwise false
+      */
+     bool lookup( Kmer kmer, HashSet genomeKmerSet);
+     /**
+      * fill an object of  google sparse hash table with kmers whcih are exist in = the genome
+      * @return void
+      */
+     void fillGenomeSet();
 
-    size_t findAllTrueOccurences(const string& str,
+     size_t findAllTrueOccurences(const string& str,
                                  std::vector<std::vector<size_t> >& pos,
                                  std::vector<std::vector<size_t> >& posRC) const;
 
@@ -328,6 +398,15 @@ public:
      * Filter the graph, based on coverage
      */
     bool filterCoverage( float round);
+    /*This routine calculate the value of CutOff-cov in the first call,
+     * based on cutOff value three other values will be updated in each round of calling. they increase in each round
+     * cutOffvalue*.3< certainValue< cutOffvalue*.8 : the most conservative value , used to remove nodes only based on coverage
+     * cutOffvalue*.7< safeValue <cutOffvalue  always lower than cutOff , used for remoing joined tips or isolated nodes.
+     * cutOffvalue <redLineValue< cutOffvalue*1.5, increasing incrementally in while loop
+     *
+     *
+     *
+     */
     void updateCutOffValue(int round);
     void plotCovDiagram(vector<pair< pair< int , int> , pair<double,int> > >& frequencyArray);
     void makeSampleReadFile(float num);
@@ -499,7 +578,20 @@ public:
      *
      */
     void writeGraphFasta() const;
-
+    /**
+     *
+     * this routine manipulate graph to detect erroneous nodes and delete them
+     * the firs routine is filter coverage it removes nodes with coverage 1
+     * then Tips will be deleted
+     * then bubbles will be deleted
+     * some Statistic will be calculated in evey round to find the multiplicity of nodes and our confidence about our guess
+     * then Unreliable nodes will be detected based on our Statistic parameter in pre step
+     * while loop continue until no changes would be possible
+     * cut off value will be inreased by one to delete nodes with low coverage
+     * if the size fo graph is lower than genome size modification stops
+     *
+    *
+    */
     void graphPurification(string trueMultFilename,
                            const LibraryContainer& libraries);
 

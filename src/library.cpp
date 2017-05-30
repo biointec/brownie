@@ -259,8 +259,9 @@ double LibraryContainer::getAvgReadLength() const
                 sumReadLength += lib.getAvgReadLength() * lib.getNumReads();
                 sumReads += lib.getNumReads();
         }
-
-        return (double)sumReadLength/(double)sumReads;
+        if (sumReadLength!=0)
+                return (double)sumReadLength/(double)sumReads;
+        return 150;
 }
 
 bool LibraryContainer::getRecordChunk(vector<ReadRecord>& buffer,
