@@ -72,7 +72,8 @@ private:
         size_t numThreads;              // number of threads
         bool doubleStranded;            // double stranded sequences
         std::string pathtotemp;         // directory specified by user
-        int runSpecificStage;           // takes a non-zero value to run a specific stage
+        int runSpecificStage;           // takes a non-zero value to run a specific stage, takes precedence over runUntilStage
+        int runUntilStage;              // takes a non-zero value to run until and including a specific stage
         std::string referenceFilename;  // reference filename
 
         int essaMEMSparsenessFactor;    // sparseness factor for essaMEM
@@ -136,6 +137,14 @@ public:
          */
         int getRunSpecificStage() const {
                 return runSpecificStage;
+        }
+
+        /**
+         * Get the maximal stage to run
+         * @return The maximal stage to run
+         */
+        int getRunUntilStage() const {
+                return runUntilStage;
         }
 
         /**

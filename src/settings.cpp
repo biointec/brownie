@@ -73,7 +73,8 @@ void Settings::printUsageAssemble() const
         cout << " [options]\n";
         cout << "  -h\t--help\t\tdisplay help page\n";
         //cout << "  -s\t--singlestranded\tenable single-stranded DNA [default = false]\n";  // This has never been tested!
-        cout << "  -sX\t--stageX\trun only stage X (X = 1,2,...,6)\n\n";
+        cout << "  -s\t--stage\trun only the specified stage (1,2,...,6)\n";
+        cout << "  -u\t--until\trun only until the specified stage (1,2,...,6)\n\n";
 
         cout << " [options arg]\n";
         cout << "  -k\t--kmersize\tkmer size [default = 31]\n";
@@ -100,7 +101,7 @@ void Settings::printUsageVisualize() const
 
         cout << " [options]\n";
         cout << "  -h\t--help\t\tdisplay help page\n";
-        cout << "  -sX\t--stageX\tcompare with stage X (X = 3,4) [default = -s4]\n\n";
+        cout << "  -s\t--stage\tcompare with stage (3,4) [default = 4]\n\n";
 
         cout << " [options arg]\n";
         cout << "  -s\t--seed\t\tseed node ID [default = first valid node]\n";
@@ -119,7 +120,7 @@ void Settings::printUsageCompare() const
 
         cout << " [options]\n";
         cout << "  -h\t--help\t\tdisplay help page\n";
-        cout << "  -sX\t--stageX\tcompare with stage X (X = 3,4) [default = -s4]\n\n";
+        cout << "  -s\t--stage\tcompare with stage (3,4) [default = 4]\n\n";
 
         cout << " [options arg]\n";
         cout << "  -k\t--kmersize\tkmer size [default = 31]\n";
@@ -146,7 +147,7 @@ void Settings::printUsageCompare() const
 
 Settings::Settings() : command(Command::none), kmerSize(31),
         numThreads(std::thread::hardware_concurrency()), doubleStranded(true),
-        runSpecificStage(0),
+        runSpecificStage(0), runUntilStage(0),
         essaMEMSparsenessFactor(1), bubbleDFSNodeLimit(1000),
         readCorrDFSNodeLimit(1000), covCutoff(0) {}
 
@@ -188,18 +189,14 @@ void Settings::parseCommandLineArgAssemble(int argc, char** args,
                 if ((arg == "-h") || (arg == "--help")) {
                         printUsageAssemble();
                         exit(EXIT_SUCCESS);
-                } else if ((arg == "-s1") || (arg == "--stage1")) {
-                        runSpecificStage = 1;
-                } else if ((arg == "-s2") || (arg == "--stage2")) {
-                        runSpecificStage = 2;
-                } else if ((arg == "-s3") || (arg == "--stage3")) {
-                        runSpecificStage = 3;
-                } else if ((arg == "-s4") || (arg == "--stage4")) {
-                        runSpecificStage = 4;
-                } else if ((arg == "-s5") || (arg == "--stage5")) {
-                        runSpecificStage = 5;
-                } else if ((arg == "-s6") || (arg == "--stage6")) {
-                        runSpecificStage = 6;
+                } else if ((arg == "-s") || (arg == "--stage")) {
+                        i++;
+                        if (i < argc)
+                                runSpecificStage = atoi(args[i]);
+                } else if ((arg == "-u") || (arg == "--untilStage")) {
+                        i++;
+                        if (i < argc)
+                                runUntilStage = atoi(args[i]);
                 } else if ((arg == "-k") || (arg == "--kmersize")) {
                         i++;
                         if (i < argc)
@@ -334,10 +331,13 @@ void Settings::parseCommandLineArgCompare(int argc, char** args,
                 if ((arg == "-h") || (arg == "--help")) {
                         printUsageCompare();
                         exit(EXIT_SUCCESS);
-                } else if ((arg == "-s3") || (arg == "--stage3")) {
-                        runSpecificStage = 3;
-                } else if ((arg == "-s4") || (arg == "--stage4")) {
-                        runSpecificStage = 4;
+                } else if ((arg == "-s") || (arg == "--stage")) {
+                        i++;
+                        if (i < argc) {
+                                int stage = atoi(args[i]);
+                                if (3 <= stage && stage <= 4)
+                                        runSpecificStage = stage;
+                        }
                 } else if ((arg == "-k") || (arg == "--kmersize")) {
                         i++;
                         if (i < argc)
