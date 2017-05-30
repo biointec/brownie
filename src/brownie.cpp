@@ -331,36 +331,28 @@ void Brownie::stageSix()
 
 void Brownie::assembleModule()
 {
-        if (stageOneNecessary())
-                stageOne();
-        else
-                cout << "Files produced by this stage appear to"
-                        " be present, skipping stage 1...\n";
-        if (stageTwoNecessary())
-                stageTwo();
-        else
-                cout << "Files produced by this stage appear to"
-                        " be present, skipping stage 2...\n";
-        if (stageThreeNecessary())
-                stageThree();
-        else
-                cout << "Files produced by this stage appear to"
-                        " be present, skipping stage 3...\n";
-        if (stageFourNecessary())
-                stageFour();
-        else
-                cout << "Files produced by this stage appear to"
-                        " be present, skipping stage 4...\n";
-        if (stageFiveNecessary())
-                stageFive();
-        else
-                cout << "Files produced by this stage appear to"
-                        " be present, skipping stage 5...\n";
-        if (stageSixNecessary())
-                stageSix();
-        else
-                cout << "Files produced by this stage appear to"
-                        " be present, skipping stage 6...\n";
+        for (int stage = 1; stage <= 6; stage++) {
+                if (stageNecessary(stage)) {
+                        if (stage == 1)
+                                stageOne();
+                        if (stage == 2)
+                                stageTwo();
+                        if (stage == 3)
+                                stageThree();
+                        if (stage == 4)
+                                stageFour();
+                        if (stage == 5)
+                                stageFive();
+                        if (stage == 6)
+                                stageSix();
+                } else {
+                        cout << "Files produced by this stage appear to"
+                             << "be present, skipping stage "
+                             << std::to_string(stage)
+                             << "..."
+                             << std::endl;
+                }
+        }
 }
 
 void Brownie::visualizeModule()
