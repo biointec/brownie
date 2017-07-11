@@ -174,7 +174,9 @@ void Brownie::stageFour()
         graph.loadKmerSpectrumFit(getSpectrumFitFilename());
         if (cutoff == 0){
                 cutoff = graph.getCovCutoff();
-        }   
+        }
+
+
 
 #ifdef DEBUG
 {
@@ -187,9 +189,11 @@ void Brownie::stageFour()
         vector<size_t> trueMult;
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);
+        refComp.extractBreakpointSubgraph(graph,"breakpoints.fasta", settings.getTempDirectory()+"Stage3_");
+        graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage3");
 }
 #endif
-        bool change = true;
+     /*   bool change = true;
         while (change){
                 change = false;
                 // TIP CLIPPING
@@ -198,9 +202,11 @@ void Brownie::stageFour()
                 << ", lmax = " << libraries.getAvgReadLength() << ")\n";
                 while (graph.clipTips(cutoff, libraries.getAvgReadLength())) {
                         graph.concatenateNodes();
+                        graph.writeCytoscapeGraph(settings.getTempDirectory() + "afterTip");
                         cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" << endl;
                         change = true;
                 }
+
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
                 // BUBBLE DETECTION
@@ -211,22 +217,25 @@ void Brownie::stageFour()
                 << settings.getNumThreads() << ")\n";
                 while (graph.bubbleDetection(cutoff, libraries.getAvgReadLength())) {
                         graph.concatenateNodes();
+                        graph.writeCytoscapeGraph(settings.getTempDirectory() + "afterBubble");
                         cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
                         change = true;
                 }
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
+                 */
                 // FLOW CORRECTION
-                Util::startChrono();
+                /*Util::startChrono();
                 cout << "Cleaning graph (flow correction)\n";
                 while (graph.flowCorrection()) {
                         graph.concatenateNodes();
                         cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
                         change = true;
                 }
-                cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
-        }      
+                cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;*/
 
+        //}
+        //graph.concatenateNodes();
 
 #ifdef DEBUG
         Util::startChrono();
@@ -238,14 +247,15 @@ void Brownie::stageFour()
         vector<size_t> trueMult;
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);
-
-        for (int i = 1; i < graph.getNumNodes(); i++) {
+        refComp.extractBreakpointSubgraph(graph,"breakpoints.fasta", settings.getTempDirectory()+"Stage4_");
+       /*for (int i = 1; i < graph.getNumNodes(); i++) {
                 SSNode node = graph.getSSNode(i);
                 if (!node.isValid())
                         continue;
                 if (trueMult[i] == 0)
                         cout << "Node " << i << " with avgKmerCov " << node.getAvgKmerCov() << " is false." << endl;
-        }
+        }*/
+       graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage4");
 #endif
 
         cout << graph.getGraphStats() << endl;
@@ -278,7 +288,7 @@ void Brownie::stageFive()
              << graph.getNumArcs() << " arcs" << endl;
 
         //cout << "Writing cytoscape graph: " << endl;
-        //graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage4", 155, 7);
+
 
         Util::startChrono();
         ReadCorrectionHandler rcHandler(graph, settings);
@@ -356,11 +366,11 @@ void Brownie::assembleModule()
         else
                 cout << "Files produced by this stage appear to"
                         " be present, skipping stage 3...\n";
-        if (stageFourNecessary())
+        //if (stageFourNecessary())
                 stageFour();
-        else
-                cout << "Files produced by this stage appear to"
-                        " be present, skipping stage 4...\n";
+        //else
+        //        cout << "Files produced by this stage appear to"
+        //                " be present, skipping stage 4...\n";
         if (stageFiveNecessary())
                 stageFive();
         else

@@ -352,6 +352,10 @@ void DBGraph::writeCytoscapeGraph(const std::string& filename,
                         PathDFS nextTop(it->getNodeID(), thisDepth + 1);
                         nodeDepth.push(nextTop);
                 }
+                if (thisNode.getNumLeftArcs() ==0 && thisNode.getNumRightArcs()==0){
+                     ofs << thisID << "\t" << ""<< "\t" << "" << "\n";
+
+                }
 
                 // mark this node as handled
                 nodesHandled.insert(thisID);
@@ -374,12 +378,115 @@ void DBGraph::writeCytoscapeGraph(const std::string& filename,
                 int thisTrueMult = 0;
 #endif
 
+
                 ofs << *it << "\t" << node.getMarginalLength() << "\t"
                     << (int)node.getNumLeftArcs() << "\t" << (int)node.getNumRightArcs() << "\t"
                     << thisTrueMult << "\t" << "0" << "\t"
                     << node.getAvgKmerCov()
                     << "\t" << double(node.getReadStartCov()/node.getMarginalLength())
                     << "\t" << node.getSequence() << "\n";
+        }
+        ofs.close();
+}
+void DBGraph::writeCytoscapeGraph(const std::string& filename,
+                                  std::set<int> &nodeSet, size_t maxDepth) const
+{
+        // a map containing nodeIDs to handle + their depth
+        priority_queue<PathDFS, vector<PathDFS>, PathDFSComp> nodeDepth;
+        // set of nodes that were handled
+        set<NodeID> nodesHandled;
+
+        // if default input values are provided, write the entire graph
+        set <int> ::iterator it;
+        for (it =nodeSet.begin();it!=nodeSet.end();it++)
+        {        // else check if seedNode is valid
+                NodeID seedNodeID = *it;
+                if ((abs(seedNodeID) > numNodes) || !getSSNode(seedNodeID).isValid()) {
+                        cerr << "WARNING: trying to use an invalid node as a "
+                                "seed in writeCytoscapeGraph!" << endl;
+                        return;
+                }
+                nodeDepth.push(PathDFS(seedNodeID, 0));
+        }
+
+        // map of all nodes in the local graph and its depth
+        ofstream ofs((filename + ".arcs").c_str());
+        if (!ofs.good())
+                cerr << "Cannot open file " << filename + ".arcs" << " for writing" << endl;
+        ofs << "Source node\tTarget node\tArc coverage" << endl;
+
+        // A) write all arcs
+        while (!nodeDepth.empty()) {
+                // get and erase the current node
+                PathDFS currTop = nodeDepth.top();
+                nodeDepth.pop();
+                NodeID thisID = currTop.nodeID;
+                size_t thisDepth = currTop.length;
+
+                // if the node was already handled, skip
+                if (nodesHandled.find(thisID) != nodesHandled.end())
+                        continue;
+
+                // if we're too far in the graph, stop
+                if (thisDepth > maxDepth) {
+                        nodesHandled.insert(thisID);
+                        continue;
+                }
+
+                // write the right arcs
+                SSNode thisNode = getSSNode(thisID);
+                for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
+                        SSNode rNode = getSSNode(it->getNodeID());
+                        if (!rNode.isValid())
+                                continue;
+                        if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
+                                continue;
+                        ofs << thisID << "\t" << it->getNodeID() << "\t" << it->getCoverage() << "\n";
+                        PathDFS nextTop(it->getNodeID(), thisDepth + 1);
+                        nodeDepth.push(nextTop);
+                }
+
+                // write the left arcs
+                for (ArcIt it = thisNode.leftBegin(); it != thisNode.leftEnd(); it++) {
+                        SSNode lNode = getSSNode(it->getNodeID());
+                        if (!lNode.isValid())
+                                continue;
+                        if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
+                                continue;
+                        if (it->getNodeID() != thisID)  // avoid writing this arc twice
+                                ofs << it->getNodeID() << "\t" << thisID << "\t" << it->getCoverage() << "\n";
+                        PathDFS nextTop(it->getNodeID(), thisDepth + 1);
+                        nodeDepth.push(nextTop);
+                }
+
+                // mark this node as handled
+                nodesHandled.insert(thisID);
+
+        }
+        ofs.close();
+
+        // B) write all nodes
+        ofs.open((filename + ".nodes").c_str());
+        if (!ofs.good())
+                cerr << "Cannot open file " << filename + ".nodes" << " for writing" << endl;
+        ofs << "Node ID\tMarginal length\tNum left arcs\tNum right arcs\tTrue multiplicity\tEstimated multiplicity"
+               "\tKmer coverage\tRead start coverage\tSequence\tinPath" << "\n";
+        for (set<NodeID>::iterator it = nodesHandled.begin(); it != nodesHandled.end(); it++) {
+                SSNode node = getSSNode(*it);
+
+#ifdef DEBUG
+                int thisTrueMult = (trueMult.empty()) ? 0 : trueMult[abs(*it)];
+#else
+                int thisTrueMult = 0;
+#endif
+                const bool is_in = nodeSet.find(*it) != nodeSet.end();
+                ofs << *it << "\t" << node.getMarginalLength() << "\t"
+                    << (int)node.getNumLeftArcs() << "\t" << (int)node.getNumRightArcs() << "\t"
+                    << thisTrueMult << "\t" << "0" << "\t"
+                    << node.getAvgKmerCov()
+                    << "\t" << double(node.getReadStartCov()/node.getMarginalLength())
+                    << "\t" << node.getSequence()
+                    <<"\t"<<is_in <<"\n";
         }
         ofs.close();
 }

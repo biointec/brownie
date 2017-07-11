@@ -275,6 +275,22 @@ public:
                               std::vector<NodeChain>& nodeChain);
 
         /**
+         * extract the set of nodes which contains the kmers of a given sequence
+         * @param dbg A const-ref to the de Bruijn graph
+         * @param refSeq given sequence
+         * @param nodeSet set of ndoes (output)
+         */
+        void extractNodeSetbySequence(const DBGraph& dbg,
+                                      std::string &refSeq, std::set<int> &nodeSet);
+        /**
+         * extract the the subgraph nearbye given sequence in a fasta file
+         * @param dbg A const-ref to the de Bruijn graph
+         * @param breakpointFileName the fasta file contains sequences which are supposed to be in breakpoint area
+         * @param tempDir the temporary directory to save Cytoscape files
+         */
+        void extractBreakpointSubgraph(const DBGraph& dbg,
+                                                std::string breakpointFileName, std::string tempDir);
+        /**
          * Calculate the true node multiplicity
          * @param dbg A const-ref to the de Bruijn graph
          * @param multiplicity Multiplicity vector

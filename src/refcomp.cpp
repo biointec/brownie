@@ -249,9 +249,10 @@ void RefComp::getTrueNodeChain(const DBGraph& dbg, vector<NodeChain>& nodeChain)
                 NodePosPair prev;
                 for (KmerIt it(refSeq); it.isValid(); it++) {
                         Kmer kmer = it.getKmer();
-                        NodePosPair curr = dbg.findNPP(kmer);
 
+                        NodePosPair curr = dbg.findNPP(kmer);
                         if (!curr.isValid()) {
+
                                 prev = curr;
                                 continue;
                         }
@@ -268,6 +269,7 @@ void RefComp::getTrueNodeChain(const DBGraph& dbg, vector<NodeChain>& nodeChain)
                         prev = curr;
                 }
         }
+
 }
 
 void RefComp::getNodeMultiplicity(const DBGraph& dbg,
@@ -327,4 +329,49 @@ void RefComp::getNodeMultiplicity(const DBGraph& dbg,
 
         cout << "Number of true nodes: " << numTrueNodes << "/" << dbg.getNumNodes() << " (" << Util::toPercentage(numTrueNodes, dbg.getNumNodes()) << "%)" << endl;
         cout << "Number of false nodes: " << numErrNodes << "/" << dbg.getNumNodes() << " (" << Util::toPercentage(numErrNodes, dbg.getNumNodes()) << "%)" << endl;
+}
+
+
+void RefComp::extractBreakpointSubgraph(const DBGraph& dbg, std::string breakpointFileName,string  tempDir){
+        std::ifstream input(breakpointFileName);
+        vector< pair<string, string> > breakpoints;
+        if (!input.good()) {
+                std::cerr << "Error opening: " << breakpointFileName << std::endl;
+                return;
+        }
+        std::string line, id ="", DNA_sequence ="" ;
+        while (std::getline(input, line).good()) {
+                if (line[0] == '>') {
+                        id = line.substr(1);
+                        if (DNA_sequence!=""){
+                                breakpoints.push_back( make_pair(id, DNA_sequence));
+                        }
+                        DNA_sequence.clear();
+                }
+                else if (line[0] != '>'){
+                        DNA_sequence += line;
+                }
+        }
+        if (DNA_sequence!=""){
+                breakpoints.push_back( make_pair(id, DNA_sequence));
+        }
+
+        for (int i = 0 ;i <breakpoints.size(); i++){
+                pair<string , string> breakPoint= breakpoints [i];
+                set<int> nodeSet;
+                extractNodeSetbySequence(dbg, breakPoint.second,nodeSet);
+                dbg.writeCytoscapeGraph( tempDir+breakPoint.first,nodeSet,1);
+        }
+}
+
+void RefComp::extractNodeSetbySequence(const DBGraph& dbg, std::string &refSeq, std::set<int> &nodeSet){
+
+        for (KmerIt it(refSeq); it.isValid(); it++) {
+                Kmer kmer = it.getKmer();
+                NodePosPair curr = dbg.findNPP(kmer);
+                if (!curr.isValid())
+
+                        continue;
+                nodeSet.insert(curr.getNodeID());
+        }
 }

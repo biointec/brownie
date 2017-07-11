@@ -21,7 +21,7 @@
 #include "graph.h"
 #include "settings.h"
 #include "correctgraph.h"
-
+#include "alignment.h"
 #include <queue>
 #include <map>
 using namespace std;
@@ -239,7 +239,172 @@ bool DBGraph::flowCorrection(NodeID nodeID, double covCutoff)
 // PUBLIC CORRECTGRAPH.CPP (STAGE 4 ROUTINES)
 // ============================================================================
 
+bool DBGraph::clipNormalTip(double covCutoff, size_t maxMargLength,SSNode startNode, SSNode nodeBefore ){
+        int simThreshold = 0;
+        size_t minLenght = 5; //tips shorter than this length will be deleted anyway
+        if (nodeBefore.getNumRightArcs()<= 1)
+                return false;
+        string currStr =startNode.getSequence();
+        string altStr = "";
+        Nucleotide::revCompl(currStr);
+        currStr = currStr.substr(Kmer::getK()-1, currStr.length()-Kmer::getK()+1);
+        //if (currStr.length() <= minLenght )
+        //        return true;
+        vector<NodeID> bestPath;
+        simThreshold = currStr.length()/3;
 
+        int sim =GetBesAlternativePath( nodeBefore.getNodeID(), currStr ,altStr, -startNode.getNodeID(), bestPath);
+        //cout <<currStr <<endl;
+        //cout <<altStr <<endl;
+        if (   sim < simThreshold)
+                return false;
+        for (auto it:bestPath){
+               if (getSSNode(it).getAvgKmerCov() < startNode.getAvgKmerCov())
+                        return false;
+        }
+        return true;
+}
+
+
+
+struct path{
+public :
+        NodeID root;
+        int simScore = 0;
+        int maxAchivableSim = 0;
+        int minAchivableSim = 0;
+        string currentPath ="";
+        string initialStr ="";
+        vector<NodeID> nodeCahin;
+        bool pathFinish = false;
+
+        path (){
+             simScore = 0 ;
+             maxAchivableSim = 0 ;
+             currentPath ="";
+
+
+        }
+        path(NodeID rodeNode,string parallelStr){
+             root = rodeNode;
+             simScore = 0 ;
+             maxAchivableSim = parallelStr.length() ;
+             minAchivableSim = -parallelStr.length() ;
+             currentPath ="";
+             nodeCahin.push_back(rodeNode);
+             initialStr = parallelStr;
+        }
+        void addNode(NodeID nodeID, string nodeStr){
+                nodeCahin.push_back(nodeID);
+                currentPath = currentPath + nodeStr;
+                if (currentPath.length() >= initialStr.length()){
+                        currentPath =currentPath.substr(0,initialStr.length());
+                        pathFinish = true;
+                }
+                updateSimScore();
+        }
+        int updateSimScore(){
+                AlignmentJan ali(1000, 2, 1, -1, -3);
+                simScore = ali.align(currentPath,initialStr.substr(0,currentPath.length()));
+                updateAchivableSim(initialStr.length()- currentPath.length());
+                return simScore;
+        }
+        void updateAchivableSim(int remainingLen){
+                maxAchivableSim = simScore + remainingLen;
+                minAchivableSim = simScore - remainingLen;
+        }
+        int getMaxAchSim(){
+                return maxAchivableSim;
+        }
+        NodeID getLastNode(){
+                return nodeCahin.back();
+        }
+
+
+};
+struct compPath{
+        bool operator()(const path &p1, const path& p2) const {
+                if ( p1.simScore > p2.simScore)
+                        return true;
+                if (p1.simScore == p2.simScore  and p1.minAchivableSim > p2.minAchivableSim)
+                        return true;
+                if (p1.simScore == p2.simScore  and p1.minAchivableSim == p2.minAchivableSim and p1.maxAchivableSim > p2.maxAchivableSim)
+                        return true;
+                return false;
+        }
+};
+int DBGraph::GetBesAlternativePath(  NodeID root, string rightPart ,string& bestAlternative, NodeID exceptionNode, vector<NodeID> & bestPathNodes)
+{
+        int maxSimScore =0;
+        int maxMinSim = -rightPart.length()*2 ;
+        int simThreshold = rightPart.length() / 3;
+        priority_queue<path, std::vector<path>, compPath > q;
+        path p(root,rightPart);
+        q.push(p);
+        while (!q.empty()){
+                path bestPath = q.top(); q.pop();
+                SSNode startNode = getSSNode( bestPath.getLastNode());
+                if (startNode.getNumRightArcs() ==0 )
+                        continue;
+                for (ArcIt it = startNode.rightBegin(); it != startNode.rightEnd(); it++) {
+                        NodeID nextID = it->getNodeID();
+                        if (nextID ==exceptionNode)
+                                continue;
+                        const SSNode nextNode =  getSSNode(nextID);
+                        string nodeStr = nextNode.substr(Kmer::getK()-1, nextNode.getMarginalLength());
+                        path newPth = bestPath;
+                        newPth.addNode(nextID, nodeStr);
+                        if (newPth.simScore > maxSimScore){
+                                maxSimScore = newPth.simScore;
+                                bestAlternative = newPth.currentPath;
+                        }
+                        if (newPth.minAchivableSim >maxMinSim){
+                                maxMinSim =newPth.minAchivableSim;
+                        }
+                        if (newPth.minAchivableSim >= simThreshold && newPth.pathFinish){
+                                bestAlternative = newPth.currentPath;
+                                bestPathNodes = newPth.nodeCahin;
+                                return newPth.minAchivableSim;
+                        }
+                        if ( !newPth.pathFinish && newPth.minAchivableSim >=maxMinSim){
+                                q.push(newPth);
+                        }
+                }
+        }
+        return maxSimScore;
+}
+
+bool DBGraph::clipJoinedTip(double covCutoff, size_t maxMargLength, SSNode startNode ){
+        size_t numDeleted = 0;
+
+        // not a joined Tip
+        if ( startNode.getNumRightArcs()<2 )
+                return false;;
+        ArcIt it = startNode.rightBegin();
+        SSNode nodeBefore;
+        double arcCovMin = startNode.getRightArc(getSSNode(it->getNodeID()).getNodeID())->getCoverage();
+        while (it != startNode.rightEnd()){
+                double arcCov = startNode.getRightArc(getSSNode(it->getNodeID()).getNodeID())->getCoverage();
+                if (arcCov <= arcCovMin){
+                        nodeBefore = getSSNode(it->getNodeID());
+                        arcCovMin = arcCov;
+                }
+                it++;
+        }
+        if (arcCovMin <=  covCutoff ){//&& clipNormalTip(covCutoff,maxMargLength,startNode,getSSNode(-nodeBefore.getNodeID() )  ) ){
+                removeArc(startNode.getNodeID(),nodeBefore.getNodeID());
+                numDeleted ++;
+
+        }
+        return numDeleted >0;
+
+}
+bool DBGraph::clipIsolatedNode(double covCutoff, size_t maxMargLength, SSNode startNode ){
+        bool remove = ((startNode.getAvgKmerCov() <= (covCutoff)) &&
+        (startNode.getMarginalLength() <= maxMargLength));
+        return remove ;
+
+}
 bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
 {
 #ifdef DEBUG
@@ -248,101 +413,52 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
         size_t tpj=0, tnj=0, fpj=0,fnj=0;
 #endif
         size_t numDeleted = 0;
+        size_t numDeletedArc =0;
         for (NodeID id = 1; id <= numNodes; id++) {
                 SSNode node = getSSNode(id);
+
                 if (!node.isValid())
                         continue;
-
                 // check for dead ends
                 bool leftDE = (node.getNumLeftArcs() == 0);
                 bool rightDE = (node.getNumRightArcs() == 0);
                 if (!leftDE && !rightDE)
                         continue;
-
                 SSNode startNode = (rightDE) ? getSSNode(-id) : getSSNode(id);
-
-                bool realPathExist=false;
-
-                //normal tips
-                if (startNode.getNumRightArcs()==1){
-                        SSNode alternative;
-                        SSNode currNode = getSSNode(startNode.rightBegin()->getNodeID());
-                        if (currNode.getNumLeftArcs()<=1)
-                                continue;
-                        ArcIt it = currNode.leftBegin();
-                        do{
-                                alternative = getSSNode(it->getNodeID());
-                                if (startNode.getNodeID()!=alternative.getNodeID() && alternative.getAvgKmerCov()>=startNode.getAvgKmerCov()){
-                                        string currStr="", altStr="";
-                                        currStr = startNode.getSequence();
-                                        altStr = alternative.getSequence();
-                                        currStr = currStr.substr(currStr.length() - min (currStr.length(),altStr.length() ),min (currStr.length(),altStr.length() ));
-                                        altStr = altStr.substr(altStr.length()- min( currStr.length(),altStr.length() ),min (currStr.length(),altStr.length() ));
-
-                                        if ( alignment.align(currStr,altStr)> ( (int) max( currStr.length(),altStr.length() ) / 3)){
-                                                realPathExist=true;
-                                                break;
-                                        }
-
-                                }
-                                it++;
-                        }
-                        while (it != currNode.leftEnd());
-
-                }
                 bool isolated = false;
                 bool joinedTip = false;
+                bool remove = false;
+
+                if (startNode.getNumRightArcs()>1)
+                        if (clipJoinedTip(covCutoff, maxMargLength,startNode))
+                                numDeletedArc ++;
+                if  ((startNode.getAvgKmerCov() > (covCutoff)) || (startNode.getMarginalLength() > maxMargLength))
+                        continue ;
+
+                if (startNode.getNumRightArcs()==1){
+                         SSNode nodeBefore = getSSNode(-startNode.rightBegin()->getNodeID());
+                        if (clipNormalTip(covCutoff, maxMargLength, startNode,nodeBefore ))
+                                remove = true;
+
+                }
                 //isolated tips
                 if (startNode.getNumRightArcs()==0 ){
                         isolated = true;
-                        realPathExist=true;
-                }
-                // joined Tip
-                if ( startNode.getNumRightArcs()>1 ){
-                        joinedTip = true;
-                        realPathExist = true;
-                }
-                // joined Tip
-                // if both arcs have less cov than the cutoff then remove the join tips, otherwise remove only the less covered link
-                if ( startNode.getNumRightArcs()>1 ){
-                        joinedTip = true;
-                        realPathExist = true;
-                        ArcIt it = startNode.rightBegin();
-                        while (it != startNode.rightEnd()){
-                                double arcCov = startNode.getRightArc(getSSNode(it->getNodeID()).getNodeID())->getCoverage();
-                                if (arcCov > covCutoff)
-                                        realPathExist = false;
-                                it++;
-                        }
-                }
-                if (joinedTip && !realPathExist){
-                        ArcIt it = startNode.rightBegin();
-                        SSNode nodeBefore;
-                        double arcCovMin = startNode.getRightArc(getSSNode(it->getNodeID()).getNodeID())->getCoverage();
-                        while (it != startNode.rightEnd()){
-                                double arcCov = startNode.getRightArc(getSSNode(it->getNodeID()).getNodeID())->getCoverage();
-                                if (arcCov <= arcCovMin){
-                                        nodeBefore = getSSNode(it->getNodeID());
-                                        arcCovMin = arcCov;
-                                }
-                                it++;
-                        }
-                        if (arcCovMin <= covCutoff){
-                                removeArc(startNode.getNodeID(),nodeBefore.getNodeID());
-                        }
+                        if (clipIsolatedNode(covCutoff, maxMargLength, startNode))
+                                remove = true;
                 }
 
-                bool remove = ((startNode.getAvgKmerCov() <= (covCutoff)) &&
-                (startNode.getMarginalLength() <= maxMargLength)&& realPathExist);
-                if (remove) {
+                if (remove){
                         removeNode(startNode.getNodeID());
-                        numDeleted++;
+                        numDeleted ++;
+
                 }
 
 
 
 #ifdef DEBUG
                 if (remove) {
+                        //cout << "node " <<id << " detected as a tip and removed" <<endl;
                         if (trueMult.size()>0&& trueMult[id] > 0) {
                                 if (isolated)
                                         fps++;
@@ -385,17 +501,14 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
         cout << "\tSensitivity: " << 100.0 * Util::getSensitivity(tps, fns) << "%" << endl;
         cout << "\tSpecificity: " << 100.0 * Util::getSpecificity(tns, fps) << "%" << endl;
         cout << "\t****************************************" << endl;
-        cout << "\tJoined TP: " << tpj << "\tTN: " << tnj << "\tFP: " << fpj << "\tFN: " << fnj << endl;
-        cout << "\tSensitivity: " << 100.0 * Util::getSensitivity(tpj, fnj) << "%" << endl;
-        cout << "\tSpecificity: " << 100.0 * Util::getSpecificity(tnj, fpj) << "%" << endl;
         cout << "\t****************************************" << endl;
-        cout << "\tTip TP: " << tp << "\tTN: " << tn << "\tFP: " << fp << "\tFN: " << fn << endl;
+        cout << "\tNormal TP: " << tp << "\tTN: " << tn << "\tFP: " << fp << "\tFN: " << fn << endl;
         cout << "\tSensitivity: " << 100.0 * Util::getSensitivity(tp, fn) << "%" << endl;
         cout << "\tSpecificity: " << 100.0 * Util::getSpecificity(tn, fp) << "%" << endl;
         cout << "\t===== DEBUG: end =====" << endl;
 #endif
 
-        return  numDeleted > 10;
+        return  numDeleted > 0 || numDeletedArc >0;
 }
 
 void DBGraph::concatenateAroundNode(NodeID seedID, vector<NodeID>& nodeListv)
@@ -494,6 +607,7 @@ bool DBGraph::concatenateNodes()
                         numConcatenations += concatenation.size() - 1;
 
 #ifdef DEBUG
+
                 if (trueMult.empty())
                         continue;
 
@@ -604,11 +718,9 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
        AlignmentJan ali(1000, 2, 1, -1, -3);
        string pathAstr = getPathSeq(pathA);
        string pathBstr = getPathSeq(pathB);
-       pathAstr = pathAstr.substr(0,min (pathAstr.length(),pathBstr.length() ));
-       pathBstr = pathBstr.substr(0,min (pathAstr.length(),pathBstr.length() ));
        if ( ali.align(pathAstr,pathBstr)<((int)min( pathAstr.length(),pathBstr.length() ) / 3)){
                return false;
-       }  
+       }
 
 
        if ((lowCov <= covCutoff) && !lowCovPath.empty()) {
@@ -773,6 +885,7 @@ bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
         for (NodeID id = 1; id <= numNodes; id++) {
                 if (getSSNode(id).getFlag()) {
                         removeNode(id);
+                        //cout << "node " <<id << " detected as a bubble and removed" <<endl;
                         returnValue = true;
                         numNodesRemoved++;
                 }

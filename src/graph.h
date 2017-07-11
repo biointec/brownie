@@ -343,6 +343,15 @@ public:
                                  NodeID seedNodeID = 0, size_t maxDepth = 0) const;
 
         /**
+         * Write a cytoscape graph of the current graph over a set of nodes
+         * @param filename Filename of the cytoscape graph
+         * @param nodeSet set of seeds node identifier
+         * @param maxDepth Maximum depth (in terms of number of nodes)
+         */
+        void writeCytoscapeGraph(const std::string& filename,
+                                  std::set<NodeID>  &nodeSet, size_t maxDepth=0) const;
+
+        /**
          * Create a graph from file
          * @param nodeFilename Filename for the nodes
          * @param arcFilename Filename for the arcs
@@ -378,6 +387,7 @@ public:
         void writeGraphBin(const std::string& nodeFilename,
                            const std::string& arcFilename,
                            const std::string& metaDataFilename) const;
+
 
         /**
          * FIXME: USE A FILENAME
@@ -547,6 +557,46 @@ public:
          * @return True if at least one node was removed
          */
         bool clipTips(double covCutoff, size_t maxMargLength);
+        /**
+         * Invalidate normal tips from a graph
+         * @param covCutoff Maximum coverage of a node to delete
+         * @param maxLength Maximum marginal length of a node to delete
+         * @param startNode node which should be Invalidated
+         * @return True if node was removed
+         */
+
+        bool clipNormalTip(double covCutoff, size_t maxMargLength,SSNode startNode,SSNode nodeBefore );
+
+        /**
+         * Invalidate isolated nodes in the graph
+         * @param covCutoff Maximum coverage of a node to delete
+         * @param maxLength Maximum marginal length of a node to delete
+         * @param startNode node which should be Invalidated
+         * @return True if  node was removed
+         */
+        bool clipIsolatedNode(double covCutoff, size_t maxMargLength, SSNode startNode );
+             /**
+         * Invalidate joined tip nodes in the graph
+         * @param covCutoff Maximum coverage of a node to delete
+         * @param maxLength Maximum marginal length of a node to delete
+
+         * @return True if  node was removed
+         */
+
+        bool clipJoinedTip(double covCutoff, size_t maxMargLength, SSNode startNode );
+
+
+        /**
+         * This function searches for all alternative paths of a given string and returns the best similarity score
+         * @param root the root node from which it searches for the alternative path
+         * @param rightPart the input string whcih this function looks for the most similar string in the graph from root
+         * @param bestAlternative the most similar string to the given right part
+         * @param exceptionNode parsing graph shouldn't pass from this node
+         * @return the similarity value of best alternative path to the string value in rightPart
+         */
+
+
+        int GetBesAlternativePath(  NodeID root, string rightPart,string &bestAlternative,  NodeID exceptionNode, vector<NodeID> &bestPath );
 
         /**
          * Concatentate linear paths

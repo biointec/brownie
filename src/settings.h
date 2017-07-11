@@ -85,6 +85,7 @@ public:
          * Default constructor
          */
         Settings();
+        Settings(unsigned int kmerSize,std::string pathtotemp);
 
         /**
          * Parse the command line arguments

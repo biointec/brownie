@@ -562,11 +562,19 @@ void ReadCorrection::correctRead(ReadRecord& record,
 
         size_t numSubstitutions = 0;
         if (bestScore > ((int)read.size() / 2)) {
-                read = bestCorrectedRead;
+                std::stringstream buffer;
+                //read = bestCorrectedRead;
+                for (int i=0;i<bestNodeChain.size();i++){
+                        buffer <<bestNodeChain[i] <<"\t" ;
+                }
+                read = buffer.str();
+                //read = bestCorrectedRead;
                 readCorrected = true;
                 numSubstitutions = (read.length() - bestScore)/2;
                 nodeChain = bestNodeChain;
                 dbg.validateChain(bestNodeChain);
+        }else {
+                read = "";
         }
 
         metrics.addObservation(readCorrected, correctedByMEM, numSubstitutions);

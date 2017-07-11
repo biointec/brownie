@@ -150,6 +150,11 @@ Settings::Settings() : command(Command::none), kmerSize(31),
         essaMEMSparsenessFactor(1), bubbleDFSNodeLimit(1000),
         readCorrDFSNodeLimit(1000), covCutoff(0) {}
 
+Settings::Settings(unsigned int kmerSize,std::string pathtotemp) : kmerSize(kmerSize),pathtotemp(pathtotemp),command(Command::none),
+        numThreads(std::thread::hardware_concurrency()), doubleStranded(true),
+        runSpecificStage(0),
+        essaMEMSparsenessFactor(1), bubbleDFSNodeLimit(1000),
+        readCorrDFSNodeLimit(1000), covCutoff(0) {}
 void Settings::parseCommandLineArguments(int argc, char** args,
                                          LibraryContainer& libCont)
 {
