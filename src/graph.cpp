@@ -280,6 +280,7 @@ GraphStats DBGraph::getGraphStats()
 void DBGraph::writeCytoscapeGraph(const std::string& filename,
                                   NodeID seedNodeID, size_t maxDepth) const
 {
+        cout << "Writing cytoscape graph of all the nodes..." <<endl;
         // a map containing nodeIDs to handle + their depth
         priority_queue<PathDFS, vector<PathDFS>, PathDFSComp> nodeDepth;
         // set of nodes that were handled

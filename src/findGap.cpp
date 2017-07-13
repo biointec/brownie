@@ -39,17 +39,22 @@ FindGap::FindGap(string nodeFileName, string arcFileName, string metaDataFileNam
         RKmer::setWordSize(settings.getK() - KMERBYTEREDUCTION * 4);
         dbg.loadGraph(nodeFileName,arcFileName,metaDataFileName);
         maxSearchSize = 150;
+        minComponentSize = 200;
+        minNumbOfPairs =20;
         kmerSize = kmerVlue;
         correctedFile = alignmentFile;
+
 }
+
 
 void FindGap::closeGaps()
 {
+
         dbg.writeCytoscapeGraph("cytoscape");
         std::map<int, int > nodeComponentMap;
-
         std::map< pair<int, int>, int> pairedEndJoins;
         ComponentHandler componentHdl(dbg,settings);
+
         findComponentsInGraph( componentHdl);
         extractPairedComponents(correctedFile , componentHdl, pairedEndJoins);
         for(auto it = pairedEndJoins.cbegin(); it != pairedEndJoins.cend(); ++it)
@@ -101,6 +106,11 @@ void FindGap::extractPairedComponents(string readFileName , ComponentHandler& co
         vector<int> firstPairNodes;
         vector<int> secondPairNodes;
         while (std::getline(input, line).good()) {
+                if (i % OUTPUT_FREQUENCY == 0) {
+                        cout << "\tProcessing read " << (i/4) << "\r";
+                        cout.flush();
+                }
+
                 if ( i%8 == 1 ){
                         splitLineToNodes(line , firstPairNodes);
                 }
@@ -112,11 +122,14 @@ void FindGap::extractPairedComponents(string readFileName , ComponentHandler& co
                         bool found = false;
                         for (auto it1:firstPairNodes){
                                 for (auto it2:secondPairNodes){
-                                        if (componentHdl.getComponentID(it1)!=componentHdl.getComponentID(it2)){
+                                        if (componentHdl.getComponentID(it1) == 0 || componentHdl.getComponentID(it2) == 0)
+                                                        continue;
+                                        if (componentHdl.getComponentID(it1) != componentHdl.getComponentID(it2)){
+
                                                 Component c1 = componentHdl.componentsMap[componentHdl.getComponentID(it1)];
                                                 Component c2 = componentHdl.componentsMap[componentHdl.getComponentID(it2)];
-                                                if (c1.Size ==1 || c2.Size==1)
-                                                        continue;
+                                                /*if (c1.numOfNodes ==1 || c2.numOfNodes==1)
+                                                        continue;*/
                                                 pair<int, int> join;
                                                 if (c1.componentID < c2.componentID)
                                                         join = make_pair(c1.componentID,c2.componentID);
@@ -146,13 +159,17 @@ void FindGap::extractPairedComponents(string readFileName , ComponentHandler& co
                 }
                 i ++ ;
         }
-
+        cout <<"\n Number of found suggestions: "<<pairedEndJoins.size() <<endl;
+        for(auto it = pairedEndJoins.cbegin(); it != pairedEndJoins.cend(); ++it)
+        {
+               if ( it->second <minNumbOfPairs )
+                       pairedEndJoins.erase(it);
+        }
         for(auto it = pairedEndJoins.cbegin(); it != pairedEndJoins.cend(); ++it)
         {
                 Component c1 = componentHdl.componentsMap[it->first.first];
                 Component c2 = componentHdl.componentsMap[it->first.second];
-                std::cout <<"component "  <<it->first.first <<" (size = "<<c1.Size<<") and component " << it->first.second << " (size = "<< c2.Size<<") supported by " << it->second << " pairs" <<"\n";
-
+                std::cout <<"component "  <<c1.componentID <<" (size = "<<c1.componentSize<<") and component " << c2.componentID << " (size = "<< c2.componentSize<<") supported by " << it->second << " pairs" <<"\n";
         }
 
 }
@@ -208,6 +225,16 @@ bool FindGap::eliminateFakeJoins(std::vector<pair<int, int> > &potentialJoin, st
                 if (second.getNumLeftArcs()!=0 && firsStartIndex > 0){
                         //cout <<"Expand the second node to the left for "<< firsStartIndex<<" bp "<<endl;
                         expandReadByGraphToLeft(dbg.getSSNode(-it.second),first,secondStartIndex,firsStartIndex,secondRead,firstRead);
+                }
+                if (abs( firstRead.length()-secondRead.length())>3 ){
+                        cout <<"This is a BUG dam it !!!" <<endl;
+                        cout <<"first Start Index :" <<firsStartIndex <<endl;
+                        cout <<"second Start Index:" <<secondStartIndex <<endl;
+                        cout << "firstEndIndex  :" <<firstEndIndex <<endl;
+                        cout << "secondEndIndex :" <<secondEndIndex <<endl;
+                        cout << "first Node :" << first.getNodeID()   <<  ", " <<first.getSequence()  << endl;
+                        cout << "second Node:" << second.getNodeID() <<  ", " <<second.getSequence() << endl;
+                        continue;
                 }
                 double sim =alignment.align(firstRead, secondRead)*100/(int)firstRead.length();
 
@@ -470,7 +497,7 @@ void FindGap::getPotentialJoins(ComponentHandler& componentHdl, std::map<string,
 
 void FindGap::loadKmerMap(set<int> &tipNodes,std::map<string, set<int> > & kmerNodeMap,size_t overlapSize){
         Kmer::setWordSize(overlapSize);
-
+        cout << "Loading the kmers in the component into the table ..." <<endl;
         std::map<string, set<int> >::iterator mapIt,mapTtR;
         for (NodeID nodeid :tipNodes){
                 SSNode node = dbg.getSSNode(nodeid);
@@ -576,11 +603,13 @@ void FindGap::findTips(set<int> &tipNodes, set <int>& eligibleNodeSet)
 
 void FindGap:: findComponentsInGraph(ComponentHandler& componentHdl)
 {
+        cout << "Finding disjoint components in the graph ..." <<endl;
         int srcID=1;
         int i=0;
         set<NodeID> nodesHandled;
         for (i =srcID ; i <= dbg.getNumNodes(); i++){
                 set<NodeID> currentSetNodes;
+                size_t componentSize =0;
                 if (!dbg.getSSNode(i).isValid())
                         continue;
                 if (nodesHandled.find(i) != nodesHandled.end())
@@ -607,6 +636,7 @@ void FindGap:: findComponentsInGraph(ComponentHandler& componentHdl)
                         nodesHandled.insert(thisID);
                         currentSetNodes.insert(thisID);
                         SSNode thisNode = dbg.getSSNode(thisID);
+                        componentSize = componentSize + thisNode.getMarginalLength();
                         for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
                                 SSNode rNode = dbg.getSSNode(it->getNodeID());
                                 if (!rNode.isValid())
@@ -624,15 +654,13 @@ void FindGap:: findComponentsInGraph(ComponentHandler& componentHdl)
                                 nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
                         }
                 }
-                if (currentSetNodes.size()>0)
+                if (currentSetNodes.size()>0 && componentSize > minComponentSize)
                 {
                         componentHdl.addComponent(currentSetNodes);
                 }
                 currentSetNodes.clear();
         }
-        cout << "Number of disjoint components in the graph: " <<componentHdl.components.size() <<endl;
-
-
+        cout << "Number of disjoint components in the graph with size higher than 500 bp " <<componentHdl.components.size() <<endl;
 }
 
 
@@ -806,14 +834,14 @@ int main(int argc, char** args)
         cout <<args[1]<<endl;
         string arg(args[1]);
         if ((arg == "-h") || (arg == "--help")) {
-                c= help;
+                c = help;
         }else if (arg == "cytoscape"){
-                c=cytoscape;
+                c = cytoscape;
         }else if ( arg =="breakpoint"){
-                c=breakpoint;
+                c = breakpoint;
         }
         else if (arg =="closeGap"){
-                c=closeGap;
+                c = closeGap;
         }
         if (c==help){
                 cout << "Correct usage:"<<endl;

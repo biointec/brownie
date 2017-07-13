@@ -16,6 +16,8 @@ public :
         size_t overlapSize;
         size_t maxSearchSize;
         size_t kmerSize;
+        size_t minComponentSize;
+        size_t minNumbOfPairs;
 
 
         /**

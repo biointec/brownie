@@ -242,6 +242,8 @@ bool DBGraph::flowCorrection(NodeID nodeID, double covCutoff)
 bool DBGraph::clipNormalTip(double covCutoff, size_t maxMargLength,SSNode startNode, SSNode nodeBefore ){
         int simThreshold = 0;
         size_t minLenght = 5; //tips shorter than this length will be deleted anyway
+        if  ((startNode.getAvgKmerCov() > (covCutoff)) || (startNode.getMarginalLength() > maxMargLength))
+                        return false; ;
         if (nodeBefore.getNumRightArcs()<= 1)
                 return false;
         string currStr =startNode.getSequence();
@@ -354,7 +356,7 @@ int DBGraph::GetBesAlternativePath(  NodeID root, string rightPart ,string& best
                         string nodeStr = nextNode.substr(Kmer::getK()-1, nextNode.getMarginalLength());
                         path newPth = bestPath;
                         newPth.addNode(nextID, nodeStr);
-                        if (newPth.simScore > maxSimScore){
+                        if (newPth.simScore > maxSimScore && newPth.pathFinish){
                                 maxSimScore = newPth.simScore;
                                 bestAlternative = newPth.currentPath;
                         }
@@ -405,8 +407,12 @@ bool DBGraph::clipIsolatedNode(double covCutoff, size_t maxMargLength, SSNode st
         return remove ;
 
 }
+
+
+
 bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
 {
+
 #ifdef DEBUG
         size_t tp=0, tn=0, fp=0,fn=0;
         size_t tps=0, tns=0, fps=0,fns=0;
@@ -428,26 +434,20 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                 bool isolated = false;
                 bool joinedTip = false;
                 bool remove = false;
-
-                if (startNode.getNumRightArcs()>1)
-                        if (clipJoinedTip(covCutoff, maxMargLength,startNode))
-                                numDeletedArc ++;
-                if  ((startNode.getAvgKmerCov() > (covCutoff)) || (startNode.getMarginalLength() > maxMargLength))
-                        continue ;
-
-                if (startNode.getNumRightArcs()==1){
-                         SSNode nodeBefore = getSSNode(-startNode.rightBegin()->getNodeID());
-                        if (clipNormalTip(covCutoff, maxMargLength, startNode,nodeBefore ))
-                                remove = true;
-
-                }
                 //isolated tips
                 if (startNode.getNumRightArcs()==0 ){
                         isolated = true;
                         if (clipIsolatedNode(covCutoff, maxMargLength, startNode))
                                 remove = true;
-                }
+                }else  if (startNode.getNumRightArcs()==1){
+                        SSNode nodeBefore = getSSNode(-startNode.rightBegin()->getNodeID());
+                        if (clipNormalTip(covCutoff, maxMargLength, startNode,nodeBefore ))
+                                remove = true;
 
+                }else if (startNode.getNumRightArcs()>1){
+                        if (clipJoinedTip(covCutoff, maxMargLength,startNode))
+                                numDeletedArc ++;
+                }
                 if (remove){
                         removeNode(startNode.getNodeID());
                         numDeleted ++;

@@ -31,16 +31,14 @@ private:
 
 
 public:
-        size_t Size;
+        size_t componentSize;
         size_t numOfNodes;
-        size_t numOfArcs;
         size_t componentID;
 
         Component (){
 
         }
-        Component(set<NodeID> &IDs, size_t ID) : NodesID(IDs),componentID(ID), Size(IDs.size()),numOfNodes(0),numOfArcs(0){
-
+        Component(set<NodeID> &IDs, size_t ID, size_t size) : NodesID(IDs),componentID(ID), componentSize(size),numOfNodes(IDs.size()){
         }
         /**
          * keep the nodes ID in component in a set of nodes Id
@@ -74,6 +72,7 @@ public:
         std::map< size_t, Component> componentsMap;
         vector<Component> components;
         size_t numberOfcomponents;
+
         ComponentHandler( DBGraph& g,Settings& s):dbg(g),settings(s),numberOfcomponents(0){}
 
         /**
@@ -96,7 +95,11 @@ public:
         }
         void addComponent(set<NodeID>&  nodesIdSet){
                 numberOfcomponents++;
-                Component newComonent(nodesIdSet, numberOfcomponents);
+                size_t size =0;
+                for (auto it:nodesIdSet){
+                        size = size + dbg.getSSNode(it).getMarginalLength();
+                }
+                Component newComonent(nodesIdSet, numberOfcomponents,size);
                 components.push_back(newComonent);
                 for (auto it:nodesIdSet){
                         nodeComponentMap[it] = newComonent.componentID ;
@@ -109,14 +112,14 @@ public:
         {
                 inline bool operator() (const Component& object1, const Component& object2)
                 {
-                        return (object1.Size < object2.Size);
+                        return (object1.componentSize < object2.componentSize);
                 }
         };
         struct greater_than_Component
         {
                 inline bool operator() (const Component& object1, const Component& object2)
                 {
-                        return (object1.Size > object2.Size);
+                        return (object1.componentSize > object2.componentSize);
                 }
         };
 
