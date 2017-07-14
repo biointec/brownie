@@ -84,7 +84,9 @@ void FindGap::closeGaps()
                         overlapSize = overlapSize / 2;
                         if (overlapSize%2 ==0)
                                 overlapSize = overlapSize +1;
+                        kmerNodeMap.clear();
                 }
+
         }
 
 }
@@ -205,14 +207,8 @@ bool FindGap::eliminateFakeJoins(std::vector<pair<int, int> > &potentialJoin, st
                 SSNode second=dbg.getSSNode(it.second);
                 size_t firsStartIndex =0 , secondStartIndex = 0, firstEndIndex = 0, secondEndIndex = 0;
                 string firstRead,secondRead = "";
-
                 extendRead(firsStartIndex,  secondStartIndex,  firstEndIndex ,
                            secondEndIndex, first,second ,firstRead , secondRead);
-                if (first.getNumRightArcs() !=0 && second.getSequence().length()>secondEndIndex){
-                        //cout<<"Expand first node to the right for "<<  second.getSequence().length() - secondEndIndex <<" bp "<<endl;
-                        expandReadByGraphToRight(first,second,firstEndIndex,secondEndIndex,firstRead,secondRead);
-
-                }
                 if (second.getNumRightArcs() !=0 && first.getSequence().length()>firstEndIndex){
                         //cout<<"Expand second node to the right for "<<  first.getSequence().length()-firstEndInex <<" bp "<<endl;
                         expandReadByGraphToRight(second,first,secondEndIndex,firstEndIndex,secondRead,firstRead);
@@ -222,22 +218,7 @@ bool FindGap::eliminateFakeJoins(std::vector<pair<int, int> > &potentialJoin, st
                         expandReadByGraphToLeft(dbg.getSSNode(-it.first),second,firsStartIndex,secondStartIndex,firstRead,secondRead);
 
                 }
-                if (second.getNumLeftArcs()!=0 && firsStartIndex > 0){
-                        //cout <<"Expand the second node to the left for "<< firsStartIndex<<" bp "<<endl;
-                        expandReadByGraphToLeft(dbg.getSSNode(-it.second),first,secondStartIndex,firsStartIndex,secondRead,firstRead);
-                }
-                if (abs( firstRead.length()-secondRead.length())>3 ){
-                        cout <<"This is a BUG dam it !!!" <<endl;
-                        cout <<"first Start Index :" <<firsStartIndex <<endl;
-                        cout <<"second Start Index:" <<secondStartIndex <<endl;
-                        cout << "firstEndIndex  :" <<firstEndIndex <<endl;
-                        cout << "secondEndIndex :" <<secondEndIndex <<endl;
-                        cout << "first Node :" << first.getNodeID()   <<  ", " <<first.getSequence()  << endl;
-                        cout << "second Node:" << second.getNodeID() <<  ", " <<second.getSequence() << endl;
-                        continue;
-                }
                 double sim =alignment.align(firstRead, secondRead)*100/(int)firstRead.length();
-
                 if (sim > 50){
                         cout <<"                next pair               \n=========================" <<endl;
                         cout<<"first :"<<first.getNodeID()<<"\t" <<firstRead <<endl;
@@ -250,12 +231,8 @@ bool FindGap::eliminateFakeJoins(std::vector<pair<int, int> > &potentialJoin, st
                         }else{
                              cout<<"this suggestion is supported by " << pairedEndJoins[make_pair(componentHdl.getComponentID(second.getNodeID()),componentHdl.getComponentID(first.getNodeID()))] <<" pair end read mapp" <<endl;;
                         }
-
                         found = true;
-
                 }
-
-
         }
         return found;
 }
@@ -331,10 +308,8 @@ void FindGap::expandReadByGraphToRight(SSNode first,SSNode second,size_t& firstE
         firstRead = firstRead + bestPath;
         firstEndInex = firstEndInex + bestPath.length();
         secondEndIndex = secondEndIndex + bestPath.length();
-        secondRead = secondRead + secondRight;
+        secondRead = secondRead + secondRight.substr(0,bestPath.length());
 }
-
-
 void FindGap::expandReadByGraphToLeft(SSNode first,SSNode second,size_t& firsStartIndex , size_t& secondStartIndex, string &firstRead, string &secondRead)
 {
         //cout<<"Expand first node to the right for "<<  second.getSequence().length() - secondEndIndex <<" bp "<<endl;
@@ -402,11 +377,6 @@ void FindGap::expandNode( int length, vector< pair <string ,vector< NodeID>> >& 
                 expandNode(length,bfs,result);
         }
 }
-
-
-
-
-
 string FindGap::getLongestCommonSubStr(string str1, string str2, size_t & firsStartIndex, size_t & SecondStartIndex)
 {
 
@@ -464,10 +434,10 @@ void FindGap::getPotentialJoins(ComponentHandler& componentHdl, std::map<string,
                                                 std::find(potentialJoin.begin(), potentialJoin.end(),make_pair(-*setIt2,-*setIt1))==potentialJoin.end()
                                         ){
                                                 int first =*setIt1 , second=*setIt2;
-                                                if (dbg.getSSNode(*setIt1).getNumRightArcs() != 0 && dbg.getSSNode(*setIt2).getNumLeftArcs()!= 0){
-                                                        second = -second;
+                                                if (dbg.getSSNode(*setIt1).getNumRightArcs()!= 0 )
                                                         first = -first;
-                                                }
+                                                if ( dbg.getSSNode(*setIt2).getNumLeftArcs()!= 0)
+                                                        second = -second;
 
                                                 potentialJoin.push_back(make_pair(first,second));
                                         }
@@ -520,7 +490,6 @@ void FindGap::loadKmerMap(set<int> &tipNodes,std::map<string, set<int> > & kmerN
                                 sequences.push_back(DNA_sequence.substr(DNA_sequence.length()-maxLen,maxLen));
                         }
                 }
-
                 for (auto seq:sequences){
 
                         for (KmerIt it(seq);
@@ -528,19 +497,26 @@ void FindGap::loadKmerMap(set<int> &tipNodes,std::map<string, set<int> > & kmerN
                                 Kmer kmer = it.getKmer();
                                 //cout << kmer <<endl;
                                 mapIt = kmerNodeMap.find(kmer.str());
-                                //mapTtR= kmerNodeMap.find(kmer.getReverseComplement().str());
-                                if (mapIt != kmerNodeMap.end())// ||mapTtR != kmerNodeMap.end())
+                                mapTtR= kmerNodeMap.find(kmer.getReverseComplement().str());
+                                if (mapIt != kmerNodeMap.end() ){
                                         mapIt->second.insert(nodeid);
-                                else{
-                                        set <int> nodeSet;
-                                        nodeSet.insert(nodeid);
-                                        //if (kmer.getReverseComplement().str() < kmer.str())
-                                        kmerNodeMap.insert(make_pair(kmer.str(), nodeSet));
-                                        // else
-                                        //       kmerNodeMap.insert(make_pair(kmer.getReverseComplement().str(), nodeSet));
 
                                 }
-                        }
+                                else{
+                                        if (mapTtR !=kmerNodeMap.end()){
+                                                mapTtR->second.insert(-nodeid);
+
+                                        }else {
+                                                set <int> nodeSet;
+                                                nodeSet.insert(nodeid);
+                                                kmerNodeMap.insert(make_pair(kmer.str(), nodeSet));
+                                                set <int> nodeSetR;
+                                                nodeSetR.insert(-nodeid);
+                                                kmerNodeMap.insert(make_pair(kmer.getReverseComplement().str(), nodeSetR));
+
+                                        }
+                                }
+                             }
                 }
         }
 
@@ -550,12 +526,12 @@ void FindGap::loadKmerMap(set<int> &tipNodes,std::map<string, set<int> > & kmerN
                         kmerNodeMap.erase(mapIt);
 
                 }/*else{
-                        std::cout << mapIt->first <<":\t" <<endl;
-                        for (set<int>::iterator i = nodeSet.begin(); i != nodeSet.end(); i++) {
-                                cout << *i <<", ";
-                        }
-                        cout << std::endl ;
-                }*/
+                std::cout << mapIt->first <<":\t" <<endl;
+                for (set<int>::iterator i = nodeSet.begin(); i != nodeSet.end(); i++) {
+                        cout << *i <<", ";
+        }
+        cout << std::endl ;
+        }*/
         }
 
         Kmer::setWordSize(settings.getK());
@@ -583,9 +559,7 @@ void FindGap::assignTipsToComponent(set<int> &tipNodes,ComponentHandler &compone
 
 void FindGap::findTips(set<int> &tipNodes, set <int>& eligibleNodeSet)
 {
-         for (NodeID id = -dbg.getNumNodes(); id <= dbg.getNumNodes(); id++) {
-                if (id==0)
-                        continue;
+         for (NodeID id =1; id <= dbg.getNumNodes(); id++) {
                 SSNode node = dbg.getSSNode(id);
                 if (!node.isValid())
                         continue;
