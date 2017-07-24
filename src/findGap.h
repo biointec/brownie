@@ -17,6 +17,7 @@ public :
         size_t maxSearchSize;
         size_t kmerSize;
         size_t minComponentSize;
+        size_t maxComponentSize;
         size_t minNumbOfPairs;
 
 
@@ -54,7 +55,7 @@ public :
          * find the gap in the graph, recommend connection between tips
          *
          */
-        void closeGaps();
+        void closeGaps(string nodeFilename, string arcFilename,string metaDataFilename);
         /**
          * extract kmers in the graph, which are in tip nodes and save them in a dictionary
          * @param tipNodes A set of tips nodes
@@ -158,5 +159,9 @@ public :
 
 
         //int GetBesAlternativePath(  NodeID root, string rightPart ,string& bestAlternative, vector<NodeID> & bestPathNodes);
+        int GetBesAlternativePath(  NodeID root, string rightPart ,string& bestAlternative, vector<NodeID> & bestPathNodes);
+
+
+        void connectNodes(NodeID firstNodeID, NodeID secondNodeID);
 
 };

@@ -40,21 +40,20 @@ FindGap::FindGap(string nodeFileName, string arcFileName, string metaDataFileNam
         dbg.loadGraph(nodeFileName,arcFileName,metaDataFileName);
         maxSearchSize = 150;
         minComponentSize = 200;
-        minNumbOfPairs =20;
+        maxComponentSize = 20000;
+        minNumbOfPairs =15;
         kmerSize = kmerVlue;
         correctedFile = alignmentFile;
 
 }
 
 
-void FindGap::closeGaps()
+void FindGap::closeGaps(string nodeFilename, string arcFilename,string metaDataFilename)
 {
-
         dbg.writeCytoscapeGraph("cytoscape");
         std::map<int, int > nodeComponentMap;
         std::map< pair<int, int>, int> pairedEndJoins;
         ComponentHandler componentHdl(dbg,settings);
-
         findComponentsInGraph( componentHdl);
         extractPairedComponents(correctedFile , componentHdl, pairedEndJoins);
         for(auto it = pairedEndJoins.cbegin(); it != pairedEndJoins.cend(); ++it)
@@ -88,6 +87,7 @@ void FindGap::closeGaps()
                 }
 
         }
+        dbg.writeGraph(nodeFilename,arcFilename,metaDataFilename);
 
 }
 
@@ -201,6 +201,9 @@ void FindGap::splitLineToNodes(string str, vector<NodeID> &nodeIDs)
 bool FindGap::eliminateFakeJoins(std::vector<pair<int, int> > &potentialJoin, std::map< pair<int, int>, int> &pairedEndJoins ,  ComponentHandler& componentHdl)
 {
         bool found = false;
+        size_t bestSim=0;
+        SSNode bestRight, bestLeft;
+        string bestleftStr = "", bestrightStr = "";
         cout <<"number  of potential joins : " <<potentialJoin.size() <<endl;
         for (auto it:potentialJoin){
                 SSNode first=dbg.getSSNode(it.first);
@@ -219,23 +222,77 @@ bool FindGap::eliminateFakeJoins(std::vector<pair<int, int> > &potentialJoin, st
 
                 }
                 double sim =alignment.align(firstRead, secondRead)*100/(int)firstRead.length();
-                if (sim > 50){
-                        cout <<"                next pair               \n=========================" <<endl;
-                        cout<<"first :"<<first.getNodeID()<<"\t" <<firstRead <<endl;
-                        cout<<"second:"<<second.getNodeID()<<"\t" <<secondRead <<endl;
-                        cout <<"normalized similarity: " <<sim <<endl;
-                        alignment.printAlignment(firstRead, secondRead);
-                        cout<<"this suggests a connection is between components "<<componentHdl.getComponentID(first.getNodeID()) <<" and " <<componentHdl.getComponentID(second.getNodeID())<<endl;
-                        if (componentHdl.getComponentID(first.getNodeID()) < componentHdl.getComponentID(second.getNodeID())){
-                                cout<<"this suggestion is supported by " << pairedEndJoins[make_pair(componentHdl.getComponentID(first.getNodeID()),componentHdl.getComponentID(second.getNodeID()))] <<" pair end read mapp" <<endl;;
-                        }else{
-                             cout<<"this suggestion is supported by " << pairedEndJoins[make_pair(componentHdl.getComponentID(second.getNodeID()),componentHdl.getComponentID(first.getNodeID()))] <<" pair end read mapp" <<endl;;
-                        }
-                        found = true;
+
+                if (sim > bestSim){
+                        bestSim = sim;
+                        bestLeft = first;
+                        bestRight = second;
+                        bestleftStr = firstRead;
+                        bestrightStr = secondRead;
                 }
+
         }
+
+        if (bestSim > 50){
+                cout <<"                next pair               \n=========================" <<endl;
+                cout<<"first :"<<bestLeft.getNodeID()<<"\t" <<bestleftStr <<endl;
+                cout<<"second:"<<bestRight.getNodeID()<<"\t" <<bestrightStr <<endl;
+                cout <<"normalized similarity: " <<bestSim <<endl;
+                alignment.printAlignment(bestleftStr, bestrightStr);
+                cout<<"this suggests a connection is between components "<<componentHdl.getComponentID(bestLeft.getNodeID()) <<" and " <<componentHdl.getComponentID(bestRight.getNodeID())<<endl;
+                if (componentHdl.getComponentID(bestLeft.getNodeID()) < componentHdl.getComponentID(bestRight.getNodeID())){
+                        cout<<"this suggestion is supported by " << pairedEndJoins[make_pair(componentHdl.getComponentID(bestLeft.getNodeID()),componentHdl.getComponentID(bestRight.getNodeID()))] <<" pair end read mapp" <<endl;;
+                }else{
+                        cout<<"this suggestion is supported by " << pairedEndJoins[make_pair(componentHdl.getComponentID(bestRight.getNodeID()),componentHdl.getComponentID(bestLeft.getNodeID()))] <<" pair end read mapp" <<endl;;
+                }
+                found = true;
+                if (bestLeft.getAvgKmerCov() >= bestRight.getAvgKmerCov())
+                        connectNodes(bestLeft.getNodeID(),bestRight.getNodeID());
+                else
+                        connectNodes(-bestRight.getNodeID(), -bestLeft.getNodeID());
+        }
+
+
         return found;
 }
+
+void FindGap::connectNodes(NodeID firstNodeID, NodeID secondNodeID)
+{
+        SSNode first = dbg.getSSNode(firstNodeID);
+        SSNode second = dbg.getSSNode(secondNodeID);
+        size_t firsStartIndex =0 , secondStartIndex = 0, firstEndIndex = 0, secondEndIndex = 0;
+        string firstRead,secondRead = "";
+        string consensusStr="";
+        extendRead(firsStartIndex,  secondStartIndex,  firstEndIndex ,
+                   secondEndIndex, first,second ,firstRead , secondRead);
+        if (firsStartIndex >0)
+                consensusStr = first.getSequence().substr(0,firsStartIndex);
+        consensusStr = consensusStr +firstRead;
+        if (second.getSequence().length()>secondEndIndex )
+                consensusStr = consensusStr +second.getSequence().substr(secondEndIndex,second.getSequence().length()-secondEndIndex);
+        first.deleteAllRightArcs();
+        first.inheritRightArcs(second);
+        first.setSequence(consensusStr);
+        for (ArcIt it = second.leftBegin(); it != second.leftEnd(); it++) {
+                SSNode leftNode = dbg.getSSNode(it->getNodeID());
+                if (leftNode.getNodeID()==-second.getNodeID())
+                        continue;
+                bool result = leftNode.deleteRightArc (second.getNodeID());
+                assert(result);
+        }
+        for (ArcIt it = second.rightBegin(); it != second.rightEnd(); it++) {
+                SSNode rightNode = dbg.getSSNode ( it->getNodeID() );
+                if (rightNode.getNodeID()==-second.getNodeID())
+                        continue;
+                bool result = rightNode.deleteLeftArc(second.getNodeID());
+                assert(result);
+        }
+        second.deleteAllLeftArcs();
+        second.deleteAllRightArcs();
+        second.invalidate();
+}
+
+
 void FindGap::extendRead(size_t &firsStartIndex, size_t& secondStartIndex, size_t& firstEndInex ,
                          size_t& secondEndIndex, SSNode first,SSNode second ,string &firstRead , string &secondRead)
 {
@@ -283,13 +340,132 @@ void FindGap::extendRead(size_t &firsStartIndex, size_t& secondStartIndex, size_
 
 }
 
+
+
+struct path{
+public :
+        NodeID root;
+        int simScore = 0;
+        int maxAchivableSim = 0;
+        int minAchivableSim = 0;
+        string currentPath ="";
+        string initialStr ="";
+        vector<NodeID> nodeCahin;
+        bool pathFinish = false;
+
+        path (){
+             simScore = 0 ;
+             maxAchivableSim = 0 ;
+             currentPath ="";
+
+
+        }
+        path(NodeID rodeNode,string parallelStr){
+             root = rodeNode;
+             simScore = 0 ;
+             maxAchivableSim = parallelStr.length() ;
+             minAchivableSim = -parallelStr.length() ;
+             currentPath ="";
+             nodeCahin.push_back(rodeNode);
+             initialStr = parallelStr;
+        }
+        void addNode(NodeID nodeID, string nodeStr){
+                nodeCahin.push_back(nodeID);
+                currentPath = currentPath + nodeStr;
+                if (currentPath.length() >= initialStr.length()){
+                        currentPath =currentPath.substr(0,initialStr.length());
+                        pathFinish = true;
+                }
+                updateSimScore();
+        }
+        int updateSimScore(){
+                AlignmentJan ali(1000, 2, 1, -1, -3);
+                simScore = ali.align(currentPath,initialStr.substr(0,currentPath.length()));
+                updateAchivableSim(initialStr.length()- currentPath.length());
+                return simScore;
+        }
+        void updateAchivableSim(int remainingLen){
+                maxAchivableSim = simScore + remainingLen;
+                minAchivableSim = simScore - remainingLen;
+        }
+        int getMaxAchSim(){
+                return maxAchivableSim;
+        }
+        NodeID getLastNode(){
+                return nodeCahin.back();
+        }
+
+
+};
+struct compPath{
+        bool operator()(const path &p1, const path& p2) const {
+                if ( p1.simScore > p2.simScore)
+                        return true;
+                if (p1.simScore == p2.simScore  and p1.minAchivableSim > p2.minAchivableSim)
+                        return true;
+                if (p1.simScore == p2.simScore  and p1.minAchivableSim == p2.minAchivableSim and p1.maxAchivableSim > p2.maxAchivableSim)
+                        return true;
+                return false;
+        }
+};
+int FindGap::GetBesAlternativePath(  NodeID root, string rightPart ,string& bestAlternative, vector<NodeID> & bestPathNodes)
+{
+        int maxSimScore =0;
+        int maxMinSim = -rightPart.length()*2 ;
+        priority_queue<path, std::vector<path>, compPath > q;
+        path p(root,rightPart);
+        q.push(p);
+        while (!q.empty()){
+                path bestPath = q.top(); q.pop();
+                SSNode startNode = dbg.getSSNode( bestPath.getLastNode());
+                if (startNode.getNumRightArcs() ==0 )
+                        continue;
+                for (ArcIt it = startNode.rightBegin(); it != startNode.rightEnd(); it++) {
+                        NodeID nextID = it->getNodeID();
+                        const SSNode nextNode =  dbg.getSSNode(nextID);
+                        string nodeStr = nextNode.substr(Kmer::getK()-1, nextNode.getMarginalLength());
+                        path newPth = bestPath;
+                        newPth.addNode(nextID, nodeStr);
+                        if (newPth.simScore > maxSimScore && newPth.pathFinish){
+                                maxSimScore = newPth.simScore;
+                                bestAlternative = newPth.currentPath;
+                        }
+                        if (newPth.minAchivableSim >maxMinSim){
+                                maxMinSim =newPth.minAchivableSim;
+                        }
+                        if ( !newPth.pathFinish && newPth.minAchivableSim >=maxMinSim){
+                                q.push(newPth);
+                        }
+                }
+        }
+        return maxSimScore;
+}
+/*
+void FindGap::expandReadByGraph(SSNode startNode,SSNode second,size_t& firstEndInex , size_t& secondEndIndex, string &firstRead, string &secondRead)
+{
+        string secondRight = second.getSequence().substr(secondEndIndex, second.getSequence().length() - secondEndIndex);
+        string altStr = "";
+        vector<NodeID> bestChain;
+        int sim =GetBesAlternativePath( startNode.getNodeID(), secondRight ,altStr, bestChain);
+
+
+        firstRead = firstRead + bestPath;
+        firstEndInex = firstEndInex + bestPath.length();
+        secondEndIndex = secondEndIndex + bestPath.length();
+        secondRead = secondRead + secondRight.substr(0,bestPath.length());
+}*/
+
+
+
+
+
 void FindGap::expandReadByGraphToRight(SSNode first,SSNode second,size_t& firstEndInex , size_t& secondEndIndex, string &firstRead, string &secondRead)
 {
         //cout<<"Expand first node to the right for "<<  second.getSequence().length() - secondEndIndex <<" bp "<<endl;
         vector< pair <string ,vector< NodeID>> > bfs;
         vector<NodeID> nodes;
         nodes.push_back(first.getNodeID());
-        string p=first.getSequence().substr(first.getSequence().length()- Kmer::getK()+1);
+        string p = first.getSequence().substr(first.getSequence().length()- Kmer::getK()+1);
         bfs.push_back(make_pair(p,nodes));
         vector< pair <string ,vector< NodeID>> > result;
         expandNode( second.getSequence().length() -secondEndIndex +Kmer::getK()-1, bfs ,result);
@@ -628,13 +804,13 @@ void FindGap:: findComponentsInGraph(ComponentHandler& componentHdl)
                                 nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
                         }
                 }
-                if (currentSetNodes.size()>0 && componentSize > minComponentSize)
+                if (currentSetNodes.size()>0 && componentSize > minComponentSize && componentSize <maxComponentSize)
                 {
                         componentHdl.addComponent(currentSetNodes);
                 }
                 currentSetNodes.clear();
         }
-        cout << "Number of disjoint components in the graph with size higher than 500 bp " <<componentHdl.components.size() <<endl;
+        cout << "Number of disjoint components in the graph with size higher than "<< minComponentSize <<" bp " <<componentHdl.components.size() <<endl;
 }
 
 
@@ -870,7 +1046,7 @@ int main(int argc, char** args)
                                 findGap.extractBreakpointSubgraph(breakpointFileName,tmpDir);
                                 break;
                         case closeGap :
-                                findGap.closeGaps();
+                                findGap.closeGaps(nodeFileName, arcFileName,metaDataFileName);
                                 break;
                 }
 

@@ -193,11 +193,12 @@ void Brownie::stageFour()
         graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage3");
 }
 #endif
-     /*   bool change = true;
+
+        bool change = true;
         while (change){
                 change = false;
                 // TIP CLIPPING
-                Util::startChrono();
+                /*Util::startChrono();
                 cout << "Cleaning graph (tips, cov-cutoff = " << cutoff
                 << ", lmax = " << libraries.getAvgReadLength() << ")\n";
                 while (graph.clipTips(cutoff, libraries.getAvgReadLength())) {
@@ -207,7 +208,7 @@ void Brownie::stageFour()
                         change = true;
                 }
 
-                cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
+                cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;*/
 
                 // BUBBLE DETECTION
                 Util::startChrono();
@@ -223,19 +224,19 @@ void Brownie::stageFour()
                 }
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
-                 */
+
                 // FLOW CORRECTION
-                /*Util::startChrono();
+                Util::startChrono();
                 cout << "Cleaning graph (flow correction)\n";
                 while (graph.flowCorrection()) {
                         graph.concatenateNodes();
                         cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
                         change = true;
                 }
-                cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;*/
+                cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
-        //}
-        //graph.concatenateNodes();
+        }
+        graph.concatenateNodes();
 
 #ifdef DEBUG
         Util::startChrono();
@@ -296,6 +297,9 @@ void Brownie::stageFive()
 
         cout << "Error correction completed in " << Util::stopChronoStr() << endl;
         cout << "Stage 5 finished\n" << endl;
+        graph.writeGraph(getNodeFilename(5),
+                         getArcFilename(5),
+                         getMetaDataFilename(5));
         graph.clear();
 }
 
