@@ -19,6 +19,8 @@ public :
         size_t minComponentSize;
         size_t maxComponentSize;
         size_t minNumbOfPairs;
+        size_t minOverlapSize;
+        size_t minSim;
 
 
         /**
@@ -162,6 +164,6 @@ public :
         int GetBesAlternativePath(  NodeID root, string rightPart ,string& bestAlternative, vector<NodeID> & bestPathNodes);
 
 
-        void connectNodes(NodeID firstNodeID, NodeID secondNodeID);
+        bool connectNodes(NodeID firstNodeID, NodeID secondNodeID);
 
 };

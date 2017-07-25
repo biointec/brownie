@@ -203,7 +203,6 @@ void Brownie::stageFour()
                 << ", lmax = " << libraries.getAvgReadLength() << ")\n";
                 while (graph.clipTips(cutoff, libraries.getAvgReadLength())) {
                         graph.concatenateNodes();
-                        graph.writeCytoscapeGraph(settings.getTempDirectory() + "afterTip");
                         cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" << endl;
                         change = true;
                 }
@@ -218,7 +217,6 @@ void Brownie::stageFour()
                 << settings.getNumThreads() << ")\n";
                 while (graph.bubbleDetection(cutoff, libraries.getAvgReadLength())) {
                         graph.concatenateNodes();
-                        graph.writeCytoscapeGraph(settings.getTempDirectory() + "afterBubble");
                         cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
                         change = true;
                 }
