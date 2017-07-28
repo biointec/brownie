@@ -193,12 +193,12 @@ void Brownie::stageFour()
         graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage3");
 }
 #endif
-
-        bool change = true;
+        graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage3");
+    /*    bool change = true;
         while (change){
                 change = false;
                 // TIP CLIPPING
-                /*Util::startChrono();
+                Util::startChrono();
                 cout << "Cleaning graph (tips, cov-cutoff = " << cutoff
                 << ", lmax = " << libraries.getAvgReadLength() << ")\n";
                 while (graph.clipTips(cutoff, libraries.getAvgReadLength())) {
@@ -207,7 +207,7 @@ void Brownie::stageFour()
                         change = true;
                 }
 
-                cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;*/
+                cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
                 // BUBBLE DETECTION
                 Util::startChrono();
@@ -234,7 +234,7 @@ void Brownie::stageFour()
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
         }
-        graph.concatenateNodes();
+        graph.concatenateNodes();*/
 
 #ifdef DEBUG
         Util::startChrono();
@@ -373,9 +373,9 @@ void Brownie::assembleModule()
         //else
         //        cout << "Files produced by this stage appear to"
         //                " be present, skipping stage 4...\n";
-        if (stageFiveNecessary())
+        //if (stageFiveNecessary())
                 stageFive();
-        else
+        //else
                 cout << "Files produced by this stage appear to"
                         " be present, skipping stage 5...\n";
         /*if (stageSixNecessary())
