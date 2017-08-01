@@ -220,7 +220,7 @@ bool DBGraph::flowCorrection(NodeID nodeID, double covCutoff)
 
         //cout << "TOTAL log prob assuming topology is WRONG: " << totWrongProb << endl;
 
-        if (totWrongProb - totCorrProb < 5.0)
+        if (totWrongProb - totCorrProb < 50)
                 return false;
 
         for (auto it : toDetach) {

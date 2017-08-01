@@ -10,6 +10,7 @@ class FindGap {
 private:
         AlignmentJan alignment;
 public :
+
         DBGraph dbg;
         Settings settings;
         string correctedFile;
@@ -21,15 +22,19 @@ public :
         size_t minNumbOfPairs;
         size_t minOverlapSize;
         size_t minSim;
+        size_t minTipLength;
+
+
 
 
         /**
          * Default constructor
          */
 
+
         FindGap (string nodeFileName, string arcFileName, string metaDataFileName,string alignmentFile,unsigned int kmerSize =21 ,string tempDir=".");
 
- 
+        FindGap( string readFile, const Settings& s,DBGraph &graph);
         /**
          * Write a cytoscape graph of the current graph over a set of nodes
          * @param filename Filename of the cytoscape graph
@@ -57,8 +62,7 @@ public :
          * find the gap in the graph, recommend connection between tips
          *
          */
-        void closeGaps(string nodeFilename, string arcFilename,string metaDataFilename);
-
+        void closeGaps(string nodeFilename ="", string arcFilename ="",string metaDataFilename = "");
 
         void connectComponents(string nodeFilename, string arcFilename,string metaDataFilename);
         /**
@@ -180,7 +184,8 @@ public :
          * @param pairedEndJoins keeps the list of potential tips joins and the frequency of that/
          *
          */
-        void streamReads(string readFileName ,set<int> &tipNodes,std::map< pair<int, int>, int>& pairedEndJoins);
+        void streamReads(string readFileName ,set<int> &tipNodes, vector< pair< pair<int , int> , int > >& potentialPairs);
+
         /**
          * Find the node position pairs for a read
          * @param read Reference to the read
@@ -206,8 +211,8 @@ public :
           * receive the list of the potential connection between tips, and make a connection if it would be possible
           * @param pairedEndJoins a list of pairs of tips which can potentially connect to each other.
           */
-         void checkForTipConnection(std::map< pair<int, int>, int> &pairedEndJoins);
-
+        
+         void checkForTipConnection(vector< pair< pair<int , int> , int > >& potentialPairs);
          /**
           * It makes sure that the first tip has no right arc, the second tip has no left arc
           * if they are single node it check to get maximum overlap

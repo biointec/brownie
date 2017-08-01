@@ -343,24 +343,24 @@ void RefComp::extractBreakpointSubgraph(const DBGraph& dbg, std::string breakpoi
         while (std::getline(input, line).good()) {
                 if (line[0] == '>') {
                         id = line.substr(1);
-                        if (DNA_sequence!=""){
-                                breakpoints.push_back( make_pair(id, DNA_sequence));
-                        }
                         DNA_sequence.clear();
                 }
                 else if (line[0] != '>'){
                         DNA_sequence += line;
+
                 }
+                if (DNA_sequence!="")
+                        breakpoints.push_back( make_pair(id, DNA_sequence));
+
         }
-        if (DNA_sequence!=""){
-                breakpoints.push_back( make_pair(id, DNA_sequence));
-        }
+
 
         for (int i = 0 ;i <breakpoints.size(); i++){
                 pair<string , string> breakPoint= breakpoints [i];
                 set<int> nodeSet;
                 extractNodeSetbySequence(dbg, breakPoint.second,nodeSet);
-                dbg.writeCytoscapeGraph( tempDir+breakPoint.first,nodeSet,1);
+                if (nodeSet.size()>2)
+                        dbg.writeCytoscapeGraph( tempDir+breakPoint.first,nodeSet,1);
         }
 }
 

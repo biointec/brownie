@@ -25,7 +25,7 @@
 #include "kmertable.h"
 #include "readcorrection.h"
 #include "refcomp.h"
-
+#include "findGap.h"
 using namespace std;
 
 Brownie::Brownie(int argc, char** args)
@@ -194,7 +194,7 @@ void Brownie::stageFour()
 }
 #endif
         graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage3");
-    /*    bool change = true;
+       bool change = true;
         while (change){
                 change = false;
                 // TIP CLIPPING
@@ -234,7 +234,7 @@ void Brownie::stageFour()
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
         }
-        graph.concatenateNodes();*/
+        graph.concatenateNodes();
 
 #ifdef DEBUG
         Util::startChrono();
@@ -287,8 +287,9 @@ void Brownie::stageFive()
              << graph.getNumArcs() << " arcs" << endl;
 
         //cout << "Writing cytoscape graph: " << endl;
-
-
+        //string readFileName = "checked.reads.fastq";
+        //FindGap  findGap (readFileName, settings, graph);
+        //findGap.closeGaps();
         Util::startChrono();
         ReadCorrectionHandler rcHandler(graph, settings);
         rcHandler.doErrorCorrection(libraries);
@@ -368,11 +369,11 @@ void Brownie::assembleModule()
         else
                 cout << "Files produced by this stage appear to"
                         " be present, skipping stage 3...\n";
-        //if (stageFourNecessary())
+        if (stageFourNecessary())
                 stageFour();
-        //else
-        //        cout << "Files produced by this stage appear to"
-        //                " be present, skipping stage 4...\n";
+        else
+                cout << "Files produced by this stage appear to"
+                        " be present, skipping stage 4...\n";
         //if (stageFiveNecessary())
                 stageFive();
         //else
