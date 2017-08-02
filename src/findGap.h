@@ -23,18 +23,19 @@ public :
         size_t minOverlapSize;
         size_t minSim;
         size_t minTipLength;
-
+        size_t minExactMatchSize;
 
 
 
         /**
          * Default constructor
          */
-
-
         FindGap (string nodeFileName, string arcFileName, string metaDataFileName,string alignmentFile,unsigned int kmerSize =21 ,string tempDir=".");
 
         FindGap( string readFile, const Settings& s,DBGraph &graph);
+
+        void parameterInitialization();
+
         /**
          * Write a cytoscape graph of the current graph over a set of nodes
          * @param filename Filename of the cytoscape graph
@@ -157,7 +158,7 @@ public :
          * @param firstRead the first string after expansion
          * @param secondRead the second string after expansion
          */
-        void extendRead(size_t &firsStartIndex, size_t& secondStartIndex, size_t& firstEndInex , size_t& secondEndIndex, SSNode first,SSNode second ,string &firstRead , string &secondRead);
+         bool extendRead(size_t &firsStartIndex, size_t& secondStartIndex, size_t& firstEndInex , size_t& secondEndIndex, SSNode first,SSNode second ,string &firstRead , string &secondRead);
          /**
          * if a paired end read align to two different component, it keeps it as an indiction of a connection between two component
          * @param readFileName read corrected file in fastq format which instead of corrected reads show the path which those reads align
@@ -206,12 +207,12 @@ public :
           * @param firstRead the maximum possible aligned seq from the first node
           * @param secondRead the maximum possible aligned seq from the second node
           */
-         void alignTips(int firstNodeId, int secondNodeId, string& firstRead, string &secondRead);
+         bool alignTips(int firstNodeId, int secondNodeId, string& firstRead, string &secondRead);
          /**
           * receive the list of the potential connection between tips, and make a connection if it would be possible
           * @param pairedEndJoins a list of pairs of tips which can potentially connect to each other.
           */
-        
+
          void checkForTipConnection(vector< pair< pair<int , int> , int > >& potentialPairs);
          /**
           * It makes sure that the first tip has no right arc, the second tip has no left arc

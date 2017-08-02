@@ -31,7 +31,15 @@ public:
 };
 
 
-
+void FindGap::parameterInitialization(){
+        maxSearchSize = 50;
+        minComponentSize = 4;
+        maxComponentSize = 990000;
+        minNumbOfPairs = 10;
+        minOverlapSize = 15;
+        minSim =50;
+        minExactMatchSize = 7;
+}
 
 FindGap::FindGap(string nodeFileName, string arcFileName, string metaDataFileName, string alignmentFile,unsigned int kmerVlue  ,string tempDir):settings(kmerVlue,tempDir), dbg(settings),overlapSize(kmerVlue),alignment(1000, 2, 1, -1, -3)
 {
@@ -39,27 +47,19 @@ FindGap::FindGap(string nodeFileName, string arcFileName, string metaDataFileNam
         cout <<"graph is loading ...\n" ;
         dbg.loadGraph(nodeFileName,arcFileName,metaDataFileName);
         cout << dbg.getGraphStats() << endl;
-        maxSearchSize = 50;
-        minComponentSize = 4;
-        maxComponentSize = 990000;
-        minNumbOfPairs = 10;
         kmerSize = kmerVlue;
         correctedFile = alignmentFile;
-        minOverlapSize = 15;
-        minSim =50;
+        parameterInitialization();
 }
 
 
 FindGap::FindGap( string readFile, const Settings& s, DBGraph &graph) :overlapSize(s.getK()),alignment(1000, 2, 1, -1, -3),dbg(graph)
 {
         Kmer::setWordSize(settings.getK());
-        maxSearchSize = 50;
-        minNumbOfPairs =10;
         settings =s;
         kmerSize = settings.getK();
         correctedFile = readFile;
-        minOverlapSize = 15;
-        minSim =50;
+        parameterInitialization();
 }
 
 
@@ -139,65 +139,65 @@ void FindGap::closeGaps(string nodeFilename, string arcFilename,string metaDataF
 
 void FindGap::reorderTips(SSNode &first, SSNode &second)
 {
-                if (first.getNumRightArcs() !=0 && first.getNumLeftArcs() ==0)
-                        first = dbg.getSSNode( -first.getNodeID());
-                if (second.getNumLeftArcs()!=0 && second.getNumRightArcs() ==0)
-                        second = dbg.getSSNode( -second.getNodeID());
-                if (first.getNumRightArcs() ==0 && first.getNumLeftArcs() ==0 && second.getNumRightArcs() !=0){
-                        string firstRead1="", secondRead1="";
-                        alignTips(first.getNodeID(), second.getNodeID(), firstRead1, secondRead1);
-                        double sim1 =alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
-                        string firstRead2="", secondRead2="";
-                        alignTips(-first.getNodeID(), second.getNodeID(), firstRead2, secondRead2);
-                        double sim2 =alignment.align(firstRead2, secondRead2)*100/(int)firstRead2.length();
-                        if (sim2 > sim1)
-                                first = dbg.getSSNode( -first.getNodeID());
-                }
-                if (second.getNumLeftArcs()==0 && second.getNumRightArcs() ==0 && first.getNumLeftArcs()!=0){
-                        string firstRead1="", secondRead1="";
-                        alignTips(first.getNodeID(), second.getNodeID(), firstRead1, secondRead1);
-                        double sim1 =alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
-                        string firstRead2="", secondRead2="";
-                        alignTips(first.getNodeID(), -second.getNodeID(), firstRead2, secondRead2);
-                        double sim2 =alignment.align(firstRead2, secondRead2)*100/(int)firstRead2.length();
-                        if (sim2 > sim1)
-                                second = dbg.getSSNode( -second.getNodeID());
-                }
+        if (first.getNumRightArcs() !=0 && first.getNumLeftArcs() ==0)
+                first = dbg.getSSNode( -first.getNodeID());
+        if (second.getNumLeftArcs()!=0 && second.getNumRightArcs() ==0)
+                second = dbg.getSSNode( -second.getNodeID());
 
-                if (second.getNumLeftArcs()==0 && second.getNumRightArcs() ==0 && first.getNumLeftArcs()!=0){
-                        string firstRead1="", secondRead1="";
-                        alignTips(first.getNodeID(), second.getNodeID(), firstRead1, secondRead1);
-                        double sim1 =alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
-                        string firstRead2="", secondRead2="";
-                        alignTips(first.getNodeID(), -second.getNodeID(), firstRead2, secondRead2);
-                        double sim2 =alignment.align(firstRead2, secondRead2)*100/(int)firstRead2.length();
-                        if (sim2 > sim1)
-                                second = dbg.getSSNode( -second.getNodeID());
-                }
-                if (second.getNumLeftArcs()==0 && second.getNumRightArcs() ==0 && first.getNumLeftArcs()==0 && first.getNumRightArcs()==0){
-                        string firstRead1="", secondRead1="";
-                        alignTips(first.getNodeID(), second.getNodeID(), firstRead1, secondRead1);
-                        double sim1 =alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
-                        string firstRead2="", secondRead2="";
-                        alignTips(-first.getNodeID(), second.getNodeID(), firstRead2, secondRead2);
-                        double sim2 =alignment.align(firstRead2, secondRead2)*100/(int)firstRead2.length();
-                        string firstRead3="", secondRead3="";
-                        alignTips(first.getNodeID(), -second.getNodeID(), firstRead3, secondRead3);
-                        double sim3 =alignment.align(firstRead3, secondRead3)*100/(int)firstRead3.length();
-                        string firstRead4="", secondRead4="";
-                        alignTips(-first.getNodeID(), -second.getNodeID(), firstRead4, secondRead4);
-                        double sim4 =alignment.align(firstRead4, secondRead4)*100/(int)firstRead4.length();
-                        if (sim2 > sim1 && sim2 > sim3 && sim2 >sim4){
-                                first = dbg.getSSNode( -first.getNodeID());
-                        }
+        // the first tip is a single node
+        if (first.getNumRightArcs() ==0 && first.getNumLeftArcs() ==0 && second.getNumRightArcs() !=0){
+                string firstRead1="", secondRead1="";
+                double sim1 = -100,sim2= -100;
+                if (alignTips(first.getNodeID(), second.getNodeID(), firstRead1, secondRead1))
+                        sim1 =alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
+                string firstRead2="", secondRead2="";
+                if (alignTips(-first.getNodeID(), second.getNodeID(), firstRead2, secondRead2))
+                        sim2 =alignment.align(firstRead2, secondRead2)*100/(int)firstRead2.length();
+                if (sim2 > sim1 )
+                        first = dbg.getSSNode( -first.getNodeID());
+
+
+        }
+        //the second tip is a single node
+        if (second.getNumLeftArcs()==0 && second.getNumRightArcs() ==0 && first.getNumLeftArcs()!=0){
+                string firstRead1="", secondRead1="";
+                double sim1 = -100,sim2= -100;
+                if (alignTips(first.getNodeID(), second.getNodeID(), firstRead1, secondRead1))
+                        sim1 =alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
+                string firstRead2="", secondRead2="";
+                if (alignTips(first.getNodeID(), -second.getNodeID(), firstRead2, secondRead2))
+                        sim2 =alignment.align(firstRead2, secondRead2)*100/(int)firstRead2.length();
+                if (sim2 > sim1  )
+                        second = dbg.getSSNode( -second.getNodeID());
+
+
+        }
+        // both tips are single nodes
+        if (second.getNumLeftArcs()==0 && second.getNumRightArcs() ==0 && first.getNumLeftArcs()==0 && first.getNumRightArcs()==0){
+                string firstRead1="", secondRead1="";
+                double sim1 = -100,sim2 = -100,sim3 = -100,sim4 = -100;
+                if (alignTips(first.getNodeID(), second.getNodeID(), firstRead1, secondRead1))
+                        sim1 =alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
+                string firstRead2="", secondRead2="";
+                if (alignTips(-first.getNodeID(), second.getNodeID(), firstRead2, secondRead2))
+                        sim2 =alignment.align(firstRead2, secondRead2)*100/(int)firstRead2.length();
+                string firstRead3="", secondRead3="";
+                if (alignTips(first.getNodeID(), -second.getNodeID(), firstRead3, secondRead3))
+                        sim3 =alignment.align(firstRead3, secondRead3)*100/(int)firstRead3.length();
+                string firstRead4="", secondRead4="";
+                if (alignTips(-first.getNodeID(), -second.getNodeID(), firstRead4, secondRead4))
+                        sim4 =alignment.align(firstRead4, secondRead4)*100/(int)firstRead4.length();
+                if (sim2 > sim1 && sim2 > sim3 && sim2 >sim4){
+                        first = dbg.getSSNode( -first.getNodeID());
+                }else
                         if (sim3 > sim1 && sim3 >sim2 && sim3 > sim4){
                                 second = dbg.getSSNode( -second.getNodeID());
-                        }
-                        if (sim4 >sim1 && sim4>sim2 && sim4>sim3 ){
-                                first = dbg.getSSNode( -first.getNodeID());
+                        }else
+                                if (sim4 >sim1 && sim4>sim2 && sim4>sim3  )
+                                        first = dbg.getSSNode( -first.getNodeID());
                                 second = dbg.getSSNode( -second.getNodeID());
-                        }
-                }
+
+        }
 }
 
 
@@ -214,11 +214,15 @@ void FindGap::checkForTipConnection(vector< pair< pair<int , int> , int > >& pot
                 bool found = false;
                 SSNode first = dbg.getSSNode( it->first.first);
                 SSNode second = dbg.getSSNode( it->first.second);
-                reorderTips(first, second);
+                //these nodes have been already connected in other combinations
                 if (nodesHandled.find(abs(first.getNodeID())) !=nodesHandled.end())
                         continue;
                 if (nodesHandled.find(abs(second.getNodeID())) != nodesHandled.end())
                         continue;
+                if ( !first.isValid() || !second.isValid() )
+                        continue;
+                reorderTips(first, second);
+
                 //#ifdef DEBUG
                 string firstNodeContent = first.getSequence();
                 string secondNodeContent = second.getSequence();
@@ -227,40 +231,34 @@ void FindGap::checkForTipConnection(vector< pair< pair<int , int> , int > >& pot
                 maxLen = secondNodeContent.length()  < 150 ? secondNodeContent.length():150;
                 secondNodeContent = secondNodeContent.substr(0,maxLen);
                 //#endif
-                //FN
-                if ( !first.isValid() || !second.isValid() )
-                        continue;
-                if ( first.getNumRightArcs()>0 || second.getNumLeftArcs()>0 )
-                {
-                        second = dbg.getSSNode( -second.getNodeID());
-                        first = dbg.getSSNode( -first.getNodeID());
-                }
-
                 string firstRead="", secondRead="";
-                alignTips(first.getNodeID(), second.getNodeID(), firstRead, secondRead);
-                double sim =alignment.align(firstRead, secondRead)*100/(int)firstRead.length();
-                if (firstRead.length() >minOverlapSize and sim>minSim ){
-                        cout <<first.getNodeID() << " : " <<second.getNodeID() <<endl;
-                        alignment.printAlignment(firstRead,secondRead);
-                        cout <<"similarity:"<<sim <<endl;
-                        if (first.getAvgKmerCov() >= second.getAvgKmerCov())
-                                found = connectNodes(first.getNodeID(),second.getNodeID());
-                        else
-                                found = connectNodes(-second.getNodeID(), -first.getNodeID());
-                        if (found)
-                        {
-                                nodesHandled.insert(abs(first.getNodeID()));
-                                nodesHandled.insert(abs(second.getNodeID()));
-                                numberOfNewConnection ++;
-                                cout <<"The connection successfully stablished. This connection is supported by " <<it->second <<endl;
-                        }
-                        else
-                        {
-                                violateGraphStructure ++;
-                                cout <<"We couldn't make this connection. It probably violates the graph structure" <<endl;
+                double sim = -100;
+                if (alignTips(first.getNodeID(), second.getNodeID(), firstRead, secondRead)){
+                        sim = alignment.align(firstRead, secondRead)*100/(int)firstRead.length();
+                        if (firstRead.length() >minOverlapSize and sim>minSim ){
+                                cout <<first.getNodeID() << " : " <<second.getNodeID() <<endl;
+                                alignment.printAlignment(firstRead,secondRead);
+                                cout <<"similarity:"<<sim <<endl;
+                                if (first.getAvgKmerCov() >= second.getAvgKmerCov())
+                                        found = connectNodes(first.getNodeID(),second.getNodeID());
+                                else
+                                        found = connectNodes(-second.getNodeID(), -first.getNodeID());
+                                if (found)
+                                {
+                                        nodesHandled.insert(abs(first.getNodeID()));
+                                        nodesHandled.insert(abs(second.getNodeID()));
+                                        numberOfNewConnection ++;
+                                        cout <<"The connection successfully stablished. This connection is supported by " <<it->second <<endl;
+                                }
+                                else
+                                {
+                                        violateGraphStructure ++;
+                                        cout <<"We couldn't make this connection. It probably violates the graph structure" <<endl;
+                                }
+
+                                cout <<".............................."<<endl;
                         }
 
-                        cout <<".............................."<<endl;
                 }
                 //#ifdef DEBUG
                 if (firstRead.length() > firstNodeContent.length())
@@ -464,13 +462,13 @@ bool FindGap::eliminateFakeJoins(std::vector<pair<int, int> > &potentialJoin, st
 
         return found;
 }
-void FindGap::alignTips(int firstNodeId, int secondNodeId, string& firstRead, string &secondRead)
+bool FindGap::alignTips(int firstNodeId, int secondNodeId, string& firstRead, string &secondRead)
 {
         SSNode first=dbg.getSSNode(firstNodeId);
         SSNode second=dbg.getSSNode(secondNodeId);
         size_t firsStartIndex =0 , secondStartIndex = 0, firstEndIndex = 0, secondEndIndex = 0;
-        extendRead(firsStartIndex,  secondStartIndex,  firstEndIndex ,
-                   secondEndIndex, first,second ,firstRead , secondRead);
+        if (!extendRead(firsStartIndex,  secondStartIndex,  firstEndIndex ,secondEndIndex, first,second ,firstRead , secondRead))
+                return false;
         if (second.getNumRightArcs() !=0 && first.getSequence().length()>firstEndIndex){
                 //cout<<"Expand second node to the right for "<<  first.getSequence().length()-firstEndInex <<" bp "<<endl;
                 expandReadByGraphToRight(second,first,secondEndIndex,firstEndIndex,secondRead,firstRead);
@@ -479,6 +477,7 @@ void FindGap::alignTips(int firstNodeId, int secondNodeId, string& firstRead, st
                 //cout <<"Expand first node to the left for "<< secondStartIndex<<" bp "<<endl;
                 expandReadByGraphToLeft(first,second,firsStartIndex,secondStartIndex,firstRead,secondRead);
         }
+        return true;
 }
 
 bool FindGap::connectNodes(NodeID firstNodeID, NodeID secondNodeID)
@@ -495,8 +494,6 @@ bool FindGap::connectNodes(NodeID firstNodeID, NodeID secondNodeID)
         consensusStr = consensusStr +firstRead;
         if (second.getSequence().length()>secondEndIndex )
                 consensusStr = consensusStr +second.getSequence().substr(secondEndIndex,second.getSequence().length()-secondEndIndex);
-        if (consensusStr.length()<kmerSize)
-                return false;
         if (first.getSequence().substr(0,kmerSize-1).compare( consensusStr.substr(0,kmerSize-1)) != 0 )
                 return false;
         if (second.getSequence().substr(second.getSequence().length()-kmerSize+1, kmerSize-1).compare(consensusStr.substr(consensusStr.length()-kmerSize+1, kmerSize-1)) !=0 )
@@ -633,7 +630,7 @@ void FindGap::streamReads(string readFileName , set<int> &tipNodes,  vector< pai
                 cout << "( " << it->first.first <<" , " <<it->first.second <<" ) :" <<it->second <<endl;
         }
 
-        cout <<"\nNumber of found suggestions: "<<pairedEndJoins.size() <<endl;
+        cout <<"\nNumber of found suggestions: "<<potentialPairs.size() <<endl;
 }
 
 
@@ -650,13 +647,7 @@ pair <int, int > FindGap::makePairOfTips(int firstTipId, int secondTipId)
         return join;
 }
 
-
-
-
-
-
-
-void FindGap::extendRead(size_t &firsStartIndex, size_t& secondStartIndex, size_t& firstEndInex ,
+bool FindGap::extendRead(size_t &firstStartIndex, size_t& secondStartIndex, size_t& firstEndInex ,
                          size_t& secondEndIndex, SSNode first,SSNode second ,string &firstRead , string &secondRead)
 {
 
@@ -675,19 +666,21 @@ void FindGap::extendRead(size_t &firsStartIndex, size_t& secondStartIndex, size_
                         maxLen2 = maxSearchSize;
                 secondSeq = secondSeq.substr(0,maxLen2);
 
-                string commonSubstr = getLongestCommonSubStr(firstSeq, secondSeq, firsStartIndex, secondStartIndex ) ;
-                firsStartIndex = firsStartIndex +first.getSequence().length()-maxLen1;
+                string commonSubstr = getLongestCommonSubStr(firstSeq, secondSeq, firstStartIndex, secondStartIndex ) ;
+                if (commonSubstr.length()<minExactMatchSize)
+                        return false;
+                firstStartIndex = firstStartIndex +first.getSequence().length()-maxLen1;
 
                 //cout<<"common  "<<commonSubstr<<endl;
-                firstEndInex = firsStartIndex + commonSubstr.length();
+                firstEndInex = firstStartIndex + commonSubstr.length();
                 secondEndIndex = secondStartIndex + commonSubstr.length();
 
-                if (firsStartIndex <secondStartIndex){
-                        secondStartIndex = secondStartIndex-firsStartIndex;
-                        firsStartIndex =0;
+                if (firstStartIndex <secondStartIndex){
+                        secondStartIndex = secondStartIndex-firstStartIndex;
+                        firstStartIndex =0;
                 }
                 else{
-                        firsStartIndex = firsStartIndex -secondStartIndex;
+                        firstStartIndex = firstStartIndex -secondStartIndex;
                         secondStartIndex =0;
                 }
                 if (first.getSequence().length() -firstEndInex < second.getSequence().length()-secondEndIndex){
@@ -698,9 +691,11 @@ void FindGap::extendRead(size_t &firsStartIndex, size_t& secondStartIndex, size_
                         firstEndInex = firstEndInex +second.getSequence().length()-secondEndIndex ;
                         secondEndIndex = second.getSequence().length();
                 }
-                firstRead = first.getSequence().substr(firsStartIndex,firstEndInex-firsStartIndex);
+                firstRead = first.getSequence().substr(firstStartIndex,firstEndInex-firstStartIndex);
                 secondRead = second.getSequence().substr(secondStartIndex, secondEndIndex-secondStartIndex);
-
+                if (firstEndInex <first.getSequence().length() || secondStartIndex >0 )
+                        return false;
+                return true;
 }
 
 void FindGap::expandReadByGraphToRight(SSNode first,SSNode second,size_t& firstEndInex , size_t& secondEndIndex, string &firstRead, string &secondRead)
@@ -805,7 +800,7 @@ string FindGap::getLongestCommonSubStr(string str1, string str2, size_t & firsSt
         int n = str2.length();
         int LCSuff[m+1][n+1];
         int result = 0;
-        int maxIndex1, maxIndex2 = 0;
+        int maxIndex1 = 0, maxIndex2 = 0;
         for (int i=0; i<=m; i++)
         {
                 for (int j=0; j<=n; j++)

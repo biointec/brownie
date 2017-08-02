@@ -60,12 +60,12 @@ def defineStatistics(samRecords):
 	if (abs (second.pos - first.pos) >500) :
 	    if (first.qname.split("_")[1]=='0'):
 		TN = TN +1
-		print ("************** TN **************")
-                print (abs (second.pos - first.pos))
-                print (">"+first.qname)
-                print (first.seq)
-                print (">"+second.qname)
-                print (second.seq)
+		#print ("************** TN **************")
+                #print (abs (second.pos - first.pos))
+                #print (">"+first.qname)
+                #print (first.seq)
+                #print (">"+second.qname)
+                #print (second.seq)
 
 	    else:
 		FP = FP +1
