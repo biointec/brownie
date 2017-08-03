@@ -193,13 +193,7 @@ public :
          * @param npp Vector of node position pairs
          */
         void findNPPFast(const std::string& read, std::vector<NodePosPair>& npp);
-        /**
-         * make a pair of tips , the first tip has no right arc, the second tip has no left arcs
-         * @param firstTipId the first input tip
-         * @param secondTipId
-         * @return joinTip
-         */
-         pair <int, int > makePairOfTips(int firstTipId, int secondTipId);
+
          /**
           * align two tips to find the longest common substing and extend it to the right and left
           * @param firstNodeId the first tip which is in the left has no right arcs

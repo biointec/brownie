@@ -17,7 +17,7 @@ public:
         float relScore;
 
 
-        DFSNode() : nodeID(0), readPos(0), score(0), relScore(0.0f) {}
+        DFSNode() : nodeID(0), readPos(0), score(0), relScore(0.0) {}
 
         DFSNode(NodeID nodeID_, size_t readPos_, int score_, float relScore_) :
                 nodeID(nodeID_), readPos(readPos_), score(score_),
@@ -58,7 +58,7 @@ FindGap::FindGap(LibraryContainer& libraries, const Settings& s, DBGraph &graph)
         //call it like this :
         //FindGap  findGap (libraries, settings, graph);
         //findGap.closeGaps();
-        
+
         Kmer::setWordSize(settings.getK());
         settings =s;
         kmerSize = settings.getK();
@@ -71,7 +71,7 @@ FindGap::FindGap(LibraryContainer& libraries, const Settings& s, DBGraph &graph)
 
 void FindGap::connectComponents(string nodeFilename, string arcFilename,string metaDataFilename)
 {       size_t numberOfJoins = 0 ;
-        //dbg.writeCytoscapeGraph("cytoscape");
+
         Util::startChrono();
         cout << "Creating kmer lookup table... "; cout.flush();
         dbg.buildKmerNPPTable();
@@ -123,7 +123,7 @@ void FindGap::connectComponents(string nodeFilename, string arcFilename,string m
 }
 
 void FindGap::closeGaps(string nodeFilename, string arcFilename,string metaDataFilename)
-{       //dbg.writeCytoscapeGraph("cytoscape");
+{
         ofstream ofs;
         ofs.open("pairedArtificialReads.fasta",std::fstream::out);
         ofs.close();
@@ -640,19 +640,6 @@ void FindGap::streamReads(string readFileName , set<int> &tipNodes,  vector< pai
 }
 
 
-pair <int, int > FindGap::makePairOfTips(int firstTipId, int secondTipId)
-{
-
-        if (abs(firstTipId) >abs(secondTipId)){
-                int temp = firstTipId;
-                firstTipId =secondTipId;
-                secondTipId =temp;
-        }
-
-        pair <int, int >join = make_pair(firstTipId,secondTipId);
-        return join;
-}
-
 bool FindGap::extendRead(size_t &firstStartIndex, size_t& secondStartIndex, size_t& firstEndInex ,
                          size_t& secondEndIndex, SSNode first,SSNode second ,string &firstRead , string &secondRead)
 {
@@ -766,7 +753,6 @@ void FindGap::expandReadByGraphToLeft(SSNode first,SSNode second,size_t& firsSta
 void FindGap::expandNode( int length, vector< pair <string ,vector< NodeID>> >& bfs,
                           vector< pair <string ,vector< NodeID>> >& result )
 {
-
         int currReadPos = 0;
         vector< pair <string ,vector< NodeID>> > mustVisit;
 
@@ -991,7 +977,8 @@ void FindGap::findTips(set<int> &tipNodes, set <int>& eligibleNodeSet)
                 bool rightDE = (node.getNumRightArcs() == 0);
                 if (!leftDE && !rightDE)
                         continue;
-                if (eligibleNodeSet.find(node.getNodeID())!=eligibleNodeSet.end() || eligibleNodeSet.find(-node.getNodeID())!=eligibleNodeSet.end())
+                if (eligibleNodeSet.find(node.getNodeID())!=eligibleNodeSet.end() ||
+                        eligibleNodeSet.find(-node.getNodeID())!=eligibleNodeSet.end())
                         tipNodes.insert(node.getNodeID());
          }
 }
@@ -1225,7 +1212,7 @@ void FindGap::writeCytoscapeGraph(const std::string& filename,
         }
         ofs.close();
 }
-
+/*
 int main(int argc, char** args)
 {
         enum command {help,cytoscape,breakpoint,closeGap};
@@ -1316,4 +1303,4 @@ int main(int argc, char** args)
         cout <<"Finished successfully"<<endl;
         return EXIT_SUCCESS;
 }
-
+*/

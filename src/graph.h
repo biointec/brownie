@@ -547,7 +547,7 @@ public: // FIXME !!! (private)
          * @param nodeID Identifier for the source node
          * @param covCutoff Coverage cutoff
          */
-        bool flowCorrection(NodeID nodeID, double covCutoff);
+        bool flowCorrection(NodeID nodeID, double covCutoff, size_t maxMargLength);
 
 public:
         /**
@@ -564,26 +564,15 @@ public:
          * @param startNode node which should be Invalidated
          * @return True if node was removed
          */
+        bool clipNormalTip(SSNode startNode );
 
-        bool clipNormalTip(double covCutoff, size_t maxMargLength,SSNode startNode,SSNode nodeBefore );
-
-        /**
-         * Invalidate isolated nodes in the graph
-         * @param covCutoff Maximum coverage of a node to delete
-         * @param maxLength Maximum marginal length of a node to delete
-         * @param startNode node which should be Invalidated
-         * @return True if  node was removed
-         */
-        bool clipIsolatedNode(double covCutoff, size_t maxMargLength, SSNode startNode );
-             /**
+         /**
          * Invalidate joined tip nodes in the graph
          * @param covCutoff Maximum coverage of a node to delete
-         * @param maxLength Maximum marginal length of a node to delete
-
          * @return True if  node was removed
          */
 
-        bool clipJoinedTip(double covCutoff, size_t maxMargLength, SSNode startNode );
+        bool clipJoinedTip(double covCutoff,  SSNode startNode );
 
 
         /**
@@ -615,7 +604,7 @@ public:
         /**
          * Graph correction based on flow conservation
          */
-        bool flowCorrection();
+        bool flowCorrection(double covCutoff, size_t maxMargLength);
 
 #ifdef DEBUG
         /**

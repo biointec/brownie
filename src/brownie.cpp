@@ -49,6 +49,7 @@ void Brownie::stageOne()
              << " from input files..." << endl;
         Util::startChrono();
         readParser->parseInputFiles(libraries);
+
         size_t kmerGOne = readParser->getNumKmersCovGTOne();
         size_t allKmers = readParser->getNumKmers() ;
         cout << "Parsed input files (" << Util::stopChronoStr() << ")" << endl;
@@ -63,8 +64,10 @@ void Brownie::stageOne()
         cout << "Writing kmer file...";
         cout.flush();
         Util::startChrono();
-        //readParser->writeAllKmers(getKmerFilename());
-        readParser->writeKmersWithCovGTOne(getKmerFilename());
+        if (Kmer::getK()>31)
+                readParser->writeAllKmers(getKmerFilename());
+        else
+                readParser->writeKmersWithCovGTOne(getKmerFilename());
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
 
         delete readParser;
@@ -226,7 +229,7 @@ void Brownie::stageFour()
                 // FLOW CORRECTION
                 Util::startChrono();
                 cout << "Cleaning graph (flow correction)\n";
-                while (graph.flowCorrection()) {
+                while (graph.flowCorrection(cutoff, libraries.getAvgReadLength())) {
                         graph.concatenateNodes();
                         cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
                         change = true;
@@ -257,6 +260,9 @@ void Brownie::stageFour()
        graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage4");
 #endif
 
+        FindGap  findGap (libraries, settings, graph);
+        findGap.closeGaps();
+
         cout << graph.getGraphStats() << endl;
         cout << "Writing graph..." << endl;
         graph.writeGraph(getNodeFilename(4),
@@ -285,11 +291,7 @@ void Brownie::stageFive()
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << "Graph contains " << graph.getNumNodes() << " nodes and "
              << graph.getNumArcs() << " arcs" << endl;
-
-        //cout << "Writing cytoscape graph: " << endl;
-        //string readFileName = "checked.reads.fastq";
-        //FindGap  findGap (readFileName, settings, graph);
-        //findGap.closeGaps();
+;
         Util::startChrono();
         ReadCorrectionHandler rcHandler(graph, settings);
         rcHandler.doErrorCorrection(libraries);
