@@ -3,7 +3,7 @@
 #include <string>
 #include <map>
 #include <queue>
-
+#include "library.h"
 
 using namespace std;
 
@@ -53,13 +53,19 @@ FindGap::FindGap(string nodeFileName, string arcFileName, string metaDataFileNam
 }
 
 
-FindGap::FindGap( string readFile, const Settings& s, DBGraph &graph) :overlapSize(s.getK()),alignment(1000, 2, 1, -1, -3),dbg(graph)
+FindGap::FindGap(LibraryContainer& libraries, const Settings& s, DBGraph &graph) :overlapSize(s.getK()),alignment(1000, 2, 1, -1, -3),dbg(graph)
 {
+        //call it like this :
+        //FindGap  findGap (libraries, settings, graph);
+        //findGap.closeGaps();
+        
         Kmer::setWordSize(settings.getK());
         settings =s;
         kmerSize = settings.getK();
-        correctedFile = readFile;
         parameterInitialization();
+        ReadLibrary &input =libraries.getInput(0);
+        ReadFile *readFile = input.allocateReadFile();
+        correctedFile = input.getInputFilename();
 }
 
 
@@ -149,7 +155,7 @@ void FindGap::reorderTips(SSNode &first, SSNode &second)
                 string firstRead1="", secondRead1="";
                 double sim1 = -100,sim2= -100;
                 if (alignTips(first.getNodeID(), second.getNodeID(), firstRead1, secondRead1))
-                        sim1 =alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
+                        sim1 = alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
                 string firstRead2="", secondRead2="";
                 if (alignTips(-first.getNodeID(), second.getNodeID(), firstRead2, secondRead2))
                         sim2 =alignment.align(firstRead2, secondRead2)*100/(int)firstRead2.length();
@@ -163,10 +169,10 @@ void FindGap::reorderTips(SSNode &first, SSNode &second)
                 string firstRead1="", secondRead1="";
                 double sim1 = -100,sim2= -100;
                 if (alignTips(first.getNodeID(), second.getNodeID(), firstRead1, secondRead1))
-                        sim1 =alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
+                        sim1 = alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
                 string firstRead2="", secondRead2="";
                 if (alignTips(first.getNodeID(), -second.getNodeID(), firstRead2, secondRead2))
-                        sim2 =alignment.align(firstRead2, secondRead2)*100/(int)firstRead2.length();
+                        sim2 = alignment.align(firstRead2, secondRead2)*100/(int)firstRead2.length();
                 if (sim2 > sim1  )
                         second = dbg.getSSNode( -second.getNodeID());
 
@@ -177,16 +183,16 @@ void FindGap::reorderTips(SSNode &first, SSNode &second)
                 string firstRead1="", secondRead1="";
                 double sim1 = -100,sim2 = -100,sim3 = -100,sim4 = -100;
                 if (alignTips(first.getNodeID(), second.getNodeID(), firstRead1, secondRead1))
-                        sim1 =alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
+                        sim1 = alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
                 string firstRead2="", secondRead2="";
                 if (alignTips(-first.getNodeID(), second.getNodeID(), firstRead2, secondRead2))
-                        sim2 =alignment.align(firstRead2, secondRead2)*100/(int)firstRead2.length();
+                        sim2 = alignment.align(firstRead2, secondRead2)*100/(int)firstRead2.length();
                 string firstRead3="", secondRead3="";
                 if (alignTips(first.getNodeID(), -second.getNodeID(), firstRead3, secondRead3))
-                        sim3 =alignment.align(firstRead3, secondRead3)*100/(int)firstRead3.length();
+                        sim3 = alignment.align(firstRead3, secondRead3)*100/(int)firstRead3.length();
                 string firstRead4="", secondRead4="";
                 if (alignTips(-first.getNodeID(), -second.getNodeID(), firstRead4, secondRead4))
-                        sim4 =alignment.align(firstRead4, secondRead4)*100/(int)firstRead4.length();
+                        sim4 = alignment.align(firstRead4, secondRead4)*100/(int)firstRead4.length();
                 if (sim2 > sim1 && sim2 > sim3 && sim2 >sim4){
                         first = dbg.getSSNode( -first.getNodeID());
                 }else

@@ -32,7 +32,7 @@ public :
          */
         FindGap (string nodeFileName, string arcFileName, string metaDataFileName,string alignmentFile,unsigned int kmerSize =21 ,string tempDir=".");
 
-        FindGap( string readFile, const Settings& s,DBGraph &graph);
+        FindGap( LibraryContainer& libraries, const Settings& s,DBGraph &graph);
 
         void parameterInitialization();
 
