@@ -67,8 +67,6 @@ FindGap::FindGap(LibraryContainer& libraries, const Settings& s, DBGraph &graph)
         ReadFile *readFile = input.allocateReadFile();
         correctedFile = input.getInputFilename();
 }
-
-
 void FindGap::connectComponents(string nodeFilename, string arcFilename,string metaDataFilename)
 {       size_t numberOfJoins = 0 ;
 
@@ -137,11 +135,10 @@ void FindGap::closeGaps(string nodeFilename, string arcFilename,string metaDataF
         streamReads(correctedFile,tipNodes,potentialPairs);
         checkForTipConnection(potentialPairs);
         dbg.concatenateNodes();
-        cout << dbg.getGraphStats() << endl;
+        //cout << dbg.getGraphStats() << endl;
         if (nodeFilename != "")
                 dbg.writeGraph(nodeFilename,arcFilename,metaDataFilename);
 }
-
 
 void FindGap::reorderTips(SSNode &first, SSNode &second)
 {
@@ -573,16 +570,20 @@ void FindGap::streamReads(string readFileName , set<int> &tipNodes,  vector< pai
                                 if (nppvFirst[i].isValid())
                                         if (tipNodes.find(abs(nppvFirst[i].getNodeID()))!=tipNodes.end()){
                                                 firstTipId = nppvFirst[i].getNodeID();
-                                                firstFoundOntip = true;
-                                                break;
+                                                if (dbg.getSSNode(firstTipId).getNumRightArcs() == 0){
+                                                        firstFoundOntip = true;
+                                                        break;
+                                                }
                                         }
                         }
                         for (size_t i = 0; i < nppvSecond.size(); i++) {
                                 if (nppvSecond[i].isValid())
                                         if (tipNodes.find(abs(nppvSecond[i].getNodeID()))!=tipNodes.end()){
                                                 secondTipId = - nppvSecond[i].getNodeID();
-                                                secondFoundOnTip = true;
-                                                break;
+                                                if (dbg.getSSNode(secondTipId).getNumLeftArcs() == 0){
+                                                        secondFoundOnTip = true;
+                                                        break;
+                                                }
                                         }
                         }
                         if (firstFoundOntip && secondFoundOnTip )
@@ -1212,7 +1213,7 @@ void FindGap::writeCytoscapeGraph(const std::string& filename,
         }
         ofs.close();
 }
-/*
+
 int main(int argc, char** args)
 {
         enum command {help,cytoscape,breakpoint,closeGap};
@@ -1303,4 +1304,4 @@ int main(int argc, char** args)
         cout <<"Finished successfully"<<endl;
         return EXIT_SUCCESS;
 }
-*/
+

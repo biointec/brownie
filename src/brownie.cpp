@@ -196,7 +196,6 @@ void Brownie::stageFour()
         graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage3");
 }
 #endif
-        graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage3");
        bool change = true;
         while (change){
                 change = false;
@@ -260,8 +259,8 @@ void Brownie::stageFour()
        graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage4");
 #endif
 
-        FindGap  findGap (libraries, settings, graph);
-        findGap.closeGaps();
+        //FindGap  findGap (libraries, settings, graph);
+        //findGap.closeGaps();
 
         cout << graph.getGraphStats() << endl;
         cout << "Writing graph..." << endl;

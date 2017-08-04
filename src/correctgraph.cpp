@@ -333,9 +333,6 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                 }else if (startNode.getNumRightArcs()>1){
                         joinedTip = true;
                         remove = clipJoinedTip(covCutoff,startNode);
-                        //lets not to delete join tips at deleteAllLeftArcs
-
-
                 }
                 if (startNode.getAvgKmerCov() > (covCutoff) || (startNode.getMarginalLength() > maxMargLength))
                         continue;
@@ -397,7 +394,7 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
         cout << "\t===== DEBUG: end =====" << endl;
 #endif
 
-        return  numDeleted > 0 ;
+        return  numDeleted > 10 ;
 }
 
 void DBGraph::concatenateAroundNode(NodeID seedID, vector<NodeID>& nodeListv)
