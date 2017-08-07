@@ -1213,7 +1213,7 @@ void FindGap::writeCytoscapeGraph(const std::string& filename,
         }
         ofs.close();
 }
-
+/*
 int main(int argc, char** args)
 {
         enum command {help,cytoscape,breakpoint,closeGap};
@@ -1303,5 +1303,5 @@ int main(int argc, char** args)
         }
         cout <<"Finished successfully"<<endl;
         return EXIT_SUCCESS;
-}
+}*/
 

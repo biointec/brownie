@@ -26,6 +26,7 @@
 #include "readcorrection.h"
 #include "refcomp.h"
 #include "findGap.h"
+
 using namespace std;
 
 Brownie::Brownie(int argc, char** args)
@@ -196,6 +197,7 @@ void Brownie::stageFour()
         graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage3");
 }
 #endif
+       FindGap  findGap (libraries, settings, graph);
        bool change = true;
         while (change){
                 change = false;
@@ -223,18 +225,11 @@ void Brownie::stageFour()
                         change = true;
                 }
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
+                graph.extractStatistic();
+                graph.deleteUnreliableNodes(cutoff, libraries.getAvgReadLength());
+                graph.concatenateNodes();
 
-
-                // FLOW CORRECTION
-                Util::startChrono();
-                cout << "Cleaning graph (flow correction)\n";
-                while (graph.flowCorrection(cutoff, libraries.getAvgReadLength())) {
-                        graph.concatenateNodes();
-                        cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
-                        change = true;
-                }
-                cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
-
+                findGap.closeGaps();
         }
         graph.concatenateNodes();
 
@@ -259,8 +254,7 @@ void Brownie::stageFour()
        graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage4");
 #endif
 
-        //FindGap  findGap (libraries, settings, graph);
-        //findGap.closeGaps();
+
 
         cout << graph.getGraphStats() << endl;
         cout << "Writing graph..." << endl;

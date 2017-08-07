@@ -771,6 +771,48 @@ public:
         void findReductions(std::vector<NodeChain>& reductionv);
         bool validateChain(const NodeChain& nc) const;
         void validateChainContainer(const NodeChainContainer& ncc);
+
+
+        //flow correction routines
+         /**
+         * this routine do the following things
+         * 1. calculation of avg and std of node kmer coverage
+         * 2. calculation of read start coverage mean
+         * 3. for every node it calculates the MULTIPLICITY
+         * 4. for every node it calculates the certainity of our guess about MULTIPLICITY
+         * 5. for every node it calculates the inCorrctnessRatio of our guess about MULTIPLICITY
+         *
+         */
+        void extractStatistic();
+        /**
+         * check nodes to see wether is reliable or not
+         * a node is reliable if it has a high confidenceRatio and low inCorrctnessRatio
+         * these terms are defined in extractStatistic routine
+         * @param node the given input node
+         * @return true if the node is reliable
+         */
+
+        bool checkNodeIsReliable(SSNode node);
+        /**
+         * this routine loops over all nodes, for a reliable node N with MULTIPLICITY(M)
+         * it should have at most M outgoing arcs. Therefore we find extra nodes with low coverage
+         * or extra nodes wich are appeared as tips or bubbles.
+         * @return true if any changes happens
+         * the second part of this routine looks for the adjacent nodes with same MULTIPLICITY
+         * if they have some outgoing or ingoing arcs with low coverage those nodes should be
+         * deleted and these two adjacent reliable nodes should be connected later.
+         */
+        bool deleteUnreliableNodes(double covCutoff, size_t maxMargLength);
+        bool deleteExtraAttachedNodes(double covCutoff, size_t maxMargLength);
+        bool connectSameMulNodes(double covCutoff, size_t maxMargLength);
+        /*
+         * calculates the startReadCov getAvgKmerCov
+         */
+        double getStartReadAvg();
+
+        typedef pair<int, pair<double, double> > pair_k;
+        map<NodeID, pair_k> nodesExpMult;
+
 };
 
 #endif

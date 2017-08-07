@@ -801,5 +801,5 @@ bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
         }
         cout << "\tRemoved " << numArcsRemoved << " arcs" << endl;
 
-        return returnValue;
+        return numNodesRemoved > 10;
 }
