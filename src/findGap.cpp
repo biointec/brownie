@@ -40,7 +40,7 @@ void FindGap::parameterInitialization(){
         minSim =50;
         minExactMatchSize = 7;
 }
-
+/*
 FindGap::FindGap(string nodeFileName, string arcFileName, string metaDataFileName, string alignmentFile,unsigned int kmerVlue  ,string tempDir):settings(kmerVlue,tempDir), dbg(settings),overlapSize(kmerVlue),alignment(1000, 2, 1, -1, -3)
 {
         Kmer::setWordSize(settings.getK());
@@ -50,7 +50,7 @@ FindGap::FindGap(string nodeFileName, string arcFileName, string metaDataFileNam
         kmerSize = kmerVlue;
         correctedFile = alignmentFile;
         parameterInitialization();
-}
+}*/
 
 
 FindGap::FindGap(LibraryContainer& libraries, const Settings& s, DBGraph &graph) :overlapSize(s.getK()),alignment(1000, 2, 1, -1, -3),dbg(graph)
@@ -138,44 +138,27 @@ void FindGap::closeGaps(string nodeFilename, string arcFilename,string metaDataF
         //cout << dbg.getGraphStats() << endl;
         if (nodeFilename != "")
                 dbg.writeGraph(nodeFilename,arcFilename,metaDataFilename);
+        //else
+        //        dbg.writeGraph("nodes.stage4","arcs.stage4","metadata.stage4");
 }
 
 void FindGap::reorderTips(SSNode &first, SSNode &second)
 {
-        if (first.getNumRightArcs() !=0 && first.getNumLeftArcs() ==0)
+        if (first.getNumRightArcs() !=0 && first.getNumLeftArcs() ==0 && second.getNumLeftArcs()!=0 && second.getNumRightArcs() ==0)
+        {
                 first = dbg.getSSNode( -first.getNodeID());
-        if (second.getNumLeftArcs()!=0 && second.getNumRightArcs() ==0)
                 second = dbg.getSSNode( -second.getNodeID());
-
-        // the first tip is a single node
-        if (first.getNumRightArcs() ==0 && first.getNumLeftArcs() ==0 && second.getNumRightArcs() !=0){
-                string firstRead1="", secondRead1="";
-                double sim1 = -100,sim2= -100;
-                if (alignTips(first.getNodeID(), second.getNodeID(), firstRead1, secondRead1))
-                        sim1 = alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
-                string firstRead2="", secondRead2="";
-                if (alignTips(-first.getNodeID(), second.getNodeID(), firstRead2, secondRead2))
-                        sim2 =alignment.align(firstRead2, secondRead2)*100/(int)firstRead2.length();
-                if (sim2 > sim1 )
-                        first = dbg.getSSNode( -first.getNodeID());
-
-
         }
-        //the second tip is a single node
-        if (second.getNumLeftArcs()==0 && second.getNumRightArcs() ==0 && first.getNumLeftArcs()!=0){
-                string firstRead1="", secondRead1="";
-                double sim1 = -100,sim2= -100;
-                if (alignTips(first.getNodeID(), second.getNodeID(), firstRead1, secondRead1))
-                        sim1 = alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
-                string firstRead2="", secondRead2="";
-                if (alignTips(first.getNodeID(), -second.getNodeID(), firstRead2, secondRead2))
-                        sim2 = alignment.align(firstRead2, secondRead2)*100/(int)firstRead2.length();
-                if (sim2 > sim1  )
-                        second = dbg.getSSNode( -second.getNodeID());
-
-
+        if (first.getNumRightArcs() !=0 && first.getNumLeftArcs() ==0 && second.getNumLeftArcs()==0 && second.getNumRightArcs() ==0)
+        {
+                first = dbg.getSSNode( -first.getNodeID());
+                second = dbg.getSSNode( -second.getNodeID());
         }
-        // both tips are single nodes
+        if (first.getNumRightArcs() ==0 && first.getNumLeftArcs() ==0 && second.getNumLeftArcs()!=0 && second.getNumRightArcs() ==0)
+        {
+                first = dbg.getSSNode( -first.getNodeID());
+                second = dbg.getSSNode( -second.getNodeID());
+        }
         if (second.getNumLeftArcs()==0 && second.getNumRightArcs() ==0 && first.getNumLeftArcs()==0 && first.getNumRightArcs()==0){
                 string firstRead1="", secondRead1="";
                 double sim1 = -100,sim2 = -100,sim3 = -100,sim4 = -100;
@@ -199,7 +182,6 @@ void FindGap::reorderTips(SSNode &first, SSNode &second)
                                 if (sim4 >sim1 && sim4>sim2 && sim4>sim3  )
                                         first = dbg.getSSNode( -first.getNodeID());
                                 second = dbg.getSSNode( -second.getNodeID());
-
         }
 }
 
@@ -225,7 +207,6 @@ void FindGap::checkForTipConnection(vector< pair< pair<int , int> , int > >& pot
                 if ( !first.isValid() || !second.isValid() )
                         continue;
                 reorderTips(first, second);
-
                 //#ifdef DEBUG
                 string firstNodeContent = first.getSequence();
                 string secondNodeContent = second.getSequence();

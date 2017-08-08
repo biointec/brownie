@@ -10,9 +10,9 @@ using namespace std;
 
 
 bool DBGraph::deleteUnreliableNodes(double covCutoff, size_t maxMargLength){
-      bool changeIn1 = deleteExtraAttachedNodes(covCutoff,  maxMargLength);
+      //bool changeIn1 = deleteExtraAttachedNodes(covCutoff,  maxMargLength);
       bool changeIn2 = connectSameMulNodes(covCutoff,  maxMargLength);
-      return (changeIn1 || changeIn2);
+      return ( changeIn2);
 }
 
 bool DBGraph::deleteExtraAttachedNodes(double covCutoff, size_t maxMargLength){
@@ -30,7 +30,9 @@ bool DBGraph::deleteExtraAttachedNodes(double covCutoff, size_t maxMargLength){
                         continue;
                 if (!checkNodeIsReliable(node))
                         continue;
-                if(node.getExpMult(node.getAvgKmerCov())< node.getNumRightArcs())
+                int mul = node.getExpMult(node.getAvgKmerCov());
+                size_t rightArcs = node.getNumRightArcs();
+                if(node.getExpMult(node.getAvgKmerCov())> node.getNumRightArcs())
                         continue;
 
                 ArcIt it = node.rightBegin();

@@ -239,7 +239,6 @@ void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& n
                 // =====================
                 /*string str = nextNode.substr(Kmer::getK()-1, OLSize);
                 string readSubStr = read.substr(currReadPos + Kmer::getK() -1, OLSize);
-
                 for (size_t i = 0; i < currReadPos + Kmer::getK() - 1; i++)
                         cout << " ";
                 cout << str << " (Node: " << nextID << ", curr: " << nextScore << ", best: " << bestScore << ", rel. score.:" << nextRelScore << ")" << endl;*/
@@ -267,7 +266,6 @@ void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& n
                /* SSNode nextNode = dbg.getSSNode(nextID);
                 string str = nextNode.substr(Kmer::getK()-1, OLSize);
                 string readSubStr = read.substr(currReadPos + Kmer::getK() -1, OLSize);
-
                 for (size_t i = 0; i < currReadPos + Kmer::getK() - 1; i++)
                         cout << " ";
                 cout << str << " (Node: " << nextID << ", curr: " << nextScore << ", best: " << bestScore << ", max: " << maxAttainScore << ")" << endl;*/
@@ -391,7 +389,6 @@ void ReadCorrection::findSeedKmer(const std::string& read,
                         cout << "*";
         }
         cout << endl;
-
         for (size_t i = 0; i < mergedSeeds.size(); i++) {
                 for (size_t j = 0; j < mergedSeeds[i].readFirst + Kmer::getK() - 1; j++)
                         cout << " ";
@@ -478,7 +475,6 @@ void ReadCorrection::findSeedMEM(const string& read,
         // ----------- OUTPUT ------------
         /*cout << "NPP after kmer lookup search" << endl;
         cout << read << endl;
-
         for (size_t i = 0; i < mergedSeeds.size(); i++) {
                 for (size_t j = 0; j < mergedSeeds[i].readFirst; j++)
                         cout << " ";
@@ -562,19 +558,11 @@ void ReadCorrection::correctRead(ReadRecord& record,
 
         size_t numSubstitutions = 0;
         if (bestScore > ((int)read.size() / 2)) {
-                std::stringstream buffer;
-                //read = bestCorrectedRead;
-                for (int i=0;i<bestNodeChain.size();i++){
-                        buffer <<bestNodeChain[i] <<"\t" ;
-                }
-                read = buffer.str();
-                //read = bestCorrectedRead;
+                read = bestCorrectedRead;
                 readCorrected = true;
                 numSubstitutions = (read.length() - bestScore)/2;
                 nodeChain = bestNodeChain;
                 dbg.validateChain(bestNodeChain);
-        }else {
-                read = "";
         }
 
         metrics.addObservation(readCorrected, correctedByMEM, numSubstitutions);
@@ -594,7 +582,6 @@ void ReadCorrection::correctChunk(vector<ReadRecord>& readChunk,
                 cout << "================== read " << i << endl;
                 correctRead(readChunk[i], metrics);
         }
-
         cout << "Bye... " << endl;
         exit(0);*/
 }

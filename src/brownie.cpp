@@ -189,15 +189,15 @@ void Brownie::stageFour()
         graph.buildKmerNPPTable();      // build kmer-NPP index
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         RefComp refComp("genome.fasta");
-        refComp.validateGraph(graph);
+       // refComp.validateGraph(graph);
         vector<size_t> trueMult;
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);
         refComp.extractBreakpointSubgraph(graph,"breakpoints.fasta", settings.getTempDirectory()+"Stage3_");
-        graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage3");
+
 }
 #endif
-       FindGap  findGap (libraries, settings, graph);
+
        bool change = true;
         while (change){
                 change = false;
@@ -228,8 +228,9 @@ void Brownie::stageFour()
                 graph.extractStatistic();
                 graph.deleteUnreliableNodes(cutoff, libraries.getAvgReadLength());
                 graph.concatenateNodes();
-
+                FindGap  findGap (libraries, settings, graph);
                 findGap.closeGaps();
+
         }
         graph.concatenateNodes();
 
@@ -251,7 +252,7 @@ void Brownie::stageFour()
                 if (trueMult[i] == 0)
                         cout << "Node " << i << " with avgKmerCov " << node.getAvgKmerCov() << " is false." << endl;
         }*/
-       graph.writeCytoscapeGraph(settings.getTempDirectory() + "stage4");
+
 #endif
 
 
@@ -284,7 +285,6 @@ void Brownie::stageFive()
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << "Graph contains " << graph.getNumNodes() << " nodes and "
              << graph.getNumArcs() << " arcs" << endl;
-;
         Util::startChrono();
         ReadCorrectionHandler rcHandler(graph, settings);
         rcHandler.doErrorCorrection(libraries);

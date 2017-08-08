@@ -11,7 +11,7 @@ private:
         AlignmentJan alignment;
 public :
 
-        DBGraph dbg;
+        DBGraph &dbg;
         Settings settings;
         string correctedFile;
         size_t overlapSize;

@@ -243,59 +243,62 @@ bool DBGraph::flowCorrection(NodeID nodeID, double covCutoff, size_t maxMargLeng
 // ============================================================================
 
 bool DBGraph::clipNormalTip(SSNode startNode ){
-        //normal tips
+        SSNode alternative;
         SSNode currNode = getSSNode(startNode.rightBegin()->getNodeID());
+        if (currNode.getNumLeftArcs()<=1)
+                return false;
         ArcIt it = currNode.leftBegin();
         do{
-                SSNode alternative = getSSNode(it->getNodeID());
-                if (startNode.getNodeID() != alternative.getNodeID() && alternative.getAvgKmerCov()>=startNode.getAvgKmerCov()){
+                alternative = getSSNode(it->getNodeID());
+                if (startNode.getNodeID()!=alternative.getNodeID() && alternative.getAvgKmerCov()>=startNode.getAvgKmerCov()){
                         string currStr="", altStr="";
                         currStr = startNode.getSequence();
                         altStr = alternative.getSequence();
                         currStr = currStr.substr(currStr.length() - min (currStr.length(),altStr.length() ),min (currStr.length(),altStr.length() ));
                         altStr = altStr.substr(altStr.length()- min( currStr.length(),altStr.length() ),min (currStr.length(),altStr.length() ));
-                        if ( alignment.align(currStr,altStr)> ( (int) max( currStr.length(),altStr.length() ) / 3))
+
+                        if ( alignment.align(currStr,altStr)> ( (int) max( currStr.length(),altStr.length() ) / 3)){
                                 return true;
+                        }
+
                 }
                 it++;
         }
         while (it != currNode.leftEnd());
-
         return false;
-
 }
 
 
 
 
 bool DBGraph::clipJoinedTip(double covCutoff, SSNode startNode ){
-        bool removeNode = true;
+
+
+        bool remove = true;
         ArcIt it = startNode.rightBegin();
         while (it != startNode.rightEnd()){
                 double arcCov = startNode.getRightArc(getSSNode(it->getNodeID()).getNodeID())->getCoverage();
                 if (arcCov > covCutoff)
-                        removeNode = false;
+                        remove = false;
                 it++;
         }
-        //only cut the arc with the low coverage
-        //if (removeNode)
-        //        return true;
-        it = startNode.rightBegin();
-        SSNode nodeBefore;
-        double arcCovMin = startNode.getRightArc(getSSNode(it->getNodeID()).getNodeID())->getCoverage();
-        while (it != startNode.rightEnd()){
-                double arcCov = startNode.getRightArc(getSSNode(it->getNodeID()).getNodeID())->getCoverage();
-                if (arcCov <= arcCovMin){
-                        nodeBefore = getSSNode(it->getNodeID());
-                        arcCovMin = arcCov;
+        if ( !remove){
+                ArcIt it = startNode.rightBegin();
+                SSNode nodeBefore;
+                double arcCovMin = startNode.getRightArc(getSSNode(it->getNodeID()).getNodeID())->getCoverage();
+                while (it != startNode.rightEnd()){
+                        double arcCov = startNode.getRightArc(getSSNode(it->getNodeID()).getNodeID())->getCoverage();
+                        if (arcCov <= arcCovMin){
+                                nodeBefore = getSSNode(it->getNodeID());
+                                arcCovMin = arcCov;
+                        }
+                        it++;
                 }
-                it++;
+                if (arcCovMin <= covCutoff){
+                        removeArc(startNode.getNodeID(),nodeBefore.getNodeID());
+                }
         }
-        if (arcCovMin <= covCutoff){
-                removeArc(startNode.getNodeID(),nodeBefore.getNodeID());
-        }
-        return false;
-
+        return remove;
 }
 
 
@@ -323,14 +326,16 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                 bool joinedTip = false;
                 bool remove = false;
                 //isolated tips
+                if (startNode.getNumRightArcs() == 1){
+                        remove =clipNormalTip( startNode );
+
+                }
                 if (startNode.getNumRightArcs() == 0 ){
                         isolated = true;
                         remove = true;
 
-                }else  if (startNode.getNumRightArcs() == 1){
-                        remove =clipNormalTip( startNode );
-
-                }else if (startNode.getNumRightArcs()>1){
+                }
+                if (startNode.getNumRightArcs()>1){
                         joinedTip = true;
                         remove = clipJoinedTip(covCutoff,startNode);
                 }
@@ -394,7 +399,7 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
         cout << "\t===== DEBUG: end =====" << endl;
 #endif
 
-        return  numDeleted > 10 ;
+        return  numDeleted > 20 ;
 }
 
 void DBGraph::concatenateAroundNode(NodeID seedID, vector<NodeID>& nodeListv)
@@ -801,5 +806,5 @@ bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
         }
         cout << "\tRemoved " << numArcsRemoved << " arcs" << endl;
 
-        return numNodesRemoved > 10;
+        return numNodesRemoved > 20;
 }
