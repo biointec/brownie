@@ -32,7 +32,7 @@ public:
 
 
 void FindGap::parameterInitialization(){
-        maxSearchSize = 50;
+        maxSearchSize = kmerSize+20;
         minComponentSize = 4;
         maxComponentSize = 990000;
         minNumbOfPairs = 10;
@@ -58,10 +58,9 @@ FindGap::FindGap(LibraryContainer& libraries, const Settings& s, DBGraph &graph)
         //call it like this :
         //FindGap  findGap (libraries, settings, graph);
         //findGap.closeGaps();
-
-        Kmer::setWordSize(settings.getK());
         settings =s;
         kmerSize = settings.getK();
+        Kmer::setWordSize(settings.getK());
         parameterInitialization();
         ReadLibrary &input =libraries.getInput(0);
         ReadFile *readFile = input.allocateReadFile();
@@ -482,7 +481,6 @@ bool FindGap::connectNodes(NodeID firstNodeID, NodeID secondNodeID)
                 return false;
         if (second.getSequence().substr(second.getSequence().length()-kmerSize+1, kmerSize-1).compare(consensusStr.substr(consensusStr.length()-kmerSize+1, kmerSize-1)) !=0 )
                 return false;
-
         for (KmerIt it(consensusStr);it.isValid(); it++)
         {
                 Kmer kmer = it.getKmer();
@@ -507,6 +505,11 @@ bool FindGap::connectNodes(NodeID firstNodeID, NodeID secondNodeID)
                 bool result = rightNode.deleteLeftArc(second.getNodeID());
                 assert(result);
         }
+        size_t newKmerCov = first.getKmerCov()+ second.getKmerCov();
+        size_t newReadStartCov = first.getReadStartCov() + second.getReadStartCov() ;
+        first.setKmerCov(newKmerCov);
+        first.setReadStartCov(newReadStartCov);
+
         second.deleteAllLeftArcs();
         second.deleteAllRightArcs();
         second.invalidate();

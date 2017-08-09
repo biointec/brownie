@@ -226,21 +226,19 @@ void Brownie::stageFour()
                 }
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
                 graph.extractStatistic();
-                graph.deleteUnreliableNodes(cutoff, libraries.getAvgReadLength());
+                graph.removeChimericLinksByFlow(cutoff, libraries.getAvgReadLength());
                 graph.concatenateNodes();
                 FindGap  findGap (libraries, settings, graph);
                 findGap.closeGaps();
 
         }
-        graph.concatenateNodes();
-
 #ifdef DEBUG
         Util::startChrono();
         cout << "Building kmer - node/position index... "; cout.flush();
         graph.buildKmerNPPTable();      // build kmer-NPP index
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         RefComp refComp("genome.fasta");
-        refComp.validateGraph(graph);
+        //refComp.validateGraph(graph);
         vector<size_t> trueMult;
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);

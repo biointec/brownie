@@ -792,20 +792,18 @@ public:
          * @return true if the node is reliable
          */
 
-        bool checkNodeIsReliable(SSNode node);
+        bool checkNodeIsReliable(SSNode node, double covCutoff,size_t maxMargLength);
         /**
-         * this routine loops over all nodes, for a reliable node N with MULTIPLICITY(M)
-         * it should have at most M outgoing arcs. Therefore we find extra nodes with low coverage
-         * or extra nodes wich are appeared as tips or bubbles.
-         * @return true if any changes happens
-         * the second part of this routine looks for the adjacent nodes with same MULTIPLICITY
-         * if they have some outgoing or ingoing arcs with low coverage those nodes should be
-         * deleted and these two adjacent reliable nodes should be connected later.
+         * it does a flow correction in the graph
+         *
+         * @param covCutoff the maximum value of a cov of a link which needs to be detached, and the minimum cov for a node to be considered as a reliable.
+         * @param maxMargLength the minimum size of a node which could be considered as a reliable node
+         * @return true if it removes any link in the graph.
          */
-        bool deleteUnreliableNodes(double covCutoff, size_t maxMargLength);
-        bool deleteExtraAttachedNodes(double covCutoff, size_t maxMargLength);
-        bool connectSameMulNodes(double covCutoff, size_t maxMargLength);
-        /*
+
+        bool removeChimericLinksByFlow(double covCutoff, size_t maxMargLength);
+
+         /*
          * calculates the startReadCov getAvgKmerCov
          */
         double getStartReadAvg();

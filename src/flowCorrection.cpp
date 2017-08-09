@@ -7,153 +7,73 @@
 #include <map>
 using namespace std;
 
-
-
-bool DBGraph::deleteUnreliableNodes(double covCutoff, size_t maxMargLength){
-      //bool changeIn1 = deleteExtraAttachedNodes(covCutoff,  maxMargLength);
-      bool changeIn2 = connectSameMulNodes(covCutoff,  maxMargLength);
-      return ( changeIn2);
-}
-
-bool DBGraph::deleteExtraAttachedNodes(double covCutoff, size_t maxMargLength){
-        double tp=0, tn=0, fp=0,fn=0;
-        size_t numOfDel=0;
-        for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
-                if (lID % OUTPUT_FREQUENCY == 0)
-                        (cout << "Extracting node -" <<numNodes<< "/ "<<lID<<" /"<<numNodes
-                        << " from graph        \r").flush();
-                if (lID==0)
+bool DBGraph::removeChimericLinksByFlow(double covCutoff, size_t maxMargLength){
+        size_t numOfDel = 0;
+        for ( NodeID lID = -numNodes ; lID <= numNodes; lID++ ) {
+                if (lID ==0)
                         continue;
                 SSNode node = getSSNode ( lID );
-
                 if(!node.isValid())
                         continue;
-                if (!checkNodeIsReliable(node))
+                if (!checkNodeIsReliable(node, covCutoff, maxMargLength))
                         continue;
-                int mul = node.getExpMult(node.getAvgKmerCov());
-                size_t rightArcs = node.getNumRightArcs();
-                if(node.getExpMult(node.getAvgKmerCov())> node.getNumRightArcs())
+                if (node.getNumRightArcs() < 2)
                         continue;
-
+                if (node.getNumRightArcs() < node.getExpMult(node.getAvgKmerCov()) )
+                        continue;
                 ArcIt it = node.rightBegin();
-                SSNode currNode = getSSNode(it->getNodeID());
+                bool found = false;
+                SSNode nextReliableNode;
                 while(it != node.rightEnd()) {
-                        bool tip = currNode.getNumRightArcs()==0 && currNode.getNumLeftArcs()==1;
-                        if (currNode.getAvgKmerCov()<covCutoff && tip ){
-                                removeNode(currNode.getNodeID());
-                                #ifdef DEBUG
-                                if (trueMult[abs(currNode.getNodeID())]>0 ){
-                                        fp++;
-                                }
-                                else{
-                                        tp++;
-                                }
-                                #endif
-                                numOfDel++;
+                        SSNode nextReliableNode = getSSNode(it->getNodeID());
+                        if (checkNodeIsReliable(nextReliableNode , covCutoff, maxMargLength))
+                        {
+                                found=true;
                                 break;
-                        }
-                        else{
-                                #ifdef DEBUG
-                                if (trueMult[abs(currNode.getNodeID())]>0){
-                                        tn++;
-                                }
-                                else{
-                                        fn++;
-                                }
-                                #endif
                         }
                         it++;
                 }
-        }
-        cout<<endl;
-        if (numOfDel>0)
-                cout << "Number of deleted nodes in deleteExtraAttachedNodes: " << numOfDel << endl;
-        #ifdef DEBUG
-        if (numOfDel >0){
-                cout<< "TP:     "<<tp<<"        TN:     "<<tn<<"        FP:     "<<fp<<"        FN:     "<<fn<<endl;
-                cout << "Sensitivity: ("<<100*((double)tp/(double)(tp+fn))<<"%)"<<endl;
-                cout<<"Specificity: ("<<100*((double)tn/(double)(tn+fp))<<"%)"<<endl;
-        }
-        #endif
-        return (numOfDel>0);
-}
-bool DBGraph::connectSameMulNodes(double covCutoff, size_t maxMargLength){
-        size_t secondFP = 0;
-        size_t secondTP = 0;
-        size_t numOfDel = 0;
-        for ( NodeID lID = 1 ; lID <= numNodes; lID++ ) {
-                SSNode node = getSSNode ( lID );
-                if(!node.isValid())
+                if (!found)
                         continue;
-                if (!checkNodeIsReliable(node))
-                        continue;
+
                 ArcIt it = node.rightBegin();
-                SSNode nextReliableNode = getSSNode(it->getNodeID());
-                bool found = false;
                 while(it != node.rightEnd()) {
-                        if (!checkNodeIsReliable(nextReliableNode))
-                                it++;
-                        if (nextReliableNode.getExpMult(nextReliableNode.getAvgKmerCov()) != node.getExpMult(node.getAvgKmerCov())
-                                || nextReliableNode.getExpMult(node.getAvgKmerCov()) < 2)
-                                it++;
-                        found=true;
-                        break;
-                }
-                if (found)
-                {
-                        ArcIt it = node.rightBegin();
-                        while(it != node.rightEnd()) {
-                                SSNode victim = getSSNode(it->getNodeID());
-                                if(victim.getNodeID() != nextReliableNode.getNodeID()){
-                                        double arcCov = node.getRightArc(victim.getNodeID())->getCoverage();
-                                        if (arcCov <covCutoff)
-                                                removeArc(node.getNodeID(),victim.getNodeID());
+                        SSNode victim = getSSNode(it->getNodeID());
+                        if(victim.getNodeID() != nextReliableNode.getNodeID()){
+                                double arcCov = node.getRightArc(victim.getNodeID())->getCoverage();
+                                if (arcCov <covCutoff){
+                                        removeArc(node.getNodeID(),victim.getNodeID());
                                         numOfDel ++;
                                         break;
                                 }
-                                it++;
                         }
-                        /*it = nextReliableNode.leftBegin();
-                        while(it!=nextReliableNode.leftEnd()){
-                                SSNode victim=getSSNode(it->getNodeID());
-                                if (!victim.isValid())
-                                        it++;
-                                if(victim.getNodeID()!= node.getNodeID()){
-                                        double arcCov = nextReliableNode.getRightArc(victim.getNodeID())->getCoverage();
-                                        if (arcCov <covCutoff)
-                                                removeArc(nextReliableNode.getNodeID(),victim.getNodeID());
-                                                numOfDel++;
-                                        break;
-                                }
-                                it++;
-                        }*/
+                        it++;
                 }
 
         }
-
-        if (numOfDel > 0)
-                cout << "Number of deleted arcs in connectSameMulNodes: " << numOfDel << endl;
-        return (numOfDel>0);
-
+        cout << "Number of deleted arcs in flow correction: " << numOfDel << endl;
+        return (numOfDel > 0);
 }
 
-bool DBGraph::checkNodeIsReliable(SSNode node){
-        if (node.getMarginalLength()< Kmer::getK()) // smaller nodes might not be correct, these ndoes can never be deleted
+bool DBGraph::checkNodeIsReliable(SSNode node, double covCutoff, size_t maxMargLength ){
+
+        if (node.getMarginalLength() < maxMargLength || node.getAvgKmerCov() < covCutoff)
                 return false;
         pair<int, pair<double,double> > result=nodesExpMult[abs( node.getNodeID())];
-        double confidenceRatio=result.second.first;
-        double inCorrctnessRatio=result.second.second;
-        if (node.getNumRightArcs()<2)
+        double confidenceRatio = result.second.first;
+        double inCorrctnessRatio = result.second.second;
+        if (node.getExpMult(node.getAvgKmerCov())==0 )
                 return false;
-        if (1/confidenceRatio>.001)
+        if (node.getExpMult(node.getAvgKmerCov()) >4)
                 return false;
-        if( 1/inCorrctnessRatio<.001)
+        if (1/confidenceRatio>.001 ||1/inCorrctnessRatio<.001)
                 return false;
         return true;
+
 }
 
 bool cmssn(const SSNode& first, const SSNode & second ) {
-    return first.getMarginalLength()>second.getMarginalLength();
+    return first.getMarginalLength() > second.getMarginalLength();
 }
 
 double DBGraph ::getStartReadAvg(){
@@ -186,8 +106,7 @@ double DBGraph ::getStartReadAvg(){
         avg = sumOfReadStcov/sumOfMarginalLenght;
         return avg;
 }
-void DBGraph::extractStatistic()
-{
+void DBGraph::extractStatistic(){
         double avg = getStartReadAvg();
         for ( NodeID lID = 1; lID <= numNodes; lID++ ) {
 
