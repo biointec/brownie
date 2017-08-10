@@ -254,9 +254,10 @@ bool DBGraph::clipNormalTip(SSNode startNode ){
                         string currStr="", altStr="";
                         currStr = startNode.getSequence();
                         altStr = alternative.getSequence();
+                        // this is in favor or longer node to be saved.
+                        //For the small ones the last k-1 base is exactly the same, more likely will be deleted
                         currStr = currStr.substr(currStr.length() - min (currStr.length(),altStr.length() ),min (currStr.length(),altStr.length() ));
                         altStr = altStr.substr(altStr.length()- min( currStr.length(),altStr.length() ),min (currStr.length(),altStr.length() ));
-
                         if ( alignment.align(currStr,altStr)> ( (int) max( currStr.length(),altStr.length() ) / 3)){
                                 return true;
                         }
@@ -350,7 +351,7 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
 #ifdef DEBUG
                 if (remove) {
                         //cout << "node " <<id << " detected as a tip and removed" <<endl;
-                        if (trueMult.size()>0&& trueMult[id] > 0) {
+                        if (trueMult.size()>0&& trueMult[abs(id)] > 0) {
                                 if (isolated)
                                         fps++;
                                 else if(joinedTip)
@@ -366,7 +367,7 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                                         tp++;
                         }
                 } else {
-                        if (trueMult.size()>0&& trueMult[id] > 0) {
+                        if (trueMult.size()>0&& trueMult[abs(id)] > 0) {
                                 if(isolated)
                                         tns++;
                                 else if(joinedTip)
@@ -771,12 +772,13 @@ bool DBGraph::bubbleDetection(double covCutoff, size_t maxMargLength)
         for_each(workerThreads.begin(), workerThreads.end(), mem_fn(&thread::join));
 
         cout << "\tProcessing graph (100%) " << endl;
-
         bool returnValue = false; size_t numNodesRemoved = 0;
+
         for (NodeID id = 1; id <= numNodes; id++) {
                 if (getSSNode(id).getFlag()) {
                         removeNode(id);
                         //cout << "node " <<id << " detected as a bubble and removed" <<endl;
+
                         returnValue = true;
                         numNodesRemoved++;
                 }

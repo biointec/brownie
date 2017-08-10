@@ -9,8 +9,6 @@
 class FindGap {
 private:
         AlignmentJan alignment;
-public :
-
         DBGraph &dbg;
         Settings settings;
         string correctedFile;
@@ -24,9 +22,7 @@ public :
         size_t minSim;
         size_t minTipLength;
         size_t minExactMatchSize;
-
-
-
+public:
         /**
          * Default constructor
          */
@@ -52,12 +48,6 @@ public :
          * @param tempDir the temporary directory to save Cytoscape files
          */
         void extractBreakpointSubgraph(std::string breakpointFileName, std::string tempDir);
-        /**
-         * Calculate the true node multiplicity
-         * @param dbg A const-ref to the de Bruijn graph
-         * @param multiplicity Multiplicity vector
-         */
-        void getNodeMultiplicity(std::vector<size_t>& multiplicity);
 
         /**
          * find the gap in the graph, recommend connection between tips
@@ -65,12 +55,13 @@ public :
          */
         void closeGaps(string nodeFilename ="", string arcFilename ="",string metaDataFilename = "");
 
-        void connectComponents(string nodeFilename, string arcFilename,string metaDataFilename);
+        //void connectComponents(string nodeFilename, string arcFilename,string metaDataFilename);
         /**
          * extract kmers in the graph, which are in tip nodes and save them in a dictionary
          * @param tipNodes A set of tips nodes
          * @param kmerNodeMap a map which shows each kmer exists in which nodes
          */
+private:
         void loadKmerMap(set<int>& tipNodes,std::map<string, set<int> >&  kmerNodeMap, size_t overlapSize);
 
         /**
@@ -78,38 +69,19 @@ public :
          * @param tipNodes A set of tips nodes
          * @param eligibleNodeSet the tips should be among these set
          */
-         void findTips(set<int> &tipNodes, set <int>& eligibleNodeSet);
+         //void findTips(set<int> &tipNodes, set <int>& eligibleNodeSet);
         /**
          * find the tips in the graph
          * @param tipNodes A set of tips nodes
          */
-         void findPotentialTips(set<int> &tipNodes);
+         void findTips(set<int> &tipNodes);
 
         /**
          * find disjoined component in the graph
          * @param componentHdl keeps the specification of the disjoined component in the graph
          */
         void findComponentsInGraph(ComponentHandler& componentHdl);
-        /**
-         * assign each tip to a component ID which that tip exists there and keep it in a map structure
-         * @param tipNodes A set of tips nodes
-         * @param componentHdl keeps the specification of the disjoined component in the graph
-         * @param nodeComponentMap stors tips are in which component
-         */
-        void assignTipsToComponent(set<int> &tipNodes,ComponentHandler& componentHdl,std::map<int, int >&  nodeComponentMap);
-        /**
-         * retun all pairs of tips which in different component which has a common kmer
-         * @param potentialJoin A vector contains all the  pairs of tips which has a common kmer
-         * @param kmerNodeMap A map which stores all the kmers beside to the nodes which those kmer exist
-         * @param componentHdl keeps the specification of the disjoined component in the graph, here we want to check if two tips are in the different component or not
-         */
-        void getPotentialJoins( ComponentHandler& componentHdl,
-                                         std::map<string,set<int> >& kmerNodeMap, std::vector<pair<int, int> >& potentialJoin);
-         /**
-         * extract the path for each tip, align the sequence in the path and eliminate those tips which cant be join
-         * @param potentialJoin A vector contains all the  pairs of tips which has a common kmer
-         */
-        bool eliminateFakeJoins(std::vector<pair<int, int> > &potentialJoin, std::map< pair<int, int>, int> &pairedEndJoins,  ComponentHandler& componentHdl);
+
           /**
          * retun the Longest Common Substring
          * @param str1 first input string
@@ -159,19 +131,6 @@ public :
          * @param secondRead the second string after expansion
          */
          bool extendRead(size_t &firsStartIndex, size_t& secondStartIndex, size_t& firstEndInex , size_t& secondEndIndex, SSNode first,SSNode second ,string &firstRead , string &secondRead);
-         /**
-         * if a paired end read align to two different component, it keeps it as an indiction of a connection between two component
-         * @param readFileName read corrected file in fastq format which instead of corrected reads show the path which those reads align
-         * @param componentHdl keeps the specification of the disjoined component in the graph
-         */
-         void extractPairedComponents(string readFileName , ComponentHandler& componentHdl , std::map< pair<int, int>, int> &pairedEndJoins);
-        /**
-         * it splits the line of nodes to the vector of nodeID
-         * @param line the input string which has the list of nodes
-
-         */
-        void splitLineToNodes(string line, vector<NodeID> &nodeIDs);
-
 
         /**
          * make a connection between two nodes by removing the second node and connecting its neighbor to the first node.
@@ -215,5 +174,4 @@ public :
           * @param second the node in the right
           */
          void reorderTips(SSNode &first, SSNode &second);
-
 };

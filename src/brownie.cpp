@@ -198,28 +198,37 @@ void Brownie::stageFour()
 }
 #endif
 
-       bool change = true;
+        cutoff = cutoff /2;
+        bool change = true;
         while (change){
                 change = false;
                 // TIP CLIPPING
                 Util::startChrono();
+                size_t lmax = libraries.getAvgReadLength() - settings.getK() + 5;
+                if (lmax < settings.getK()*2)
+                        lmax = settings.getK()*2;
+
                 cout << "Cleaning graph (tips, cov-cutoff = " << cutoff
-                << ", lmax = " << libraries.getAvgReadLength() << ")\n";
-                while (graph.clipTips(cutoff, libraries.getAvgReadLength())) {
+                << ", lmax = " << lmax << ")\n";
+
+                while (graph.clipTips(cutoff/2, lmax)) {
                         graph.concatenateNodes();
                         cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" << endl;
                         change = true;
                 }
-
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
 
                 // BUBBLE DETECTION
                 Util::startChrono();
+                lmax = libraries.getAvgReadLength() - (settings.getK()-1)*2 + 5;
+                if (lmax < settings.getK()*2+5 )
+                        lmax = settings.getK()*2+5;
+
                 cout << "Cleaning graph (bubbles, cov-cutoff = " << cutoff
-                << ", lmax = " << libraries.getAvgReadLength() << ", maxvisits = "
+                << ", lmax = " << lmax << ", maxvisits = "
                 << settings.getBubbleDFSNodeLimit() << ", threads = "
                 << settings.getNumThreads() << ")\n";
-                while (graph.bubbleDetection(cutoff, libraries.getAvgReadLength())) {
+                while (graph.bubbleDetection(cutoff, lmax) ){
                         graph.concatenateNodes();
                         cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
                         change = true;
@@ -228,11 +237,10 @@ void Brownie::stageFour()
                 graph.extractStatistic();
                 graph.removeChimericLinksByFlow(cutoff, libraries.getAvgReadLength());
                 graph.concatenateNodes();
-                FindGap  findGap (libraries, settings, graph);
-                findGap.closeGaps();
-
         }
-#ifdef DEBUG
+        FindGap  findGap (libraries, settings, graph);
+        findGap.closeGaps();
+#ifdef DEBUGq
         Util::startChrono();
         cout << "Building kmer - node/position index... "; cout.flush();
         graph.buildKmerNPPTable();      // build kmer-NPP index

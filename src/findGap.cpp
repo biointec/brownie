@@ -33,13 +33,13 @@ public:
 
 void FindGap::parameterInitialization(){
         maxSearchSize = kmerSize+20;
-        minComponentSize = 4;
-        maxComponentSize = 990000;
         minNumbOfPairs = 10;
         minOverlapSize = 15;
         minSim =50;
         minExactMatchSize = 7;
 }
+
+
 /*
 FindGap::FindGap(string nodeFileName, string arcFileName, string metaDataFileName, string alignmentFile,unsigned int kmerVlue  ,string tempDir):settings(kmerVlue,tempDir), dbg(settings),overlapSize(kmerVlue),alignment(1000, 2, 1, -1, -3)
 {
@@ -66,69 +66,14 @@ FindGap::FindGap(LibraryContainer& libraries, const Settings& s, DBGraph &graph)
         ReadFile *readFile = input.allocateReadFile();
         correctedFile = input.getInputFilename();
 }
-void FindGap::connectComponents(string nodeFilename, string arcFilename,string metaDataFilename)
-{       size_t numberOfJoins = 0 ;
 
-        Util::startChrono();
-        cout << "Creating kmer lookup table... "; cout.flush();
-        dbg.buildKmerNPPTable();
-        cout << "done (" << Util::stopChronoStr() << ")" << endl;
-        Util::startChrono();
-        std::map<int, int > nodeComponentMap;
-        std::map< pair<int, int>, int> pairedEndJoins;
-        ComponentHandler componentHdl(dbg,settings);
-        findComponentsInGraph( componentHdl);
-        extractPairedComponents(correctedFile , componentHdl, pairedEndJoins);
-        cout <<"There are " <<pairedEndJoins.size() <<"number of possible joins between components" <<endl;
-        for(auto it = pairedEndJoins.cbegin(); it != pairedEndJoins.cend(); ++it)
-        {
-                set<int> tipNodes;
-                Component c1 = componentHdl.componentsMap[it->first.first];
-                Component c2 = componentHdl.componentsMap[it->first.second];
-                set <int> nodeSet = c1.getNodeIDSet();
-
-                for (auto nodeID: c2.getNodeIDSet())
-                        nodeSet.insert(nodeID);
-                findTips(tipNodes , nodeSet);
-                //extrac the kmers in the tips and store them in  map which tells you that kmer exist in which nodes (here tips)
-                overlapSize = kmerSize /2;
-                if (overlapSize%2 ==0)
-                        overlapSize = overlapSize +1;
-                cout <<"============================================================" <<endl;
-                cout << "Finding overlap between component " <<c1.componentID <<" and component " <<c2.componentID <<endl;
-
-                bool overlapDetected = false;
-                while (!overlapDetected && overlapSize >= 7){
-                        cout << "The overlapSize is set to "<<overlapSize <<endl;
-                        std::map<string, set<int> > kmerNodeMap;
-                        std::vector<pair<int, int> > potentialJoin;
-                        loadKmerMap(tipNodes,kmerNodeMap,overlapSize);
-                        getPotentialJoins(componentHdl,kmerNodeMap,potentialJoin);
-                        overlapDetected = eliminateFakeJoins(potentialJoin, pairedEndJoins, componentHdl);
-                        if (potentialJoin.size() >0)
-                                break;
-                        overlapSize = overlapSize / 2;
-                        if (overlapSize%2 ==0)
-                                overlapSize = overlapSize +1;
-                        kmerNodeMap.clear();
-                }
-                if (overlapDetected) numberOfJoins++;
-        }
-        dbg.concatenateNodes();
-        dbg.writeGraph(nodeFilename,arcFilename,metaDataFilename);
-        cout << "Number of new links in the graph " <<numberOfJoins << " from " <<pairedEndJoins.size()<<" initial suggestions" <<endl;
-}
 
 void FindGap::closeGaps(string nodeFilename, string arcFilename,string metaDataFilename)
 {
-        ofstream ofs;
-        ofs.open("pairedArtificialReads.fasta",std::fstream::out);
-        ofs.close();
-
         size_t numberOfJoins = 0 ;
         set<int> tipNodes;
         vector< pair< pair<int , int> , int > > potentialPairs;
-        findPotentialTips(tipNodes);
+        findTips(tipNodes);
         cout << "Creating kmer lookup table... "; cout.flush();
         dbg.buildKmerNPPTable();
         streamReads(correctedFile,tipNodes,potentialPairs);
@@ -137,8 +82,6 @@ void FindGap::closeGaps(string nodeFilename, string arcFilename,string metaDataF
         //cout << dbg.getGraphStats() << endl;
         if (nodeFilename != "")
                 dbg.writeGraph(nodeFilename,arcFilename,metaDataFilename);
-        //else
-        //        dbg.writeGraph("nodes.stage4","arcs.stage4","metadata.stage4");
 }
 
 void FindGap::reorderTips(SSNode &first, SSNode &second)
@@ -160,7 +103,7 @@ void FindGap::reorderTips(SSNode &first, SSNode &second)
         }
         if (second.getNumLeftArcs()==0 && second.getNumRightArcs() ==0 && first.getNumLeftArcs()==0 && first.getNumRightArcs()==0){
                 string firstRead1="", secondRead1="";
-                double sim1 = -100,sim2 = -100,sim3 = -100,sim4 = -100;
+                double sim1 = -100, sim2 = -100, sim3 = -100, sim4 = -100;
                 if (alignTips(first.getNodeID(), second.getNodeID(), firstRead1, secondRead1))
                         sim1 = alignment.align(firstRead1, secondRead1)*100/(int)firstRead1.length();
                 string firstRead2="", secondRead2="";
@@ -187,8 +130,6 @@ void FindGap::reorderTips(SSNode &first, SSNode &second)
 
 void FindGap::checkForTipConnection(vector< pair< pair<int , int> , int > >& potentialPairs)
 {
-        ofstream ofs;
-        ofs.open("pairedArtificialReads.fasta",std::fstream::out);
         size_t violateGraphStructure =0;
         cout << "Make connection between tips which alreay have been found ..." <<endl;
         size_t numberOfNewConnection = 0;
@@ -206,22 +147,14 @@ void FindGap::checkForTipConnection(vector< pair< pair<int , int> , int > >& pot
                 if ( !first.isValid() || !second.isValid() )
                         continue;
                 reorderTips(first, second);
-                //#ifdef DEBUG
-                string firstNodeContent = first.getSequence();
-                string secondNodeContent = second.getSequence();
-                size_t maxLen = firstNodeContent.length()  < 150 ? firstNodeContent.length():150;
-                firstNodeContent = firstNodeContent.substr(firstNodeContent.length()-maxLen,maxLen);
-                maxLen = secondNodeContent.length()  < 150 ? secondNodeContent.length():150;
-                secondNodeContent = secondNodeContent.substr(0,maxLen);
-                //#endif
                 string firstRead="", secondRead="";
                 double sim = -100;
                 if (alignTips(first.getNodeID(), second.getNodeID(), firstRead, secondRead)){
                         sim = alignment.align(firstRead, secondRead)*100/(int)firstRead.length();
-                        if (firstRead.length() >minOverlapSize and sim>minSim ){
-                                cout <<first.getNodeID() << " : " <<second.getNodeID() <<endl;
-                                alignment.printAlignment(firstRead,secondRead);
-                                cout <<"similarity:"<<sim <<endl;
+                        if (firstRead.length() > minOverlapSize and sim > minSim ){
+                                //cout <<first.getNodeID() << " : " <<second.getNodeID() <<endl;
+                                //alignment.printAlignment(firstRead,secondRead);
+                                //cout <<"similarity:"<<sim <<endl;
                                 if (first.getAvgKmerCov() >= second.getAvgKmerCov())
                                         found = connectNodes(first.getNodeID(),second.getNodeID());
                                 else
@@ -231,32 +164,20 @@ void FindGap::checkForTipConnection(vector< pair< pair<int , int> , int > >& pot
                                         nodesHandled.insert(abs(first.getNodeID()));
                                         nodesHandled.insert(abs(second.getNodeID()));
                                         numberOfNewConnection ++;
-                                        cout <<"The connection successfully stablished. This connection is supported by " <<it->second <<endl;
+                                        //cout <<"The connection successfully stablished. This connection is supported by " <<it->second << " pairs of reads"<<endl;
                                 }
                                 else
                                 {
                                         violateGraphStructure ++;
-                                        cout <<"We couldn't make this connection. It probably violates the graph structure" <<endl;
+                                        //cout <<"We couldn't make this connection. It probably violates the graph structure" <<endl;
                                 }
-
-                                cout <<".............................."<<endl;
+                               // cout <<".............................."<<endl;
                         }
-
                 }
-                //#ifdef DEBUG
-                if (firstRead.length() > firstNodeContent.length())
-                        firstRead = firstNodeContent ;
-                if (secondRead.length() >secondNodeContent.length())
-                        secondNodeContent = secondRead;
-                ofs << ">" <<first.getNodeID() <<"_"<<found <<"_" <<sim <<".1\n" << firstNodeContent  <<endl;
-                ofs << ">" <<second.getNodeID()<<"_"<<found <<"_" <<sim <<".2\n" << secondNodeContent <<endl;
-                //#endif
-
 
         }
         cout <<violateGraphStructure << " number of connection were skipped because they make inconsistency in the graph structure." <<endl;
         cout << numberOfNewConnection <<" new connection were stablished\n" <<endl;
-        ofs.close();
 }
 
 
@@ -289,167 +210,11 @@ void FindGap::findNPPFast(const string& read, vector<NodePosPair>& nppv)
         }
 }
 
-void FindGap::extractPairedComponents(string readFileName , ComponentHandler& componentHdl, std::map< pair<int, int>, int>& pairedEndJoins)
-{
-
-        // it is assumed that the file in fastq format
-        // insted of a read, chain of nodes which that read mapped to is written.
-        std::map< pair<int, int>, int> pairedEndJoinsTemp;
-        cout <<"Finding the possibility of joining components by paired-end reads"<<endl;
-        std::ifstream input(readFileName);
-        vector< pair<string, string> > breakpoints;
-        if (!input.good()) {
-                std::cerr << "Error opening: " << readFileName << std::endl;
-                return;
-        }
-        std::string line, Nodes ="" ;
-        int i = 0;
-        vector<int> firstPairNodes;
-        vector<int> secondPairNodes;
-        while (std::getline(input, line).good()) {
-                if (i % OUTPUT_FREQUENCY == 0) {
-                        cout << "\tProcessing read " << (i/4) << "\r";
-                        cout.flush();
-                }
-
-                if ( i%8 == 1 ){
-                        splitLineToNodes(line , firstPairNodes);
-                }
-                if ( i%8 == 5 ){
-
-                        splitLineToNodes(line , secondPairNodes);
-                }
-                if ( i%8 == 6){
-                        bool found = false;
-                        for (auto it1:firstPairNodes){
-                                for (auto it2:secondPairNodes){
-                                        if (componentHdl.getComponentID(it1) == 0 || componentHdl.getComponentID(it2) == 0)
-                                                        continue;
-                                        if (componentHdl.getComponentID(it1) != componentHdl.getComponentID(it2)){
-
-                                                Component c1 = componentHdl.componentsMap[componentHdl.getComponentID(it1)];
-                                                Component c2 = componentHdl.componentsMap[componentHdl.getComponentID(it2)];
-                                                /*if (c1.numOfNodes ==1 || c2.numOfNodes==1)
-                                                        continue;*/
-                                                pair<int, int> join;
-                                                if (c1.componentID < c2.componentID)
-                                                        join = make_pair(c1.componentID,c2.componentID);
-                                                else
-                                                        join = make_pair(c2.componentID,c1.componentID);
-
-                                                if ( pairedEndJoinsTemp.find(join) == pairedEndJoinsTemp.end() ){
-                                                        pairedEndJoinsTemp[join] = 1;
-                                                        found = true;
-                                                }
-
-                                                else{
-                                                        pairedEndJoinsTemp[join] = pairedEndJoinsTemp[join] +1;
-                                                        found =true;
-                                                }
-                                                if (found)
-                                                        break;
-
-                                        }
-                                        if (found)
-                                                break;
-                                }
-                        }
-
-                        firstPairNodes.clear();
-                        secondPairNodes.clear();
-                }
-                i ++ ;
-        }
-
-
-        for(auto it = pairedEndJoinsTemp.cbegin(); it != pairedEndJoinsTemp.cend(); ++it)
-        {
-               if ( it->second >minNumbOfPairs )
-                       pairedEndJoins[it->first] =it->second ;
-        }
-        cout <<"\n Number of found suggestions: "<<pairedEndJoins.size() <<endl;
-        for(auto it = pairedEndJoins.cbegin(); it != pairedEndJoins.cend(); ++it)
-        {
-                Component c1 = componentHdl.componentsMap[it->first.first];
-                Component c2 = componentHdl.componentsMap[it->first.second];
-                std::cout <<"component "  <<c1.componentID <<" (size = "<<c1.componentSize<<") and component " << c2.componentID << " (size = "<< c2.componentSize<<") supported by " << it->second << " pairs" <<"\n";
-        }
-
-}
-void FindGap::splitLineToNodes(string str, vector<NodeID> &nodeIDs)
-{
-        string next;
-        //const char delim = "\t";
-        char delim = '\t';
-
-        for (int i=0; i<str.length();i++) {
-                char it = str[i];
-                // If we've hit the terminal character
-                if (it == delim) {
-                        // If we have some characters accumulated
-                        if (!next.empty()) {
-                                // Add them to the result vector
-                                nodeIDs.push_back(atoi( next.c_str()));
-                                next.clear();
-                        }
-                } else {
-                        // Accumulate the next character into the sequence
-                        next += it;
-                }
-        }
-}
-
-bool FindGap::eliminateFakeJoins(std::vector<pair<int, int> > &potentialJoin, std::map< pair<int, int>, int> &pairedEndJoins ,  ComponentHandler& componentHdl)
-{
-        bool found = false;
-        size_t bestSim=0;
-        SSNode bestRight, bestLeft;
-        string bestleftStr = "", bestrightStr = "";
-        cout <<"number  of potential joins : " <<potentialJoin.size() <<endl;
-        for (auto it:potentialJoin){
-                string firstRead,secondRead = "";
-                alignTips(it.first, it.second, firstRead, secondRead);
-                double sim =alignment.align(firstRead, secondRead)*100/(int)firstRead.length();
-                if (sim > bestSim && firstRead.length() >minOverlapSize ){
-                        bestSim = sim;
-                        bestLeft = dbg.getSSNode( it.first);
-                        bestRight = dbg.getSSNode(it.second);
-                        bestleftStr = firstRead;
-                        bestrightStr = secondRead;
-                }
-        }
-
-        if (bestSim > 50){
-                cout <<"                next pair               \n=========================" <<endl;
-                cout<<"first :"<<bestLeft.getNodeID()<<"\t" <<bestleftStr <<endl;
-                cout<<"second:"<<bestRight.getNodeID()<<"\t" <<bestrightStr <<endl;
-                cout <<"normalized similarity: " <<bestSim <<endl;
-                alignment.align(bestleftStr, bestrightStr);
-                alignment.printAlignment(bestleftStr, bestrightStr);
-                cout<<"this suggests a connection is between components "<<componentHdl.getComponentID(bestLeft.getNodeID()) <<" and " <<componentHdl.getComponentID(bestRight.getNodeID())<<endl;
-                if (componentHdl.getComponentID(bestLeft.getNodeID()) < componentHdl.getComponentID(bestRight.getNodeID())){
-                        cout<<"this suggestion is supported by " << pairedEndJoins[make_pair(componentHdl.getComponentID(bestLeft.getNodeID()),componentHdl.getComponentID(bestRight.getNodeID()))] <<" pair end read mapp" <<endl;;
-                }else{
-                        cout<<"this suggestion is supported by " << pairedEndJoins[make_pair(componentHdl.getComponentID(bestRight.getNodeID()),componentHdl.getComponentID(bestLeft.getNodeID()))] <<" pair end read mapp" <<endl;;
-                }
-                found = true;
-                if (bestLeft.getAvgKmerCov() >= bestRight.getAvgKmerCov())
-                        found = connectNodes(bestLeft.getNodeID(),bestRight.getNodeID());
-                else
-                        found = connectNodes(-bestRight.getNodeID(), -bestLeft.getNodeID());
-        }
-        if (found)
-                cout <<"The connection successfully stablished." <<endl;
-        else
-                cout <<"We couldn't make this connection." <<endl;
-
-        return found;
-}
 bool FindGap::alignTips(int firstNodeId, int secondNodeId, string& firstRead, string &secondRead)
 {
-        SSNode first=dbg.getSSNode(firstNodeId);
-        SSNode second=dbg.getSSNode(secondNodeId);
-        size_t firsStartIndex =0 , secondStartIndex = 0, firstEndIndex = 0, secondEndIndex = 0;
+        SSNode first  = dbg.getSSNode(firstNodeId);
+        SSNode second = dbg.getSSNode(secondNodeId);
+        size_t firsStartIndex = 0 , secondStartIndex = 0, firstEndIndex = 0, secondEndIndex = 0;
         if (!extendRead(firsStartIndex,  secondStartIndex,  firstEndIndex ,secondEndIndex, first,second ,firstRead , secondRead))
                 return false;
         if (second.getNumRightArcs() !=0 && first.getSequence().length()>firstEndIndex){
@@ -465,7 +230,7 @@ bool FindGap::alignTips(int firstNodeId, int secondNodeId, string& firstRead, st
 
 bool FindGap::connectNodes(NodeID firstNodeID, NodeID secondNodeID)
 {
-        SSNode first = dbg.getSSNode(firstNodeID);
+        SSNode first  = dbg.getSSNode(firstNodeID);
         SSNode second = dbg.getSSNode(secondNodeID);
         size_t firsStartIndex =0 , secondStartIndex = 0, firstEndIndex = 0, secondEndIndex = 0;
         string firstRead,secondRead = "";
@@ -514,11 +279,7 @@ bool FindGap::connectNodes(NodeID firstNodeID, NodeID secondNodeID)
         second.deleteAllRightArcs();
         second.invalidate();
         return true;
-
-
 }
-
-
 
 void FindGap::streamReads(string readFileName , set<int> &tipNodes,  vector< pair< pair<int , int> , int > >& potentialPairs )
 {
@@ -805,58 +566,6 @@ string FindGap::getLongestCommonSubStr(string str1, string str2, size_t & firsSt
 }
 
 
-void FindGap::getPotentialJoins(ComponentHandler& componentHdl, std::map<string,
-                                 set<int> > &kmerNodeMap, std::vector<pair<int, int> > &potentialJoin)
-{
-        std ::set<int> ::iterator setIt1,setIt2;
-        std::map<int,int>::iterator it;
-        std::map<string, set<int> >::iterator mapIt;
-
-        for(mapIt = kmerNodeMap.begin(); mapIt != kmerNodeMap.end(); mapIt++ ) {
-                set <int> nodeSet =mapIt->second;
-                int firstCompID = 0 , secondCopID = 0;
-                setIt1 =nodeSet.begin();
-                while (setIt1 !=nodeSet.end()){
-                        setIt2 = setIt1 ;
-                        setIt2 ++;
-                        while (setIt2 != nodeSet.end()){
-                                if ( componentHdl.getComponentID(abs(*setIt1)) !=componentHdl.getComponentID(abs(*setIt2))){
-                                        if (std::find(potentialJoin.begin(), potentialJoin.end(),make_pair(*setIt1,*setIt2))==potentialJoin.end() &&
-                                                std::find(potentialJoin.begin(), potentialJoin.end(),make_pair(-*setIt1,-*setIt2))==potentialJoin.end() &&
-                                                std::find(potentialJoin.begin(), potentialJoin.end(),make_pair(*setIt2,*setIt1))==potentialJoin.end() &&
-                                                std::find(potentialJoin.begin(), potentialJoin.end(),make_pair(-*setIt2,-*setIt1))==potentialJoin.end()
-                                        ){
-                                                int first =*setIt1 , second=*setIt2;
-                                                if (dbg.getSSNode(*setIt1).getNumRightArcs()!= 0 )
-                                                        first = -first;
-                                                if ( dbg.getSSNode(*setIt2).getNumLeftArcs()!= 0)
-                                                        second = -second;
-
-                                                potentialJoin.push_back(make_pair(first,second));
-                                        }
-
-                                }
-                                setIt2 ++;
-
-                        }
-                        setIt1 ++;
-                }
-
-        }
-
-        /*for (auto it:potentialJoin){
-                std::pair<int, int> v_temp = it;
-                int firstNodeID=v_temp.first;
-                int secondNodeID = v_temp.second;
-                cout <<"match : " << firstNodeID<<"," << secondNodeID << endl;
-                SSNode first=dbg.getSSNode(firstNodeID);
-                SSNode second=dbg.getSSNode(secondNodeID);
-                cout <<first.getSequence() <<endl;
-                cout<<second.getSequence()<<endl;
-        }*/
-
-
-}
 
 void FindGap::loadKmerMap(set<int> &tipNodes,std::map<string, set<int> > & kmerNodeMap,size_t overlapSize){
         Kmer::setWordSize(overlapSize);
@@ -929,46 +638,8 @@ void FindGap::loadKmerMap(set<int> &tipNodes,std::map<string, set<int> > & kmerN
 
         Kmer::setWordSize(settings.getK());
 }
-void FindGap::assignTipsToComponent(set<int> &tipNodes,ComponentHandler &componentHdl,std::map<int, int > & nodeComponentMap)
-{
-        for (int i= 0; i< componentHdl.numberOfcomponents; i++){
-                std::set<NodeID> nodes = componentHdl.components[i].getNodeIDSet();
-                for (auto it:nodes){
-                        if (tipNodes.find(it) != tipNodes.end())
-                                nodeComponentMap[it] = i;
-                        if (tipNodes.find(-it) != tipNodes.end())
-                                nodeComponentMap[-it] = i;
-                }
-        }
-        map<int, int>::iterator it;
-        /*for(it = nodeComponentMap.begin(); it != nodeComponentMap.end(); it++ ) {
 
-                std::cout << it->first  // string (key)
-                << ':'
-                << it->second   // string's value
-                << std::endl ;
-        }*/
-}
-
-void FindGap::findTips(set<int> &tipNodes, set <int>& eligibleNodeSet)
-{
-         for (NodeID id =1; id <= dbg.getNumNodes(); id++) {
-                SSNode node = dbg.getSSNode(id);
-                if (!node.isValid())
-                        continue;
-
-                // check for dead ends
-                bool leftDE = (node.getNumLeftArcs() == 0);
-                bool rightDE = (node.getNumRightArcs() == 0);
-                if (!leftDE && !rightDE)
-                        continue;
-                if (eligibleNodeSet.find(node.getNodeID())!=eligibleNodeSet.end() ||
-                        eligibleNodeSet.find(-node.getNodeID())!=eligibleNodeSet.end())
-                        tipNodes.insert(node.getNodeID());
-         }
-}
-
-void FindGap::findPotentialTips(set<int> &tipNodes)
+void FindGap::findTips(set<int> &tipNodes)
 {
          for (NodeID id =1; id <= dbg.getNumNodes(); id++) {
                 SSNode node = dbg.getSSNode(id);
@@ -1037,13 +708,12 @@ void FindGap:: findComponentsInGraph(ComponentHandler& componentHdl)
                                 nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
                         }
                 }
-                if (currentSetNodes.size()>0 && componentSize > minComponentSize && componentSize <maxComponentSize)
-                {
+                if (currentSetNodes.size()>1)
                         componentHdl.addComponent(currentSetNodes);
-                }
+
                 currentSetNodes.clear();
         }
-        cout << "Number of disjoint components in the graph with size higher than "<< minComponentSize <<" bp " <<componentHdl.components.size() <<endl;
+        cout << "Number of disjoint components in the graph with more than one nodes : " <<componentHdl.components.size() <<endl;
 }
 
 
