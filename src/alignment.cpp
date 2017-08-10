@@ -125,10 +125,9 @@ bool AlignmentJan::detectLocalHammering(const string& s1, const string& s2)const
        if (s1==s2)
                return false;
        string al1, al2;
-       bool hammerUsed = false;
        int i = s1.size();
        int j = s2.size();
-       int numOfErrors=0;
+       size_t numOfErrors=0;
        vector<int> errorPosList;
        while (i > 0 || j > 0) {
                 bool hit = (s1[i-1] == s2[j-1]);
@@ -183,7 +182,7 @@ bool AlignmentJan::detectLocalHammering(const string& s1, const string& s2)const
         i = 0 ;
         while ( currentBinStart + binSize < max((int)al1.size(), (int)al2.size())){
                 numOfErrorIncurrBin = 0;
-                for (int i =0; i <errorPosList.size();i++){
+                for (size_t i =0; i <errorPosList.size();i++){
                         if ( errorPosList[i]> currentBinStart && errorPosList[i] < currentBinStart + binSize ){
                                 numOfErrorIncurrBin++;
                                 if ( numOfErrorIncurrBin  >expectedErrorInBin *7 && patternLessNess > patternLessNessCutOff ){
@@ -191,7 +190,6 @@ bool AlignmentJan::detectLocalHammering(const string& s1, const string& s2)const
                                         <<" to "<< currentBinStart + binSize<<endl;
                                         printAlignment(s1,s2);
                                         cout << "patternLessNess: " << patternLessNess <<endl;
-                                        //hammerUsed = true;
                                         return true;
                                 }
                         }

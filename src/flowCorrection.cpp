@@ -53,9 +53,11 @@ bool DBGraph::removeChimericLinksByFlow(double covCutoff, size_t maxMargLength){
                         SSNode victim = getSSNode(it->getNodeID());
                         if(victim.getNodeID() != nextReliableNode.getNodeID()){
                                 double arcCov = node.getRightArc(victim.getNodeID())->getCoverage();
-                                removeArc(node.getNodeID(),victim.getNodeID());
-                                numOfDel ++;
-                                break;
+                                if (arcCov <covCutoff){
+                                        removeArc(node.getNodeID(),victim.getNodeID());
+                                        numOfDel ++;
+                                        break;
+                                }
                         }
                         it++;
                 }

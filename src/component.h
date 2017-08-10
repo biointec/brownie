@@ -31,9 +31,9 @@ private:
 
 
 public:
+        size_t componentID;
         size_t componentSize;
         size_t numOfNodes;
-        size_t componentID;
 
         Component (){
 

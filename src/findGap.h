@@ -8,11 +8,11 @@
 #include "component.h"
 class FindGap {
 private:
+        size_t overlapSize;
         AlignmentJan alignment;
         DBGraph &dbg;
         Settings settings;
         string correctedFile;
-        size_t overlapSize;
         size_t maxSearchSize;
         size_t kmerSize;
         size_t minComponentSize;
@@ -22,6 +22,7 @@ private:
         size_t minSim;
         size_t minTipLength;
         size_t minExactMatchSize;
+
 public:
         /**
          * Default constructor
@@ -97,7 +98,7 @@ private:
          * @param bfs root node
          * @param result all different path start from root in that distance
          */
-        void expandNode( int length, vector< pair <string ,vector< NodeID>> >& bfs , vector< pair <string ,vector< NodeID>> > &result );
+        void expandNode( size_t length, vector< pair <string ,vector< NodeID>> >& bfs , vector< pair <string ,vector< NodeID>> > &result );
          /**
          * expand the common string between two nodes to the right if the first node can be expanded to the right.
          * @param first first node

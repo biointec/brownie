@@ -63,14 +63,12 @@ FindGap::FindGap(LibraryContainer& libraries, const Settings& s, DBGraph &graph)
         Kmer::setWordSize(settings.getK());
         parameterInitialization();
         ReadLibrary &input =libraries.getInput(0);
-        ReadFile *readFile = input.allocateReadFile();
         correctedFile = input.getInputFilename();
 }
 
 
 void FindGap::closeGaps(string nodeFilename, string arcFilename,string metaDataFilename)
 {
-        size_t numberOfJoins = 0 ;
         set<int> tipNodes;
         vector< pair< pair<int , int> , int > > potentialPairs;
         findTips(tipNodes);
@@ -392,15 +390,14 @@ bool FindGap::extendRead(size_t &firstStartIndex, size_t& secondStartIndex, size
 
                 string firstSeq = first.getSequence();
                 string secondSeq = second.getSequence();
-                //firstSeq = firstSeq.substr();
-                //secondSeq =secondSeq.substr();
 
-                int maxLen1 = firstSeq.length();
+
+                size_t maxLen1 = firstSeq.length();
                 if (maxLen1 >maxSearchSize)
                         maxLen1 = maxSearchSize;
                 firstSeq = firstSeq.substr(firstSeq.length()-maxLen1,maxLen1);
 
-                int maxLen2 = secondSeq.length();
+                size_t maxLen2 = secondSeq.length();
                 if (maxLen2 >maxSearchSize)
                         maxLen2 = maxSearchSize;
                 secondSeq = secondSeq.substr(0,maxLen2);
@@ -410,7 +407,6 @@ bool FindGap::extendRead(size_t &firstStartIndex, size_t& secondStartIndex, size
                         return false;
                 firstStartIndex = firstStartIndex +first.getSequence().length()-maxLen1;
 
-                //cout<<"common  "<<commonSubstr<<endl;
                 firstEndInex = firstStartIndex + commonSubstr.length();
                 secondEndIndex = secondStartIndex + commonSubstr.length();
 
@@ -496,10 +492,10 @@ void FindGap::expandReadByGraphToLeft(SSNode first,SSNode second,size_t& firsSta
 
 
 
-void FindGap::expandNode( int length, vector< pair <string ,vector< NodeID>> >& bfs,
+void FindGap::expandNode( size_t length, vector< pair <string ,vector< NodeID>> >& bfs,
                           vector< pair <string ,vector< NodeID>> >& result )
 {
-        int currReadPos = 0;
+
         vector< pair <string ,vector< NodeID>> > mustVisit;
 
         for (auto path:bfs){
@@ -534,14 +530,14 @@ void FindGap::expandNode( int length, vector< pair <string ,vector< NodeID>> >& 
 string FindGap::getLongestCommonSubStr(string str1, string str2, size_t & firsStartIndex, size_t & SecondStartIndex)
 {
 
-        int m = str1.length();
-        int n = str2.length();
+        size_t m = str1.length();
+        size_t n = str2.length();
         int LCSuff[m+1][n+1];
         int result = 0;
-        int maxIndex1 = 0, maxIndex2 = 0;
-        for (int i=0; i<=m; i++)
+        size_t maxIndex1 = 0, maxIndex2 = 0;
+        for (size_t i=0; i<=m; i++)
         {
-                for (int j=0; j<=n; j++)
+                for (size_t j=0; j<=n; j++)
                 {
                         if (i == 0 || j == 0)
                                 LCSuff[i][j] = 0;
@@ -575,7 +571,7 @@ void FindGap::loadKmerMap(set<int> &tipNodes,std::map<string, set<int> > & kmerN
                 SSNode node = dbg.getSSNode(nodeid);
                 string DNA_sequence = node.getSequence();
                 vector<string> sequences;
-                int maxLen = DNA_sequence.length();
+                size_t maxLen = DNA_sequence.length();
                 if (maxLen >maxSearchSize)
                         maxLen = maxSearchSize;
                 if (node.getNumLeftArcs() ==0 && node.getNumRightArcs() >0)
@@ -627,13 +623,7 @@ void FindGap::loadKmerMap(set<int> &tipNodes,std::map<string, set<int> > & kmerN
                 if (nodeSet.size()<2){
                         kmerNodeMap.erase(mapIt);
 
-                }/*else{
-                std::cout << mapIt->first <<":\t" <<endl;
-                for (set<int>::iterator i = nodeSet.begin(); i != nodeSet.end(); i++) {
-                        cout << *i <<", ";
-        }
-        cout << std::endl ;
-        }*/
+                }
         }
 
         Kmer::setWordSize(settings.getK());
