@@ -211,7 +211,7 @@ void Brownie::stageFour()
                 cout << "Cleaning graph (tips, cov-cutoff = " << cutoff
                 << ", lmax = " << lmax << ")\n";
 
-                while (graph.clipTips(cutoff/2, lmax)) {
+                while (graph.clipTips(cutoff, lmax)) {
                         graph.concatenateNodes();
                         cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" << endl;
                         change = true;
@@ -237,9 +237,10 @@ void Brownie::stageFour()
                 graph.extractStatistic();
                 graph.removeChimericLinksByFlow(cutoff, libraries.getAvgReadLength());
                 graph.concatenateNodes();
+                FindGap  findGap (libraries, settings, graph);
+                findGap.closeGaps();
         }
-        FindGap  findGap (libraries, settings, graph);
-        findGap.closeGaps();
+
 #ifdef DEBUGq
         Util::startChrono();
         cout << "Building kmer - node/position index... "; cout.flush();

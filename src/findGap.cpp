@@ -376,11 +376,11 @@ void FindGap::streamReads(string readFileName , set<int> &tipNodes,  vector< pai
         set<int> nodesHandled;
         pairedEndJoins.clear();
 
-        cout << "( FirstTipID , SecondTipID ) : Frequency"<<endl;
+        /*cout << "( FirstTipID , SecondTipID ) : Frequency"<<endl;
         for(auto it = potentialPairs.cbegin(); it != potentialPairs.cend(); ++it)
         {
                 cout << "( " << it->first.first <<" , " <<it->first.second <<" ) :" <<it->second <<endl;
-        }
+        }*/
 
         cout <<"\nNumber of found suggestions: "<<potentialPairs.size() <<endl;
 }

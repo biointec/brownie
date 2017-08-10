@@ -113,6 +113,7 @@ double DBGraph ::getStartReadAvg(){
                 sumOfReadStcov = sumOfReadStcov + tempNode.getReadStartCov();
                 num++;
         }
+        cout << "The avg of read start cov is "<< avg <<" whcih is calculated based on the " <<num <<"longest nodes." <<endl;
         avg = sumOfReadStcov/sumOfMarginalLenght;
         return avg;
 }
