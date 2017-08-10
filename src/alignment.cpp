@@ -170,7 +170,7 @@ bool AlignmentJan::detectLocalHammering(const string& s1, const string& s2)const
         //calculate patternLessNess value which shows the degree in which errors are spread with the same distance from each other in the read.
         //This value is 1 if the distance between errors is exactly the same. The value increases if the errors are locally located in some part of the reads.
 
-        for ( int i = 1 ;i <errorPosList.size(); i++ ){
+        for ( size_t i = 1 ;i <errorPosList.size(); i++ ){
                 //cout<<"double(1/(errorPosList[i]-errorPosList[i-1])) " <<(1/double(errorPosList[i]-errorPosList[i-1])) <<endl ;
                 //cout<<"double(max((int)al1.size(), (int)al2.size())/(double)numOfErrors)" <<double(max((int)al1.size(), (int)al2.size())/(double)numOfErrors)<<endl;
                 patternLessNess = patternLessNess* double(1/double(errorPosList[i]-errorPosList[i-1])) * double(max((int)al1.size(), (int)al2.size())/(double)numOfErrors);

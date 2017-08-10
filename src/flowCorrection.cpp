@@ -20,8 +20,6 @@ bool DBGraph::removeChimericLinksByFlow(double covCutoff, size_t maxMargLength){
                         continue;
 
                 pair<int, pair<double,double> > result=nodesExpMult[abs( node.getNodeID())];
-                double confidenceRatio = result.second.first;
-                double inCorrctnessRatio = result.second.second;
                 size_t nodeMultiplicity = result.first;
 
                 if (node.getNumRightArcs() < 2)
@@ -104,7 +102,6 @@ double DBGraph ::getStartReadAvg(){
 
         }
         sort(nodeArray.begin(), nodeArray.end(),cmssn );
-        double sumOfCoverage=0;
         double sumOfMarginalLenght=0;
         double sizeLimit=0;
         sizeLimit= ( totalLength * percentage)/100;
@@ -133,7 +130,7 @@ void DBGraph::extractStatistic(){
                 double inCorrctnessRatio = std::numeric_limits<double>::max();
                 size_t len = node.getMarginalLength() + settings.getK()-1;
 
-                int i = 0;
+                size_t i = 0;
                 while ( i < 10 ) {
                         i++;
                         double expectedRSTCov = avg * i * len ;
