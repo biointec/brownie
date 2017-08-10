@@ -94,7 +94,7 @@ double DBGraph ::getStartReadAvg(){
         int percentage=5;
         double sumOfReadStcov=0;
         size_t totalLength=0;
-        double avg=0;
+        double avg = 0;
         for ( NodeID lID = 1; lID <= numNodes; lID++ ) {
                 SSNode node = getSSNode ( lID );
                 if(node.isValid() && node.getMarginalLength()) {
@@ -108,15 +108,17 @@ double DBGraph ::getStartReadAvg(){
         double sumOfMarginalLenght=0;
         double sizeLimit=0;
         sizeLimit= ( totalLength * percentage)/100;
+        size_t numOfVisitedNodeLimit = 100;
         size_t num  = 0;
-        while(sumOfMarginalLenght < sizeLimit) {
+        while(sumOfMarginalLenght < sizeLimit  && numOfVisitedNodeLimit > num) {
                 SSNode tempNode = nodeArray[num];
                 sumOfMarginalLenght = sumOfMarginalLenght + tempNode.getMarginalLength() + settings.getK()-1;
                 sumOfReadStcov = sumOfReadStcov + tempNode.getReadStartCov();
                 num++;
         }
-        cout << "The avg of read start cov is "<< avg <<" whcih is calculated based on the " <<num <<"longest nodes." <<endl;
+        cout.precision(3);
         avg = sumOfReadStcov/sumOfMarginalLenght;
+        cout << "The avg of read start cov is "<< avg <<" whcih is calculated based on the " <<num <<" longest nodes." <<endl;
         return avg;
 }
 void DBGraph::extractStatistic(){
