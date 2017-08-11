@@ -1,4 +1,4 @@
-add_executable(brownie nodechain.cpp kmercounttable.cpp  kmeroverlaptable.cpp readcorrection.cpp alignment.cpp coverage.cpp library.cpp kmernpp.cpp kmertable.cpp correctgraph.cpp dsnode.cpp nucleotide.cpp nodeendstable.cpp settings.cpp util.cpp tstring.cpp kmeroverlap.cpp graph.cpp brownie.cpp refcomp.cpp suffix_tree.c flowCorrection.cpp findGap.cpp)
+add_executable(brownie nodechain.cpp kmercounttable.cpp  kmeroverlaptable.cpp readcorrection.cpp alignment.cpp coverage.cpp library.cpp kmernpp.cpp kmertable.cpp correctgraph.cpp dsnode.cpp nucleotide.cpp nodeendstable.cpp settings.cpp util.cpp tstring.cpp kmeroverlap.cpp graph.cpp brownie.cpp refcomp.cpp suffix_tree.c flowCorrection.cpp findGap.cpp component.cpp)
 #add_executable(findgap findGap.cpp nodechain.cpp kmercounttable.cpp  kmeroverlaptable.cpp readcorrection.cpp alignment.cpp coverage.cpp library.cpp kmernpp.cpp kmertable.cpp correctgraph.cpp dsnode.cpp nucleotide.cpp nodeendstable.cpp settings.cpp util.cpp tstring.cpp kmeroverlap.cpp graph.cpp refcomp.cpp suffix_tree.c)
 
 

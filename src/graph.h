@@ -27,7 +27,6 @@
 #include "kmernpp.h"
 #include "kmercounttable.h"
 #include "nodechain.h"
-
 #include <mutex>
 #include <vector>
 #include <google/sparse_hash_map>
@@ -792,7 +791,7 @@ public:
          * @return true if the node is reliable
          */
 
-        bool checkNodeIsReliable(SSNode node, double covCutoff,size_t maxMargLength);
+        bool checkNodeIsReliable(SSNode node, double covCutoff);
         /**
          * it does a flow correction in the graph
          *
@@ -802,15 +801,22 @@ public:
          */
 
         bool removeChimericLinksByFlow(double covCutoff, size_t maxMargLength);
-
-         /*
+        /*
          * calculates the startReadCov getAvgKmerCov
          */
         double getStartReadAvg();
 
         typedef pair<int, pair<double, double> > pair_k;
         map<NodeID, pair_k> nodesExpMult;
+        /**
+         * find number of disjoint components in the graph
+         * @param minSize the minimum size of a component to be considered
+         * @return number of comonents in the graph
+         *
+         */
+        size_t findComponentsInGraph(size_t minSize);
 
+        size_t findbreakpoints(std::string breakpointFileName );
 };
 
 #endif

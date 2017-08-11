@@ -54,16 +54,12 @@ public:
          * find the gap in the graph, recommend connection between tips
          *
          */
-        void closeGaps(string nodeFilename ="", string arcFilename ="",string metaDataFilename = "");
+        bool closeGaps(string nodeFilename ="", string arcFilename ="",string metaDataFilename = "");
 
-        //void connectComponents(string nodeFilename, string arcFilename,string metaDataFilename);
-        /**
-         * extract kmers in the graph, which are in tip nodes and save them in a dictionary
-         * @param tipNodes A set of tips nodes
-         * @param kmerNodeMap a map which shows each kmer exists in which nodes
-         */
+
+
 private:
-        void loadKmerMap(set<int>& tipNodes,std::map<string, set<int> >&  kmerNodeMap, size_t overlapSize);
+
 
         /**
          * find the tips in the graph which are among the eligibleNodeSet
@@ -77,11 +73,6 @@ private:
          */
          void findTips(set<int> &tipNodes);
 
-        /**
-         * find disjoined component in the graph
-         * @param componentHdl keeps the specification of the disjoined component in the graph
-         */
-        void findComponentsInGraph(ComponentHandler& componentHdl);
 
           /**
          * retun the Longest Common Substring
@@ -138,7 +129,7 @@ private:
          * @param firstNodeID the left node.
          * @param secondNodeID the right node. This will be removed.
          */
-        bool connectNodes(NodeID firstNodeID, NodeID secondNodeID);
+         bool connectNodes(NodeID firstNodeID, NodeID secondNodeID);
         /**
          * stream through the reads and look if a pair of reads align to two different tips
          * @param tipNodes a set of tips which we should check reads align to them or not.
@@ -167,7 +158,7 @@ private:
           * @param pairedEndJoins a list of pairs of tips which can potentially connect to each other.
           */
 
-         void checkForTipConnection(vector< pair< pair<int , int> , int > >& potentialPairs);
+         bool checkForTipConnection(vector< pair< pair<int , int> , int > >& potentialPairs);
          /**
           * It makes sure that the first tip has no right arc, the second tip has no left arc
           * if they are single node it check to get maximum overlap

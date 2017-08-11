@@ -16,23 +16,25 @@ bool DBGraph::removeChimericLinksByFlow(double covCutoff, size_t maxMargLength){
                 SSNode node = getSSNode ( lID );
                 if(!node.isValid())
                         continue;
-                if (!checkNodeIsReliable(node, covCutoff, maxMargLength))
+                if (!checkNodeIsReliable(node, covCutoff))
                         continue;
 
                 pair<int, pair<double,double> > result=nodesExpMult[abs( node.getNodeID())];
                 size_t nodeMultiplicity = result.first;
-
+                if (nodeMultiplicity ==0)
+                        continue;
                 if (node.getNumRightArcs() < 2)
                         continue;
                 if (node.getNumRightArcs() < nodeMultiplicity )
                         continue;
-
+                //it tries to find two consecutive nodes with the same node Multiplicity.
+                //So before connecting them there should be a Chimeric Link which needs to be removed
                 ArcIt it = node.rightBegin();
                 bool found = false;
                 SSNode nextReliableNode;
                 while(it != node.rightEnd()) {
                         SSNode nextReliableNode = getSSNode(it->getNodeID());
-                        if (checkNodeIsReliable(nextReliableNode , covCutoff, maxMargLength))
+                        if (checkNodeIsReliable(nextReliableNode , covCutoff))
                         {
                                 pair<int, pair<double,double> > result=nodesExpMult[abs( nextReliableNode.getNodeID())];
                                 size_t reliableNodeMultiplicity = result.first;
@@ -65,9 +67,7 @@ bool DBGraph::removeChimericLinksByFlow(double covCutoff, size_t maxMargLength){
         return (numOfDel > 0);
 }
 
-bool DBGraph::checkNodeIsReliable(SSNode node, double covCutoff, size_t maxMargLength ){
-
-
+bool DBGraph::checkNodeIsReliable(SSNode node, double covCutoff){
 
         if ( node.getAvgKmerCov() < covCutoff)
                 return false;
@@ -115,7 +115,7 @@ double DBGraph ::getStartReadAvg(){
         }
         cout.precision(3);
         avg = sumOfReadStcov/sumOfMarginalLenght;
-        cout << "The avg of read start cov is "<< avg <<" whcih is calculated based on the " <<num <<" longest nodes." <<endl;
+        cout << "The avg of read start cov is "<< avg <<" whcih is calculated based on the " <<num <<" biggest nodes." <<endl;
         return avg;
 }
 void DBGraph::extractStatistic(){
@@ -167,6 +167,70 @@ void DBGraph::extractStatistic(){
         }
 }
 
+
+size_t DBGraph:: findComponentsInGraph(size_t minSize)
+{
+        cout << "Finding disjoint components in the graph ..." <<endl;
+        int srcID=1;
+        int i=0;
+        size_t numberOfcomponents =0;
+        set<NodeID> nodesHandled;
+        for (i =srcID ; i <=getNumNodes(); i++){
+                set<NodeID> currentSetNodes;
+                size_t componentSize =0;
+                if (!getSSNode(i).isValid())
+                        continue;
+                if (nodesHandled.find(i) != nodesHandled.end())
+                        continue;
+                if (nodesHandled.find(i) != nodesHandled.end())
+                        continue;
+                srcID=i;
+                multimap<size_t, NodeID> nodeDepth;     // map of all nodes in the local graph and its depth
+                nodeDepth.insert(pair<size_t, NodeID>(0, srcID));
+                // nodes that were already handled
+
+                while (!nodeDepth.empty()) {
+                        // get and erase the current node
+                        multimap<size_t, NodeID>::iterator
+                        e = nodeDepth.begin();
+                        size_t thisDepth = e->first;
+                        NodeID thisID = e->second;
+                        nodeDepth.erase(e);
+                        // if the node was already handled, skip
+                        if (nodesHandled.find(thisID) != nodesHandled.end())
+                                continue;
+                        if (nodesHandled.find(-thisID) != nodesHandled.end())
+                                continue;
+                        // mark this node as handled
+                        nodesHandled.insert(thisID);
+                        currentSetNodes.insert(thisID);
+                        SSNode thisNode = getSSNode(thisID);
+                        componentSize = componentSize + thisNode.getMarginalLength();
+                        for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
+                                SSNode rNode = getSSNode(it->getNodeID());
+                                if (!rNode.isValid())
+                                        continue;
+                                if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
+                                        continue;
+                                nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
+                        }
+                        for (ArcIt it = thisNode.leftBegin(); it != thisNode.leftEnd(); it++) {
+                                SSNode lNode = getSSNode(it->getNodeID());
+                                if (!lNode.isValid())
+                                        continue;
+                                if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
+                                        continue;
+                                nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
+                        }
+                }
+                if ( componentSize >minSize && currentSetNodes.size() >1)
+                        numberOfcomponents ++;
+
+                currentSetNodes.clear();
+        }
+        cout << "Number of disjoint components in the graph with more than 1 nodes and larger than : " <<minSize << " is " <<numberOfcomponents <<endl;
+        return numberOfcomponents;
+}
 
 
 

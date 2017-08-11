@@ -279,8 +279,9 @@ public:
          * @param dbg A const-ref to the de Bruijn graph
          * @param refSeq given sequence
          * @param nodeSet set of ndoes (output)
+         * @return the size of the subgraph
          */
-        void extractNodeSetbySequence(const DBGraph& dbg,
+        size_t extractNodeSetbySequence(const DBGraph& dbg,
                                       std::string &refSeq, std::set<int> &nodeSet);
         /**
          * extract the the subgraph nearbye given sequence in a fasta file
@@ -297,6 +298,14 @@ public:
          */
         void getNodeMultiplicity(const DBGraph& dbg,
                                  std::vector<size_t>& multiplicity);
+
+        /**
+         * Get the true node chains from the given file as a reference
+         * @param dbg A const-ref to the de Bruijn graph
+         * @param breakpointFileName the fasta file contains sequences which are supposed to be in breakpoint area
+         * @return number of breakpoint
+         */
+        size_t findbreakpoints(const DBGraph& dbg,std::string breakpointFileName);
 };
 
 #endif

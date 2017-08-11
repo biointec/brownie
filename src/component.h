@@ -64,8 +64,8 @@ public:
 class ComponentHandler{
 private:
 
-        const DBGraph &dbg;
-        const Settings &settings;
+        DBGraph &dbg;
+        Settings &settings;
         std::map<NodeID, size_t > nodeComponentMap;
 
 public:
@@ -107,7 +107,13 @@ public:
                 }
                 componentsMap[newComonent.getComponentID()] = newComonent;
         }
-
+        /**
+         * find number of disjoint components in the graph
+         * @param minSize the minimum size of a component to be considered
+         * @return number of comonents in the graph
+         *
+         */
+        size_t findComponentsInGraph( size_t minSize =0);
         struct less_than_Component
         {
                 inline bool operator() (const Component& object1, const Component& object2)

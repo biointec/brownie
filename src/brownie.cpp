@@ -26,7 +26,6 @@
 #include "readcorrection.h"
 #include "refcomp.h"
 #include "findGap.h"
-
 using namespace std;
 
 Brownie::Brownie(int argc, char** args)
@@ -194,15 +193,21 @@ void Brownie::stageFour()
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);
         refComp.extractBreakpointSubgraph(graph,"breakpoints.fasta", settings.getTempDirectory()+"Stage3_");
-
+        //graph.writeCytoscapeGraph(settings.getTempDirectory()+"stage3");
 }
 #endif
 
-        cutoff = cutoff /2;
+        std::vector<NodeChain> nodeChain;
+
+        size_t numbOfBreakpoins = graph.findbreakpoints("breakpoints.fasta");
+
         bool change = true;
+        FindGap  findGap (libraries, settings, graph);
+        size_t newBreakpoints = numbOfBreakpoins ;
         while (change){
                 change = false;
                 // TIP CLIPPING
+
                 Util::startChrono();
                 size_t lmax = libraries.getAvgReadLength() - settings.getK() + 5;
                 if (lmax < settings.getK()*2)
@@ -217,7 +222,12 @@ void Brownie::stageFour()
                         change = true;
                 }
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
-
+                newBreakpoints = graph.findbreakpoints("breakpoints.fasta");
+                if (newBreakpoints>numbOfBreakpoins)
+                {
+                        numbOfBreakpoins = newBreakpoints;
+                        cout << "numb Of Breakpoins increased after tip clipping " <<endl;
+                }
                 // BUBBLE DETECTION
                 Util::startChrono();
                 lmax = libraries.getAvgReadLength() - (settings.getK()-1)*2 + 5;
@@ -228,20 +238,35 @@ void Brownie::stageFour()
                 << ", lmax = " << lmax << ", maxvisits = "
                 << settings.getBubbleDFSNodeLimit() << ", threads = "
                 << settings.getNumThreads() << ")\n";
-                while (graph.bubbleDetection(cutoff, lmax) ){
+                while (graph.bubbleDetection(cutoff/2, lmax) ){
+                        newBreakpoints = graph.findbreakpoints("breakpoints.fasta");
+                        if (newBreakpoints > numbOfBreakpoins)
+                        {
+                                numbOfBreakpoins = newBreakpoints;
+                                cout << "numb Of Breakpoins increased after bubble detection " <<endl;
+                        }
                         graph.concatenateNodes();
                         cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
                         change = true;
                 }
+                newBreakpoints = graph.findbreakpoints("breakpoints.fasta");
+                if (newBreakpoints>numbOfBreakpoins)
+                {
+                        numbOfBreakpoins = newBreakpoints;
+                        cout << "numb Of Breakpoins increased after bubble detection " <<endl;
+                }
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
                 graph.extractStatistic();
                 graph.removeChimericLinksByFlow(cutoff, libraries.getAvgReadLength());
+                graph.findbreakpoints("breakpoints.fasta");
                 graph.concatenateNodes();
-                FindGap  findGap (libraries, settings, graph);
-                findGap.closeGaps();
-        }
 
-#ifdef DEBUGq
+
+
+        }
+        findGap.closeGaps();
+/*
+#ifdef DEBUG
         Util::startChrono();
         cout << "Building kmer - node/position index... "; cout.flush();
         graph.buildKmerNPPTable();      // build kmer-NPP index
@@ -252,16 +277,15 @@ void Brownie::stageFour()
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);
         refComp.extractBreakpointSubgraph(graph,"breakpoints.fasta", settings.getTempDirectory()+"Stage4_");
-       /*for (int i = 1; i < graph.getNumNodes(); i++) {
+       for (int i = 1; i < graph.getNumNodes(); i++) {
                 SSNode node = graph.getSSNode(i);
                 if (!node.isValid())
                         continue;
                 if (trueMult[i] == 0)
                         cout << "Node " << i << " with avgKmerCov " << node.getAvgKmerCov() << " is false." << endl;
-        }*/
-
-#endif
-
+        }
+        graph.writeCytoscapeGraph(settings.getTempDirectory()+"stage4");
+#endif*/
 
 
         cout << graph.getGraphStats() << endl;
@@ -279,6 +303,7 @@ void Brownie::stageFour()
 
 void Brownie::stageFive()
 {
+
         cout << "\nEntering stage 5" << endl;
         cout << "================" << endl;
 
@@ -292,15 +317,15 @@ void Brownie::stageFive()
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << "Graph contains " << graph.getNumNodes() << " nodes and "
              << graph.getNumArcs() << " arcs" << endl;
-        Util::startChrono();
+        FindGap  findGap (libraries, settings, graph);
+        findGap.closeGaps();
+
+
         ReadCorrectionHandler rcHandler(graph, settings);
         rcHandler.doErrorCorrection(libraries);
 
         cout << "Error correction completed in " << Util::stopChronoStr() << endl;
         cout << "Stage 5 finished\n" << endl;
-        graph.writeGraph(getNodeFilename(5),
-                         getArcFilename(5),
-                         getMetaDataFilename(5));
         graph.clear();
 }
 
@@ -374,7 +399,7 @@ void Brownie::assembleModule()
         if (stageFourNecessary())
                 stageFour();
         else
-                cout << "Files produced by this stage appear to"
+               cout << "Files produced by this stage appear to"
                         " be present, skipping stage 4...\n";
         //if (stageFiveNecessary())
                 stageFive();
