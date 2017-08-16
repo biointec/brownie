@@ -37,8 +37,56 @@ void FindGap::parameterInitialization(){
         minOverlapSize = 15;
         minSim =50;
         minExactMatchSize = 7;
-}
 
+}
+void FindGap::findneighbourNodes(int ** neighbours, set<int> &tipNodes){
+        for(size_t i =0 ; i <dbg.getNumNodes() ;i++)
+                *(neighbours+i) = (int*)malloc(sizeof(int)*5);
+        for (size_t i = 0; i< dbg.getNumNodes(); i++)
+                for (size_t j = 0; j<5 ; j++)
+                        neighbours [i][j] = 0 ;
+
+        for (auto it:tipNodes){
+                NodeID tipID = it;
+                if (dbg.getSSNode(it).getNumLeftArcs() ==0 && dbg.getSSNode(it).getNumRightArcs()==0)
+                        continue;
+                if (dbg.getSSNode(it).getNumLeftArcs() !=0 && dbg.getSSNode(it).getNumRightArcs()==0)
+                        tipID = - tipID;
+                if (dbg.getSSNode(it).getNumLeftArcs() ==0 && dbg.getSSNode(it).getNumRightArcs()!=0){
+                        set <NodeID> neighbourNodes =  searchForNeighbours(tipID, 250);
+                        for (size_t i =0; i <neighbourNodes.size();i++){
+                                size_t j =0 ;
+                                while (j< 5 && neighbours[i][j] != 0)
+                                        j++;
+                                if (j<5)
+                                        neighbours[i][j] = it;
+                        }
+                }
+
+        }
+}
+set<NodeID> FindGap::searchForNeighbours(NodeID tipNode, size_t searchSizeLim)
+{
+        set<NodeID> neighbours;
+        priority_queue<pair< NodeID, size_t> > toVisit;
+        pair<NodeID, size_t> startPair = make_pair(tipNode, dbg.getSSNode(tipNode).getLength());
+        toVisit.push(startPair);
+        while (!toVisit.empty()){
+                SSNode startNode = dbg.getSSNode(toVisit.top().first);
+                size_t length = toVisit.top().second;
+                toVisit.pop();
+                if (length > searchSizeLim )
+                        continue;
+                for (ArcIt it = startNode.rightBegin(); it != startNode.rightEnd(); it++) {
+                        SSNode rightNode = dbg.getSSNode(it->getNodeID());
+                        neighbours.insert(rightNode.getNodeID());
+                        pair<NodeID, size_t> rightPair = make_pair(startNode.getNodeID(),length+ dbg.getSSNode(tipNode).getLength());
+                        toVisit.push(rightPair);
+                }
+
+        }
+        return neighbours;
+}
 
 /*
 FindGap::FindGap(string nodeFileName, string arcFileName, string metaDataFileName, string alignmentFile,unsigned int kmerVlue  ,string tempDir):settings(kmerVlue,tempDir), dbg(settings),overlapSize(kmerVlue),alignment(1000, 2, 1, -1, -3)
@@ -64,6 +112,7 @@ FindGap::FindGap(LibraryContainer& libraries, const Settings& s, DBGraph &graph)
         parameterInitialization();
         ReadLibrary &input =libraries.getInput(0);
         correctedFile = input.getInputFilename();
+
 }
 
 
@@ -71,15 +120,20 @@ bool FindGap::closeGaps(string nodeFilename, string arcFilename,string metaDataF
 {
         set<int> tipNodes;
         vector< pair< pair<int , int> , int > > potentialPairs;
+        //int ** neighbours = (int**)malloc(sizeof(int*)*dbg.getNumNodes());
+
+
         findTips(tipNodes);
+        //findneighbourNodes(neighbours,tipNodes);
         cout << "Creating kmer lookup table... "; cout.flush();
         dbg.buildKmerNPPTable();
         streamReads(correctedFile,tipNodes,potentialPairs);
-        checkForTipConnection(potentialPairs);
+        bool change =checkForTipConnection(potentialPairs);
         dbg.concatenateNodes();
         //cout << dbg.getGraphStats() << endl;
         if (nodeFilename != "")
                 dbg.writeGraph(nodeFilename,arcFilename,metaDataFilename);
+        return change;
 }
 
 void FindGap::reorderTips(SSNode &first, SSNode &second)
@@ -606,31 +660,30 @@ void FindGap::extractBreakpointSubgraph( std::string breakpointFileName,string  
                 std::cerr << "Error opening: " << breakpointFileName << std::endl;
                 return;
         }
-        std::string line, id ="", DNA_sequence ="" ;
+         std::string line, id ="", DNA_sequence ="" ;
         while (std::getline(input, line).good()) {
                 if (line[0] == '>') {
-                        id = line.substr(1);
-                        if (DNA_sequence!=""){
+                        if (DNA_sequence!= "")
                                 breakpoints.push_back( make_pair(id, DNA_sequence));
-                        }
+                        id = line.substr(1);
                         DNA_sequence.clear();
                 }
-                else if (line[0] != '>'){
+                else if (line[0] != '>')
                         DNA_sequence += line;
-                }
         }
-        if (DNA_sequence!=""){
-                breakpoints.push_back( make_pair(id, DNA_sequence));
-        }
+        breakpoints.push_back( make_pair(id, DNA_sequence));
 
         for (unsigned int i = 0 ;i <breakpoints.size(); i++){
+                ofstream ofs("tempBreakpoint.fasta");
+                ofs << ">"<< breakpoints[i].first <<endl<<breakpoints[i].second << endl;
                 pair<string , string> breakPoint= breakpoints [i];
                 set<int> nodeSet;
                 //extractNodeSetbySequence( breakPoint.second,nodeSet);
-                RefComp refComp(breakpointFileName);
+                RefComp refComp("tempBreakpoint.fasta");
                 vector<NodeChain> trueNodeChain;
                 refComp.getTrueNodeChain(dbg, trueNodeChain);
-                writeCytoscapeGraph( tempDir+breakPoint.first,trueNodeChain,1);
+                writeCytoscapeGraph( tempDir+breakPoint.first,trueNodeChain,2);
+                ofs.close();
 
         }
 }

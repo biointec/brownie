@@ -178,32 +178,29 @@ void Brownie::stageFour()
         if (cutoff == 0){
                 cutoff = graph.getCovCutoff();
         }
+        FindGap  findGap (libraries, settings, graph);
 
+        #ifdef DEBUG
 
-
-#ifdef DEBUG
-{
         Util::startChrono();
         cout << "Building kmer - node/position index... "; cout.flush();
         graph.buildKmerNPPTable();      // build kmer-NPP index
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         RefComp refComp("genome.fasta");
-       // refComp.validateGraph(graph);
+        // refComp.validateGraph(graph);
         vector<size_t> trueMult;
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);
-        refComp.extractBreakpointSubgraph(graph,"breakpoints.fasta", settings.getTempDirectory()+"Stage3_");
-        //graph.writeCytoscapeGraph(settings.getTempDirectory()+"stage3");
-}
-#endif
-
-        std::vector<NodeChain> nodeChain;
-
         size_t numbOfBreakpoins = graph.findbreakpoints("breakpoints.fasta");
 
+        findGap.extractBreakpointSubgraph("breakpoints.fasta", settings.getTempDirectory()+"Stage3_");
+        //graph.writeCytoscapeGraph(settings.getTempDirectory()+"stage3");
+
+        #endif
+
         bool change = true;
-        FindGap  findGap (libraries, settings, graph);
-        size_t newBreakpoints = numbOfBreakpoins ;
+
+        cutoff = cutoff/2;
         while (change){
                 change = false;
                 // TIP CLIPPING
@@ -222,12 +219,7 @@ void Brownie::stageFour()
                         change = true;
                 }
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
-                newBreakpoints = graph.findbreakpoints("breakpoints.fasta");
-                if (newBreakpoints>numbOfBreakpoins)
-                {
-                        numbOfBreakpoins = newBreakpoints;
-                        cout << "numb Of Breakpoins increased after tip clipping " <<endl;
-                }
+
                 // BUBBLE DETECTION
                 Util::startChrono();
                 lmax = libraries.getAvgReadLength() - (settings.getK()-1)*2 + 5;
@@ -239,53 +231,49 @@ void Brownie::stageFour()
                 << settings.getBubbleDFSNodeLimit() << ", threads = "
                 << settings.getNumThreads() << ")\n";
                 while (graph.bubbleDetection(cutoff/2, lmax) ){
-                        newBreakpoints = graph.findbreakpoints("breakpoints.fasta");
-                        if (newBreakpoints > numbOfBreakpoins)
-                        {
-                                numbOfBreakpoins = newBreakpoints;
-                                cout << "numb Of Breakpoins increased after bubble detection " <<endl;
-                        }
+
                         graph.concatenateNodes();
                         cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
                         change = true;
                 }
-                newBreakpoints = graph.findbreakpoints("breakpoints.fasta");
-                if (newBreakpoints>numbOfBreakpoins)
-                {
-                        numbOfBreakpoins = newBreakpoints;
-                        cout << "numb Of Breakpoins increased after bubble detection " <<endl;
-                }
+
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
                 graph.extractStatistic();
                 graph.removeChimericLinksByFlow(cutoff, libraries.getAvgReadLength());
-                graph.findbreakpoints("breakpoints.fasta");
                 graph.concatenateNodes();
 
 
 
         }
+
+        graph.buildKmerNPPTable();
+        numbOfBreakpoins = graph.findbreakpoints("breakpoints.fasta");
+        cout << "number of brekpoints after graph cleaning "<<numbOfBreakpoins <<endl;
         findGap.closeGaps();
-/*
-#ifdef DEBUG
+        graph.buildKmerNPPTable();
+        numbOfBreakpoins = graph.findbreakpoints("breakpoints.fasta");
+        cout << "number of breakpoints after closing gaps " <<numbOfBreakpoins <<endl;
+
+
+        #ifdef DEBUG
+        findGap.extractBreakpointSubgraph("breakpoints.fasta", settings.getTempDirectory()+"Stage4_");
+
         Util::startChrono();
         cout << "Building kmer - node/position index... "; cout.flush();
         graph.buildKmerNPPTable();      // build kmer-NPP index
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
-        RefComp refComp("genome.fasta");
-        //refComp.validateGraph(graph);
-        vector<size_t> trueMult;
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);
-        refComp.extractBreakpointSubgraph(graph,"breakpoints.fasta", settings.getTempDirectory()+"Stage4_");
-       for (int i = 1; i < graph.getNumNodes(); i++) {
-                SSNode node = graph.getSSNode(i);
-                if (!node.isValid())
-                        continue;
-                if (trueMult[i] == 0)
-                        cout << "Node " << i << " with avgKmerCov " << node.getAvgKmerCov() << " is false." << endl;
-        }
+        /*for (int i = 1; i < graph.getNumNodes(); i++) {
+         *        SSNode node = graph.getSSNode(i);
+         *        if (!node.isValid())
+         *                continue;
+         *        if (trueMult[i] == 0)
+         *                cout << "Node " << i << " with avgKmerCov " << node.getAvgKmerCov() << " is false." << endl;
+        }*/
         graph.writeCytoscapeGraph(settings.getTempDirectory()+"stage4");
-#endif*/
+
+        #endif
 
 
         cout << graph.getGraphStats() << endl;
@@ -318,9 +306,8 @@ void Brownie::stageFive()
         cout << "Graph contains " << graph.getNumNodes() << " nodes and "
              << graph.getNumArcs() << " arcs" << endl;
         FindGap  findGap (libraries, settings, graph);
-        findGap.closeGaps();
-
-
+        findGap.extractBreakpointSubgraph("breakpoints.fasta", settings.getTempDirectory()+"Stage5_");
+        graph.buildKmerNPPTable();
         ReadCorrectionHandler rcHandler(graph, settings);
         rcHandler.doErrorCorrection(libraries);
 

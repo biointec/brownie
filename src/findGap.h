@@ -23,6 +23,9 @@ private:
         size_t minTipLength;
         size_t minExactMatchSize;
 
+
+
+
 public:
         /**
          * Default constructor
@@ -166,4 +169,7 @@ private:
           * @param second the node in the right
           */
          void reorderTips(SSNode &first, SSNode &second);
+
+         void findneighbourNodes(int ** neighbours,set<int> &tipNodes);
+         set<NodeID> searchForNeighbours(NodeID tipID, size_t searchLimit);
 };

@@ -313,8 +313,6 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
         size_t tps=0, tns=0, fps=0,fns=0;
         size_t tpj=0, tnj=0, fpj=0,fnj=0;
 #endif
-        size_t numbOfBreakpoins = findbreakpoints("breakpoints.fasta");
-        size_t newBreakpoints = 0;
         size_t numDeleted = 0;
         for (NodeID id = 1; id <= numNodes; id++) {
                 SSNode node = getSSNode(id);
@@ -351,14 +349,7 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                         removeNode(startNode.getNodeID());
                         numDeleted ++;
                 }
-                newBreakpoints = findbreakpoints("breakpoints.fasta");
-                if (newBreakpoints > numbOfBreakpoins)
-                {
-                        int stop =0 ;
-                        stop ++;
-                        cout << "numb Of Breakpoins increased after tip clipping " <<endl;
-                        numbOfBreakpoins = newBreakpoints;
-                }
+
                 #ifdef DEBUG
                 if (remove) {
                         //cout << "node " <<id << " detected as a tip and removed" <<endl;
@@ -550,66 +541,8 @@ bool DBGraph::concatenateNodes()
 
         return (numConcatenations > 0);
 }
-/*
-bool DBGraph::concatenateNodes()
-{
-        size_t numDeleted = 0;
-        size_t numOfIncorrectConnection=0;
-        for ( NodeID lID = -numNodes; lID <= numNodes; lID++ ) {
-                if ( lID == 0 )
-                        continue;
-                SSNode left = getSSNode ( lID );
-                if ( !left.isValid() )
-                        continue;
-                if ( left.getNumRightArcs() != 1 )
-                        continue;
-                //the previous one
-                NodeID rID = left.rightBegin()->getNodeID();
-                // don't merge palindromic repeats
-                if ( rID == -lID ) {
-                        continue;
-                }
 
-                SSNode right = getSSNode ( rID );
-                if ( right.getNumLeftArcs() != 1 )
-                        continue;
-                #ifdef DEBUG
-                if (trueMult.size()>0)
-                {
-                        if ( ( ( trueMult[abs ( lID )] >= 1 ) && ( trueMult[abs ( rID )] == 0 ) ) ||
-                                ( ( trueMult[abs ( rID )] >= 1 ) && ( trueMult[abs ( lID )] == 0 ) ) )
-                        {
-                                numOfIncorrectConnection++;
-                                trueMult[abs(lID)]=0;
-                                trueMult[abs(rID)]=0;
 
-                        }
-                }
-                #endif
-
-                left.deleteRightArc ( rID );
-                right.deleteLeftArc ( lID );
-                left.inheritRightArcs ( right );
-                left.setKmerCov(left.getKmerCov()+right.getKmerCov());
-                left.setReadStartCov(left.getReadStartCov()+right.getReadStartCov());
-                right.invalidate();
-                numDeleted++;
-                deque<SSNode> deq;
-                deq.push_back ( left );
-                deq.push_back ( right );
-                std::string str;
-                convertNodesToString ( deq, str );
-                left.setSequence ( str );
-                lID--;
-
-        }
-        if (numDeleted>0)
-                cout << "Concatenated " << numDeleted << " nodes" << endl;
-        #ifdef DEBUG
-        cout <<numOfIncorrectConnection<< " of connections are between correct and incorrect node"<<endl;
-        #endif
-        return numDeleted > 0 ;
-}*/
 bool DBGraph::flowCorrection(double covCutoff, size_t maxMargLength)
 {
         bool returnValue = false;
@@ -892,22 +825,21 @@ size_t DBGraph::findbreakpoints(std::string breakpointFileName )
         std::string line, id ="", DNA_sequence ="" ;
         while (std::getline(input, line).good()) {
                 if (line[0] == '>') {
+                        if (DNA_sequence!= "")
+                                breakpoints.push_back( make_pair(id, DNA_sequence));
                         id = line.substr(1);
                         DNA_sequence.clear();
                 }
-                else if (line[0] != '>'){
+                else if (line[0] != '>')
                         DNA_sequence += line;
-
-                }
-                if (DNA_sequence!="")
-                        breakpoints.push_back( make_pair(id, DNA_sequence));
-
         }
+        breakpoints.push_back( make_pair(id, DNA_sequence));
+
         size_t numberOfBreakpoints = 0 ;
         for (int i = 0 ;i <breakpoints.size(); i++){
                 pair<string , string> breakPoint= breakpoints [i];
                 string refSeq = breakPoint.second;
-                cout << " we are looking at ref ID : " << breakPoint.first <<endl;
+                //cout << " we are looking at ref ID : " << breakPoint.first <<endl;
                 // handle the other kmers
                 NodePosPair prev;
 
@@ -922,7 +854,7 @@ size_t DBGraph::findbreakpoints(std::string breakpointFileName )
                         }
                         if (!consecutiveNPP(prev, curr) && prev.getNodeID() != curr.getNodeID())
                         {
-                                cout << "new breakpoint happend !" <<endl;
+                                cout << "new breakpoint happend in " <<  breakPoint.first <<endl;
                                 cout << "the connection between node " << prev.getNodeID() << " and " <<curr.getNodeID()  << " is lost." <<endl;
                                 numberOfBreakpoints ++;
                                 break;
@@ -931,6 +863,7 @@ size_t DBGraph::findbreakpoints(std::string breakpointFileName )
                         prev = curr;
                 }
         }
+        cout << "There are " << numberOfBreakpoints << " breakpoins in the input file. "<<endl;
         return numberOfBreakpoints;
 }
 
