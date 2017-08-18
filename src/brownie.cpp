@@ -179,7 +179,7 @@ void Brownie::stageFour()
                 cutoff = graph.getCovCutoff();
         }
         FindGap  findGap (libraries, settings, graph);
-        size_t numbOfBreakpoins = 0;
+
         #ifdef DEBUG
 
         Util::startChrono();
@@ -191,10 +191,6 @@ void Brownie::stageFour()
         vector<size_t> trueMult;
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);
-        numbOfBreakpoins = graph.findbreakpoints("breakpoints.fasta");
-        findGap.extractBreakpointSubgraph("breakpoints.fasta", settings.getTempDirectory()+"Stage3_");
-        graph.writeCytoscapeGraph(settings.getTempDirectory()+"stage3");
-
         #endif
 
         bool change = true;
@@ -239,7 +235,9 @@ void Brownie::stageFour()
                                         change = true;
                                         bubbleChange = true;
                                 }
-                                len = len+ settings.getK();
+                                else
+                                        break;
+                                len = len + settings.getK();
                         }
                 }
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
@@ -247,8 +245,6 @@ void Brownie::stageFour()
                 graph.removeChimericLinksByFlow(cutoff, libraries.getAvgReadLength());
                 graph.concatenateNodes();
         }
-
-
         findGap.closeGaps();
         #ifdef DEBUG
         findGap.extractBreakpointSubgraph("breakpoints.fasta", settings.getTempDirectory()+"Stage4_");
@@ -273,20 +269,6 @@ void Brownie::stageFour()
 #endif
         graph.clear();
         cout << "Stage 4 finished.\n" << endl;
-}
-void Brownie::postGraphCleaning()
-{
-        DBGraph graph(settings);
-        Util::startChrono();
-        cout << "Creating graph... "; cout.flush();
-        graph.loadGraph(getNodeFilename(4),
-                        getArcFilename(4),
-                        getMetaDataFilename(4));
-        FindGap  findGap (libraries, settings, graph);
-        ReadLibrary &input =libraries.getInput(0);
-        string inputFile = input.getInputFilename();
-        findGap.streamReadsForMulKDBG(inputFile);
-
 }
 
 void Brownie::stageFive()
@@ -386,14 +368,11 @@ void Brownie::assembleModule()
         else
                cout << "Files produced by this stage appear to"
                         " be present, skipping stage 4...\n";
-
-        postGraphCleaning();
-
         //if (stageFiveNecessary())
-        //        stageFive();
+                stageFive();
         //else
-        //        cout << "Files produced by this stage appear to"
-        //                " be present, skipping stage 5...\n";
+                cout << "Files produced by this stage appear to"
+                        " be present, skipping stage 5...\n";
         /*if (stageSixNecessary())
                 stageSix();
         else

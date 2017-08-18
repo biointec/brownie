@@ -314,67 +314,6 @@ bool FindGap::connectNodes(NodeID firstNodeID, NodeID secondNodeID)
         return true;
 }
 
-
-void FindGap::streamReadsForMulKDBG(string readFileName)
-{
-        //findneighbourNodes(neighbours,tipNodes);
-        cout <<"\nStreaming reads to find reads which fully align to the contigs" <<endl;
-        std::ifstream input(readFileName);
-        std::ofstream outputUncorrectedReads("notCorrectedReads.fastq");
-        std::ofstream outputPotentialContigs("potentialContigs.fasta");
-        ReadCorrectionHandler rcHandler(dbg, settings);
-        if (!input.good()) {
-                std::cerr << "Error opening: " << readFileName << std::endl;
-                return;
-        }
-        std::string line ;
-        int lineNum = 0;
-        size_t numFullyAligned =0;
-        string read, readID;
-        set<NodeID> nodesHandled;
-
-        while (std::getline(input, line).good()) {
-
-                bool entirelyAligned = true;;
-                if (lineNum % OUTPUT_FREQUENCY == 0) {
-                        cout << "\t Processing read " << (lineNum/4) << "\r";
-                        cout.flush();
-                }
-                if ( lineNum %4 == 0 )
-                        readID = line;
-                if ( lineNum %4 == 1 )
-                        read = line;
-
-                if (lineNum %4 ==3){
-                        vector<NodeID> NodeChain;
-                        bool firstAligned =rcHandler.getBestAlignmentPath(read,NodeChain);
-                        if (!firstAligned || NodeChain.size()!=1 ){
-                                entirelyAligned = false;
-                                outputUncorrectedReads <<readID<<endl;
-                                outputUncorrectedReads <<read <<endl;
-                                outputUncorrectedReads <<"+" <<endl;
-                                outputUncorrectedReads <<line <<endl;
-                        }
-                        if (entirelyAligned){
-                                if (nodesHandled.find(abs(NodeChain[0]))==nodesHandled.end() ){
-                                        nodesHandled.insert(abs(NodeChain[0]));
-                                        outputPotentialContigs << ">"<< abs(NodeChain[0])<<endl;
-                                        outputPotentialContigs <<dbg.getSSNode(abs(NodeChain[0])).getSequence()<<endl;
-                                }
-                        }
-
-                        if (entirelyAligned)
-                                numFullyAligned ++;
-                }
-                lineNum ++;
-        }
-
-        outputPotentialContigs.close();
-        outputUncorrectedReads.close();
-}
-
-
-
 void FindGap::streamReads(string readFileName , set<int> &tipNodes,  vector< pair< pair<int , int> , int > >& potentialPairs )
 {
         cout <<"\nStreaming reads to find potential connections between tips" <<endl;
@@ -489,11 +428,11 @@ void FindGap::streamReads(string readFileName , set<int> &tipNodes,  vector< pai
         set<int> nodesHandled;
         pairedEndJoins.clear();
 
-        cout << "( FirstTipID , SecondTipID ) : Frequency"<<endl;
+        /*cout << "( FirstTipID , SecondTipID ) : Frequency"<<endl;
         for(auto it = potentialPairs.cbegin(); it != potentialPairs.cend(); ++it)
         {
                 cout << "( " << it->first.first <<" , " <<it->first.second <<" ) :" <<it->second <<endl;
-        }
+        }*/
 
         cout <<"\nNumber of found suggestions: "<<potentialPairs.size() <<endl;
 }

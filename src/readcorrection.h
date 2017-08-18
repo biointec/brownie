@@ -299,9 +299,6 @@ public:
          */
         void correctChunk(std::vector<ReadRecord>& readChunk,
                           AlignmentMetrics& metric);
-
-
-        bool getBestAlignmentPath(string read,vector<NodeID> &bestNodeChain);
 };
 
 // ============================================================================
@@ -344,8 +341,6 @@ public:
          * @param libraries Library container with libraries to be corrected
          */
         void doErrorCorrection(LibraryContainer &libraries);
-
-        bool getBestAlignmentPath(string& read,vector<NodeID> &bestNodeChain);
 };
 
 #endif

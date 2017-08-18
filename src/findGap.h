@@ -59,10 +59,6 @@ public:
          */
         bool closeGaps(string nodeFilename ="", string arcFilename ="",string metaDataFilename = "");
 
-        void streamReadsForMulKDBG(string readFileName);
-
-
-
 private:
 
 
