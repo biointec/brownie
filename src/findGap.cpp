@@ -320,7 +320,7 @@ void FindGap::streamReadsForMulKDBG(string readFileName)
         //findneighbourNodes(neighbours,tipNodes);
         cout <<"\nStreaming reads to find reads which fully align to the contigs" <<endl;
         std::ifstream input(readFileName);
-        std::ofstream outputUncorrectedReads("uncorrectedReads.fasta");
+        std::ofstream outputUncorrectedReads("notCorrectedReads.fastq");
         std::ofstream outputPotentialContigs("potentialContigs.fasta");
         ReadCorrectionHandler rcHandler(dbg, settings);
         if (!input.good()) {
@@ -328,24 +328,24 @@ void FindGap::streamReadsForMulKDBG(string readFileName)
                 return;
         }
         std::string line ;
-        int readNum = 0;
+        int lineNum = 0;
         size_t numFullyAligned =0;
         string read, readID;
         set<NodeID> nodesHandled;
 
         while (std::getline(input, line).good()) {
-                readNum ++;
+
                 bool entirelyAligned = true;;
-                if (readNum % OUTPUT_FREQUENCY == 0) {
-                        cout << "\t Processing read " << (readNum/4) << "\r";
+                if (lineNum % OUTPUT_FREQUENCY == 0) {
+                        cout << "\t Processing read " << (lineNum/4) << "\r";
                         cout.flush();
                 }
-                if ( readNum %4 == 1 )
+                if ( lineNum %4 == 0 )
                         readID = line;
-                if ( readNum %4 == 2 )
+                if ( lineNum %4 == 1 )
                         read = line;
 
-                if (readNum %4 ==3){
+                if (lineNum %4 ==3){
                         vector<NodeID> NodeChain;
                         bool firstAligned =rcHandler.getBestAlignmentPath(read,NodeChain);
                         if (!firstAligned || NodeChain.size()!=1 ){
@@ -362,11 +362,15 @@ void FindGap::streamReadsForMulKDBG(string readFileName)
                                         outputPotentialContigs <<dbg.getSSNode(abs(NodeChain[0])).getSequence()<<endl;
                                 }
                         }
+
                         if (entirelyAligned)
                                 numFullyAligned ++;
                 }
-
+                lineNum ++;
         }
+
+        outputPotentialContigs.close();
+        outputUncorrectedReads.close();
 }
 
 

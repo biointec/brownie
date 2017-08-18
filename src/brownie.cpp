@@ -192,7 +192,6 @@ void Brownie::stageFour()
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);
         numbOfBreakpoins = graph.findbreakpoints("breakpoints.fasta");
-
         findGap.extractBreakpointSubgraph("breakpoints.fasta", settings.getTempDirectory()+"Stage3_");
         graph.writeCytoscapeGraph(settings.getTempDirectory()+"stage3");
 
@@ -249,15 +248,8 @@ void Brownie::stageFour()
                 graph.concatenateNodes();
         }
 
-        graph.buildKmerNPPTable();
-        numbOfBreakpoins = graph.findbreakpoints("breakpoints.fasta");
-        cout << "number of brekpoints after graph cleaning "<<numbOfBreakpoins <<endl;
 
-        graph.buildKmerNPPTable();
-        numbOfBreakpoins = graph.findbreakpoints("breakpoints.fasta");
-        cout << "number of breakpoints after closing gaps " <<numbOfBreakpoins <<endl;
-
-
+        findGap.closeGaps();
         #ifdef DEBUG
         findGap.extractBreakpointSubgraph("breakpoints.fasta", settings.getTempDirectory()+"Stage4_");
         Util::startChrono();
@@ -398,10 +390,10 @@ void Brownie::assembleModule()
         postGraphCleaning();
 
         //if (stageFiveNecessary())
-                stageFive();
+        //        stageFive();
         //else
-                cout << "Files produced by this stage appear to"
-                        " be present, skipping stage 5...\n";
+        //        cout << "Files produced by this stage appear to"
+        //                " be present, skipping stage 5...\n";
         /*if (stageSixNecessary())
                 stageSix();
         else
