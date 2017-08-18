@@ -609,6 +609,13 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
         cout << "First: " << firstB << ", last: " << lastB << endl;
         cout << subPathB << endl;
         cout << covSubPathB << endl;*/
+       if (lowCov == covSubPathA){
+               if (covSubPathB < covSubPathA * 2)
+                       return false;
+       }else{
+               if (covSubPathA < covSubPathB * 2)
+                       return false;
+       }
 
        AlignmentJan ali(1000, 2, 1, -1, -3);
        string pathAstr = getPathSeq(pathA);

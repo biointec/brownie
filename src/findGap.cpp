@@ -4,31 +4,8 @@
 #include <map>
 #include <queue>
 #include "library.h"
-
+#include "readcorrection.h"
 using namespace std;
-
-
-class DFSNode
-{
-public:
-        NodeID nodeID;
-        size_t readPos;
-        int score;
-        float relScore;
-
-
-        DFSNode() : nodeID(0), readPos(0), score(0), relScore(0.0) {}
-
-        DFSNode(NodeID nodeID_, size_t readPos_, int score_, float relScore_) :
-                nodeID(nodeID_), readPos(readPos_), score(score_),
-                relScore(relScore_) {}
-
-        bool operator< (const DFSNode& rhs) const {
-                if (rhs.relScore != relScore)
-                        return rhs.relScore < relScore;
-                return rhs.score < score;
-        }
-};
 
 
 void FindGap::parameterInitialization(){
@@ -39,6 +16,8 @@ void FindGap::parameterInitialization(){
         minExactMatchSize = 7;
 
 }
+
+
 void FindGap::findneighbourNodes(int ** neighbours, set<int> &tipNodes){
         for(size_t i =0 ; i <dbg.getNumNodes() ;i++)
                 *(neighbours+i) = (int*)malloc(sizeof(int)*5);
@@ -213,6 +192,7 @@ bool FindGap::checkForTipConnection(vector< pair< pair<int , int> , int > >& pot
                                         found = connectNodes(-second.getNodeID(), -first.getNodeID());
                                 if (found)
                                 {
+                                        //dbg.writeCytoscapeGraph("closeTip_"+std::to_string(first.getNodeID())+ "_"+std::to_string(second.getNodeID()), first.getNodeID(),10);
                                         nodesHandled.insert(abs(first.getNodeID()));
                                         nodesHandled.insert(abs(second.getNodeID()));
                                         numberOfNewConnection ++;
@@ -333,6 +313,63 @@ bool FindGap::connectNodes(NodeID firstNodeID, NodeID secondNodeID)
         second.invalidate();
         return true;
 }
+
+
+void FindGap::streamReadsForMulKDBG(string readFileName)
+{
+        //findneighbourNodes(neighbours,tipNodes);
+        cout <<"\nStreaming reads to find reads which fully align to the contigs" <<endl;
+        std::ifstream input(readFileName);
+        std::ofstream outputUncorrectedReads("uncorrectedReads.fasta");
+        std::ofstream outputPotentialContigs("potentialContigs.fasta");
+        ReadCorrectionHandler rcHandler(dbg, settings);
+        if (!input.good()) {
+                std::cerr << "Error opening: " << readFileName << std::endl;
+                return;
+        }
+        std::string line ;
+        int readNum = 0;
+        size_t numFullyAligned =0;
+        string read, readID;
+        set<NodeID> nodesHandled;
+
+        while (std::getline(input, line).good()) {
+                readNum ++;
+                bool entirelyAligned = true;;
+                if (readNum % OUTPUT_FREQUENCY == 0) {
+                        cout << "\t Processing read " << (readNum/4) << "\r";
+                        cout.flush();
+                }
+                if ( readNum %4 == 1 )
+                        readID = line;
+                if ( readNum %4 == 2 )
+                        read = line;
+
+                if (readNum %4 ==3){
+                        vector<NodeID> NodeChain;
+                        bool firstAligned =rcHandler.getBestAlignmentPath(read,NodeChain);
+                        if (!firstAligned || NodeChain.size()!=1 ){
+                                entirelyAligned = false;
+                                outputUncorrectedReads <<readID<<endl;
+                                outputUncorrectedReads <<read <<endl;
+                                outputUncorrectedReads <<"+" <<endl;
+                                outputUncorrectedReads <<line <<endl;
+                        }
+                        if (entirelyAligned){
+                                if (nodesHandled.find(abs(NodeChain[0]))==nodesHandled.end() ){
+                                        nodesHandled.insert(abs(NodeChain[0]));
+                                        outputPotentialContigs << ">"<< abs(NodeChain[0])<<endl;
+                                        outputPotentialContigs <<dbg.getSSNode(abs(NodeChain[0])).getSequence()<<endl;
+                                }
+                        }
+                        if (entirelyAligned)
+                                numFullyAligned ++;
+                }
+
+        }
+}
+
+
 
 void FindGap::streamReads(string readFileName , set<int> &tipNodes,  vector< pair< pair<int , int> , int > >& potentialPairs )
 {
@@ -682,7 +719,7 @@ void FindGap::extractBreakpointSubgraph( std::string breakpointFileName,string  
                 RefComp refComp("tempBreakpoint.fasta");
                 vector<NodeChain> trueNodeChain;
                 refComp.getTrueNodeChain(dbg, trueNodeChain);
-                writeCytoscapeGraph( tempDir+breakPoint.first,trueNodeChain,2);
+                //writeCytoscapeGraph( tempDir+breakPoint.first,trueNodeChain,2);
                 ofs.close();
 
         }

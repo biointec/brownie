@@ -284,6 +284,7 @@ public:
          *
          */
         void writeGraphFasta();
+        void postGraphCleaning();
 };
 
 #endif

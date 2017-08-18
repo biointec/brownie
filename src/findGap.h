@@ -59,6 +59,8 @@ public:
          */
         bool closeGaps(string nodeFilename ="", string arcFilename ="",string metaDataFilename = "");
 
+        void streamReadsForMulKDBG(string readFileName);
+
 
 
 private:
@@ -172,4 +174,7 @@ private:
 
          void findneighbourNodes(int ** neighbours,set<int> &tipNodes);
          set<NodeID> searchForNeighbours(NodeID tipID, size_t searchLimit);
+
+
+
 };

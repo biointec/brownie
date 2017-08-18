@@ -568,6 +568,31 @@ void ReadCorrection::correctRead(ReadRecord& record,
         metrics.addObservation(readCorrected, correctedByMEM, numSubstitutions);
 }
 
+bool ReadCorrection::getBestAlignmentPath(string read,vector<NodeID> &bestNodeChain)
+{
+        bool correctedByMEM = false, readCorrected = false;
+        // if the read is too short, get out
+        if (read.length() < Kmer::getK())
+                return false;
+        vector<Seed> seeds;
+        findSeedKmer(read, seeds);
+        string bestCorrectedRead;
+        int bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
+        if (bestScore <= ((int)read.size() / 2)) {
+                correctedByMEM = true;
+                findSeedMEM(read, seeds);
+                bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
+        }
+        if (bestScore > ((int)read.size() / 2)){
+                dbg.validateChain(bestNodeChain);
+                return true;
+        }
+        return false;
+}
+
+
+
+
 void ReadCorrection::correctChunk(vector<ReadRecord>& readChunk,
                                   AlignmentMetrics& metrics)
 {
@@ -687,7 +712,10 @@ void ReadCorrectionHandler::doErrorCorrection(LibraryContainer& libraries)
 
         metrics.printStatistics();
 }
-
+bool ReadCorrectionHandler::getBestAlignmentPath(string &read, vector<NodeID> &bestnodeChain){
+        ReadCorrection readCorrection(dbg, settings, *sa, startpos);
+        return readCorrection.getBestAlignmentPath(read,bestnodeChain);
+}
 ReadCorrectionHandler::ReadCorrectionHandler(DBGraph& g, const Settings& s) :
         dbg(g), settings(s), sa(NULL)
 {
