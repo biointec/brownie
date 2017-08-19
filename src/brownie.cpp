@@ -192,7 +192,8 @@ void Brownie::stageFour()
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);
         #endif
-
+        graph.buildKmerNPPTable();      // build kmer-NPP index
+        graph.findbreakpoints("breakpoints.fasta");
         bool change = true;
         cutoff = cutoff/2;
         while (change){
@@ -241,11 +242,15 @@ void Brownie::stageFour()
                         }
                 }
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
+                graph.buildKmerNPPTable();      // build kmer-NPP index
+                graph.findbreakpoints("breakpoints.fasta");
                 graph.extractStatistic();
                 graph.removeChimericLinksByFlow(cutoff, libraries.getAvgReadLength());
                 graph.concatenateNodes();
         }
         findGap.closeGaps();
+        graph.buildKmerNPPTable();      // build kmer-NPP index
+        graph.findbreakpoints("breakpoints.fasta");
         #ifdef DEBUG
         findGap.extractBreakpointSubgraph("breakpoints.fasta", settings.getTempDirectory()+"Stage4_");
         Util::startChrono();
