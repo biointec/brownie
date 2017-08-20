@@ -221,16 +221,17 @@ void Brownie::stageFour()
                 if (lmax < settings.getK()*2+5 )
                         lmax = settings.getK()*2+5;
 
-                cout << "Cleaning graph (bubbles, cov-cutoff = " << cutoff
-                << ", lmax = " << lmax << ", maxvisits = "
-                << settings.getBubbleDFSNodeLimit() << ", threads = "
-                << settings.getNumThreads() << ")\n";
+
                 bool bubbleChange =true;
                 while (bubbleChange){
                         size_t len = settings.getK() +5;
                         bubbleChange = false;
                         while (len <lmax){
-                                if (graph.bubbleDetection(cutoff/2, len)){
+                                cout << "Cleaning graph (bubbles, cov-cutoff = " << cutoff
+                                << ", lmax = " << len << ", maxvisits = "
+                                << settings.getBubbleDFSNodeLimit() << ", threads = "
+                                << settings.getNumThreads() << ")\n";
+                                if (graph.bubbleDetection(cutoff, len)){
                                         graph.concatenateNodes();
                                         cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" <<  endl;
                                         change = true;

@@ -503,7 +503,7 @@ private:
          */
         bool handleParallelPaths(const std::vector<NodeID>& pathA,
                                  const std::vector<NodeID>& pathB,
-                                 double covCutoff);
+                                 double covCutoff, size_t maxMargLength);
 
         /**
          * Given a seed node, find parallel paths that originate from this node

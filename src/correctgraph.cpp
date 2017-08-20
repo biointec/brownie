@@ -571,7 +571,7 @@ bool DBGraph::flowCorrection(double covCutoff, size_t maxMargLength)
 
 bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
                                   const vector<NodeID>& pathB,
-                                  double covCutoff)
+                                  double covCutoff, size_t maxMargLength)
 {
         size_t firstA, lastA;
         getUniquePath(pathA, firstA, lastA);
@@ -609,6 +609,13 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
         cout << "First: " << firstB << ", last: " << lastB << endl;
         cout << subPathB << endl;
         cout << covSubPathB << endl;*/
+
+       for (auto it :lowCovPath){
+                if (it ==953705){
+                        int stop =0;
+                        stop++;
+                }
+       }
        if (lowCov == covSubPathA){
                if (covSubPathB < covSubPathA * 2)
                        return false;
@@ -620,6 +627,8 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
        AlignmentJan ali(1000, 2, 1, -1, -3);
        string pathAstr = getPathSeq(pathA);
        string pathBstr = getPathSeq(pathB);
+       if (pathAstr.length() >maxMargLength || pathBstr.length() > maxMargLength)
+               return false;
        if ( ali.align(pathAstr,pathBstr)<((int)min( pathAstr.length(),pathBstr.length() ) / 3)){
                return false;
        }
@@ -699,7 +708,7 @@ bool DBGraph::bubbleDetection(NodeID srcID, vector<NodeID>& visited,
                                 vector<NodeID> pathB = getPath(nextID, prevNode);
 
                                 // if at least one node was deleted: get out of here!
-                                if (handleParallelPaths(pathA, pathB, covCutoff)) {
+                                if (handleParallelPaths(pathA, pathB, covCutoff, maxMargLength)) {
                                         returnValue = true;
                                         goto exitRoutine;
                                 }

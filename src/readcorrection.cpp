@@ -538,34 +538,49 @@ void ReadCorrection::correctRead(ReadRecord& record,
         // if the read is too short, get out
         if (read.length() < Kmer::getK())
                 return;
-
         vector<Seed> seeds;
         findSeedKmer(read, seeds);
 
         string bestCorrectedRead;
         vector<NodeID> bestNodeChain;
         int bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
-
         if (bestScore <= ((int)read.size() / 2)) {
                 correctedByMEM = true;
                 findSeedMEM(read, seeds);
                 bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
         }
+        if (bestScore < (int)read.size()){
+                vector<Seed> seedsRC;
+                string readRC = record.getRead() ;
+                Nucleotide::revCompl(readRC);
+                findSeedKmer(readRC, seedsRC);
+                string bestCorrectedReadRC;
+                vector<NodeID> bestNodeChainRC;
+                int bestScoreRC = correctRead(readRC, bestCorrectedReadRC, seedsRC, bestNodeChainRC);
+                if (bestScoreRC > bestScore){
+                        bestScore = bestScoreRC;
+                        Nucleotide::revCompl(readRC);
+                        read = readRC;
+                        Nucleotide::revCompl(bestCorrectedReadRC);
+                        bestCorrectedRead = bestCorrectedReadRC;
+                        reverse(bestNodeChainRC.begin(), bestNodeChainRC.end());
+                        bestNodeChain.clear();
+                        for (auto it :bestNodeChainRC)
+                                bestNodeChain.push_back(-it);
+                }
 
-        /*cout <<"************************************"<<endl;
-        cout <<record.preRead<<endl;
-        alignment.align(read, bestCorrectedRead);
-        cout << "BEST ALIGNMENT: " << bestScore << endl;
-        alignment.printAlignment(read, bestCorrectedRead);
-        for (auto it:bestNodeChain)
-                cout<<it<< " , ";
-        cout <<endl;*/
+        }
+
+
+       // alignment.align(read, bestCorrectedRead);
+       // cout << "BEST ALIGNMENT: " << bestScore << endl;
+       // alignment.printAlignment(read, bestCorrectedRead);
+
         size_t numSubstitutions = 0;
         if (bestScore > ((int)read.size() / 2)) {
                 read = bestCorrectedRead;
                 readCorrected = true;
                 numSubstitutions = (read.length() - bestScore)/2;
-                nodeChain = bestNodeChain;
                 dbg.validateChain(bestNodeChain);
         }
         metrics.addObservation(readCorrected, correctedByMEM, numSubstitutions);
