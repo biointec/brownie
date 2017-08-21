@@ -199,34 +199,28 @@ void Brownie::stageFour()
         while (change){
                 change = false;
                 // TIP CLIPPING
-
                 Util::startChrono();
                 size_t lmax = libraries.getAvgReadLength() - settings.getK() + 5;
                 if (lmax < settings.getK()*2)
                         lmax = settings.getK()*2;
-
                 cout << "Cleaning graph (tips, cov-cutoff = " << cutoff
                 << ", lmax = " << lmax << ")\n";
-
                 while (graph.clipTips(cutoff, lmax)) {
                         graph.concatenateNodes();
                         cout << "\tGraph contains " << graph.getNumValidNodes() << " nodes" << endl;
                         change = true;
                 }
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
-
                 // BUBBLE DETECTION
                 Util::startChrono();
                 lmax = libraries.getAvgReadLength() - (settings.getK()-1)*2 + 5;
                 if (lmax < settings.getK()*2+5 )
                         lmax = settings.getK()*2+5;
-
-
                 bool bubbleChange =true;
                 while (bubbleChange){
                         size_t len = settings.getK() +5;
                         bubbleChange = false;
-                        while (len <lmax){
+                        while (len <=lmax){
                                 cout << "Cleaning graph (bubbles, cov-cutoff = " << cutoff
                                 << ", lmax = " << len << ", maxvisits = "
                                 << settings.getBubbleDFSNodeLimit() << ", threads = "
@@ -243,8 +237,6 @@ void Brownie::stageFour()
                         }
                 }
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
-                graph.buildKmerNPPTable();      // build kmer-NPP index
-                graph.findbreakpoints("breakpoints.fasta");
                 graph.extractStatistic();
                 graph.removeChimericLinksByFlow(cutoff, libraries.getAvgReadLength());
                 graph.concatenateNodes();

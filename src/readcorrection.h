@@ -218,7 +218,7 @@ private:
          * @param last Last corrected kmer (input/output)
          * @param nodeChain Node chain (output)
          */
-        void correctRead(std::string& read, std::vector<NodePosPair>& npp,
+        bool correctRead(std::string& read, std::vector<NodePosPair>& npp,
                          size_t& first, size_t& last,
                          std::vector<NodeID>& nodeChain);
 
@@ -244,7 +244,7 @@ private:
          * @param first First position of the seed (output)
          * @param last Last position of the seed (output)
          */
-        void extendSeed(std::string& read, std::vector<NodePosPair>& npp,
+        bool extendSeed(std::string& read, std::vector<NodePosPair>& npp,
                         size_t& first, size_t& last);
 
         /**
@@ -262,7 +262,7 @@ private:
 
         void recSearch(NodeID curr, string& read, vector<NodePosPair>& npp,
                        size_t currPos, size_t& counter, int score,
-                       int& bestScore, size_t& seedLast);
+                       int& bestScore, size_t& seedLast,  bool &fullyCorrected);
 
         void revCompl(vector<NodePosPair>& npp);
 

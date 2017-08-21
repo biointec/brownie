@@ -208,14 +208,16 @@ void ReadCorrection::extractSeeds(const vector<NodePosPair>& nppv,
 
 void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& npp,
                                   size_t currReadPos, size_t& counter,
-                                  int currScore, int& bestScore, size_t& seedLast)
+                                  int currScore, int& bestScore, size_t& seedLast, bool &fullyCorrected)
 {
         const SSNode node = dbg.getSSNode(curr);
 
         counter++;
         if (counter > (size_t)settings.getReadCorrDFSNodeLimit())
-                return;
-
+        {
+                fullyCorrected = false;
+                return ;
+        }
         vector<DFSNode> dfsNode;
 
         size_t readCharLeft = getMarginalLength(read) - currReadPos;
@@ -273,7 +275,7 @@ void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& n
 
                 // descend in a child node only if there is chance this will improve the best score
                 if (maxAttainScore > bestScore)
-                        recSearch(nextID, read, npp, nextReadPos, counter, nextScore, bestScore, seedLast);
+                        recSearch(nextID, read, npp, nextReadPos, counter, nextScore, bestScore, seedLast,fullyCorrected);
 
                 // if the best score has been updated in this branch save the npp
                 if (bestScore > prevBestScore)
@@ -282,7 +284,7 @@ void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& n
         }
 }
 
-void ReadCorrection::extendSeed(string& read, vector<NodePosPair>& npp,
+bool ReadCorrection::extendSeed(string& read, vector<NodePosPair>& npp,
                                    size_t& seedFirst, size_t& seedLast)
 {
         // remove at most k nucleotides from the seed
@@ -306,8 +308,10 @@ void ReadCorrection::extendSeed(string& read, vector<NodePosPair>& npp,
         //if (seedLast < getMarginalLength(read))
         //      cout << read << endl;
         size_t counter = 0; int bestScore = -(getMarginalLength(read) - seedLast);
+        bool fullyCorrected = true;
         if (seedLast < getMarginalLength(read))
-                recSearch(node.getNodeID(), read, npp, seedLast, counter, 0, bestScore, seedLast);
+                 recSearch(node.getNodeID(), read, npp, seedLast, counter, 0, bestScore, seedLast, fullyCorrected);
+        return fullyCorrected;
 }
 
 void ReadCorrection::applyReadCorrection(string& read,
@@ -330,12 +334,12 @@ void ReadCorrection::applyReadCorrection(string& read,
         }
 }
 
-void ReadCorrection::correctRead(string& read, vector<NodePosPair>& npp,
+bool ReadCorrection::correctRead(string& read, vector<NodePosPair>& npp,
                                  size_t& first, size_t& last,
                                  vector<NodeID>& nodeChain)
 {
         // extend to the right
-        extendSeed(read, npp, first, last);
+        bool rightExt= extendSeed(read, npp, first, last);
 
         // reverse complement all data
         Nucleotide::revCompl(read);
@@ -345,7 +349,7 @@ void ReadCorrection::correctRead(string& read, vector<NodePosPair>& npp,
         revCompl(npp);
 
         // extend to the right (which used to be left)
-        extendSeed(read, npp, first, last);
+        bool leftExt = extendSeed(read, npp, first, last);
 
         Nucleotide::revCompl(read);
         first = getMarginalLength(read) - first;
@@ -355,7 +359,12 @@ void ReadCorrection::correctRead(string& read, vector<NodePosPair>& npp,
 
         // reverse complement all data
         string original = read;
-        applyReadCorrection(read, npp, first, last, nodeChain);
+        if (rightExt && leftExt)
+               applyReadCorrection(read, npp, first, last, nodeChain);
+        else
+                return false;
+
+        return true;
 }
 
 void ReadCorrection::findSeedKmer(const std::string& read,
@@ -507,7 +516,8 @@ int ReadCorrection::correctRead(const string& read,
 
                 string correctedRead = read;
                 vector<NodeID> nodeChain;
-                correctRead(correctedRead, npp, first, last, nodeChain);
+                if (!correctRead(correctedRead, npp, first, last, nodeChain))
+                        continue;
 
                 size_t correctedLength = Kmer::getK() - 1 + last - first;
                 size_t uncorrectedLength = read.size() - correctedLength;
@@ -524,6 +534,8 @@ int ReadCorrection::correctRead(const string& read,
                         bestNodeChain = nodeChain;
                 }
         }
+        if (read == bestCorrectedRead)
+                bestScore = read.length();
 
         return bestScore;
 }
@@ -544,11 +556,13 @@ void ReadCorrection::correctRead(ReadRecord& record,
         string bestCorrectedRead;
         vector<NodeID> bestNodeChain;
         int bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
+
         if (bestScore <= ((int)read.size() / 2)) {
                 correctedByMEM = true;
                 findSeedMEM(read, seeds);
                 bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
         }
+
         if (bestScore < (int)read.size()){
                 vector<Seed> seedsRC;
                 string readRC = record.getRead() ;
@@ -570,8 +584,6 @@ void ReadCorrection::correctRead(ReadRecord& record,
                 }
 
         }
-
-
        // alignment.align(read, bestCorrectedRead);
        // cout << "BEST ALIGNMENT: " << bestScore << endl;
        // alignment.printAlignment(read, bestCorrectedRead);

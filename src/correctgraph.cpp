@@ -130,8 +130,8 @@ void DBGraph::getUniquePath(const std::vector<NodeID>& path,
 }
 string DBGraph::getPathSeq(const vector<NodeID>& path){
         string seq = "";
-        for (auto it : path) {
-                seq = seq + getSSNode(it).substr(Kmer::getK()-1, getSSNode(it).getMarginalLength());
+        for (int i=1;i<path.size()-1;i++) {
+                seq = seq + getSSNode(path[i]).substr(Kmer::getK()-1, getSSNode(path[i]).getMarginalLength());
         }
         return seq;
 
@@ -609,13 +609,6 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
         cout << "First: " << firstB << ", last: " << lastB << endl;
         cout << subPathB << endl;
         cout << covSubPathB << endl;*/
-
-       for (auto it :lowCovPath){
-                if (it ==953705){
-                        int stop =0;
-                        stop++;
-                }
-       }
        if (lowCov == covSubPathA){
                if (covSubPathB < covSubPathA * 2)
                        return false;
@@ -624,12 +617,13 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
                        return false;
        }
 
-       AlignmentJan ali(1000, 2, 1, -1, -3);
+       AlignmentJan ali(250, 2, 1, -1, -3);
        string pathAstr = getPathSeq(pathA);
        string pathBstr = getPathSeq(pathB);
-       if (pathAstr.length() >maxMargLength || pathBstr.length() > maxMargLength)
+       if ( pathAstr.length()!=pathBstr.length())
                return false;
-       if ( ali.align(pathAstr,pathBstr)<((int)min( pathAstr.length(),pathBstr.length() ) / 3)){
+
+       if ( pathAstr.length() >settings.getK() && ali.align(pathAstr,pathBstr)<((int)min( pathAstr.length(),pathBstr.length() ) / 3)){
                return false;
        }
 
