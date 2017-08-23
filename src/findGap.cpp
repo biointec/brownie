@@ -9,12 +9,15 @@ using namespace std;
 
 
 void FindGap::parameterInitialization(){
-        maxSearchSize = kmerSize+20;
-        minNumbOfPairs = 10;
+        maxSearchSize = kmerSize + 20;
+        minNumbOfPairs = 5;
         minOverlapSize = 15;
-        minSim =50;
-        minExactMatchSize = 7;
-
+        minSim = 70;
+        minExactMatchSize = 5;
+        cout << "Creating kmer lookup table... "; cout.flush();
+        dbg.buildKmerNPPTable();
+        dbg.loadKmerSpectrumFit(settings.addTempDirectory("spectrum.fit"));
+        cutoff = dbg.getCovCutoff();
 }
 
 
@@ -62,20 +65,18 @@ set<NodeID> FindGap::searchForNeighbours(NodeID tipNode, size_t searchSizeLim)
                         pair<NodeID, size_t> rightPair = make_pair(startNode.getNodeID(),length+ dbg.getSSNode(tipNode).getLength());
                         toVisit.push(rightPair);
                 }
-
         }
         return neighbours;
 }
 
-/*
-FindGap::FindGap(string nodeFileName, string arcFileName, string metaDataFileName, string alignmentFile,unsigned int kmerVlue  ,string tempDir):settings(kmerVlue,tempDir), dbg(settings),overlapSize(kmerVlue),alignment(1000, 2, 1, -1, -3)
+/*FindGap::FindGap(string nodeFileName, string arcFileName, string metaDataFileName, string readFileName,unsigned int kmerVlue  ,string tempDir):settings(kmerVlue,tempDir), dbg(settings),overlapSize(kmerVlue),alignment(1000, 2, 1, -1, -3)
 {
         Kmer::setWordSize(settings.getK());
         cout <<"graph is loading ...\n" ;
         dbg.loadGraph(nodeFileName,arcFileName,metaDataFileName);
         cout << dbg.getGraphStats() << endl;
         kmerSize = kmerVlue;
-        correctedFile = alignmentFile;
+        inputReadFileName = readFileName;
         parameterInitialization();
 }*/
 
@@ -90,48 +91,44 @@ FindGap::FindGap(LibraryContainer& libraries, const Settings& s, DBGraph &graph)
         Kmer::setWordSize(settings.getK());
         parameterInitialization();
         ReadLibrary &input =libraries.getInput(0);
-        correctedFile = input.getInputFilename();
-
+        inputReadFileName = input.getInputFilename();
 }
-
-
 bool FindGap::closeGaps(string nodeFilename, string arcFilename,string metaDataFilename)
 {
         set<int> tipNodes;
         vector< pair< pair<int , int> , int > > potentialPairs;
         //int ** neighbours = (int**)malloc(sizeof(int*)*dbg.getNumNodes());
-
-
         findTips(tipNodes);
         //findneighbourNodes(neighbours,tipNodes);
-        cout << "Creating kmer lookup table... "; cout.flush();
-        dbg.buildKmerNPPTable();
-        streamReads(correctedFile,tipNodes,potentialPairs);
+        streamReads(inputReadFileName,tipNodes,potentialPairs);
         bool change =checkForTipConnection(potentialPairs);
         dbg.concatenateNodes();
         //cout << dbg.getGraphStats() << endl;
-        if (nodeFilename != "")
+        if (nodeFilename != ""){
+                cout << "writing back the graph into the disk .."<<endl;
                 dbg.writeGraph(nodeFilename,arcFilename,metaDataFilename);
+
+        }
         return change;
 }
 
 void FindGap::reorderTips(SSNode &first, SSNode &second)
 {
-        if (first.getNumRightArcs() !=0 && first.getNumLeftArcs() ==0 && second.getNumLeftArcs()!=0 && second.getNumRightArcs() ==0)
+        /*if (first.getNumRightArcs() !=0 && first.getNumLeftArcs() ==0 && second.getNumLeftArcs()!=0 && second.getNumRightArcs() ==0)
         {
                 first = dbg.getSSNode( -first.getNodeID());
                 second = dbg.getSSNode( -second.getNodeID());
-        }
-        if (first.getNumRightArcs() !=0 && first.getNumLeftArcs() ==0 && second.getNumLeftArcs()==0 && second.getNumRightArcs() ==0)
+        }*/
+        /*if (first.getNumRightArcs() !=0 && first.getNumLeftArcs() ==0 && second.getNumLeftArcs()==0 && second.getNumRightArcs() ==0)
         {
                 first = dbg.getSSNode( -first.getNodeID());
                 second = dbg.getSSNode( -second.getNodeID());
-        }
-        if (first.getNumRightArcs() ==0 && first.getNumLeftArcs() ==0 && second.getNumLeftArcs()!=0 && second.getNumRightArcs() ==0)
+        }*/
+        /*if (first.getNumRightArcs() ==0 && first.getNumLeftArcs() ==0 && second.getNumLeftArcs()!=0 && second.getNumRightArcs() ==0)
         {
                 first = dbg.getSSNode( -first.getNodeID());
                 second = dbg.getSSNode( -second.getNodeID());
-        }
+        }*/
         if (second.getNumLeftArcs()==0 && second.getNumRightArcs() ==0 && first.getNumLeftArcs()==0 && first.getNumRightArcs()==0){
                 string firstRead1="", secondRead1="";
                 double sim1 = -100, sim2 = -100, sim3 = -100, sim4 = -100;
@@ -158,7 +155,30 @@ void FindGap::reorderTips(SSNode &first, SSNode &second)
         }
 }
 
+bool FindGap::connectionIsRobust(const string& firstRead, const string& secondRead, size_t numOfpairs){
 
+        size_t score = 0;
+        double sim = -100;
+
+        if (numOfpairs < minNumbOfPairs)
+                return false;
+
+        if (numOfpairs > cutoff)
+                score ++;
+
+        sim = alignment.align(firstRead, secondRead)*100/(int)firstRead.length();
+        if (sim < 50)
+                return false;
+        if (sim > minSim)
+                score++;
+
+        if (firstRead.length()< minExactMatchSize)
+                return false;
+        if (firstRead.length() > minOverlapSize  )
+                score++;
+
+        return score > 1;
+}
 bool FindGap::checkForTipConnection(vector< pair< pair<int , int> , int > >& potentialPairs)
 {
         size_t violateGraphStructure =0;
@@ -177,35 +197,24 @@ bool FindGap::checkForTipConnection(vector< pair< pair<int , int> , int > >& pot
                         continue;
                 if ( !first.isValid() || !second.isValid() )
                         continue;
-                reorderTips(first, second);
+                //reorderTips(first, second);
                 string firstRead="", secondRead="";
-                double sim = -100;
-                if (alignTips(first.getNodeID(), second.getNodeID(), firstRead, secondRead)){
-                        sim = alignment.align(firstRead, secondRead)*100/(int)firstRead.length();
-                        if (firstRead.length() > minOverlapSize and sim > minSim ){
-                                //cout <<first.getNodeID() << " : " <<second.getNodeID() <<endl;
-                                //alignment.printAlignment(firstRead,secondRead);
-                                //cout <<"similarity:"<<sim <<endl;
-                                if (first.getAvgKmerCov() >= second.getAvgKmerCov())
-                                        found = connectNodes(first.getNodeID(),second.getNodeID());
-                                else
-                                        found = connectNodes(-second.getNodeID(), -first.getNodeID());
-                                if (found)
-                                {
-                                        //dbg.writeCytoscapeGraph("closeTip_"+std::to_string(first.getNodeID())+ "_"+std::to_string(second.getNodeID()), first.getNodeID(),10);
-                                        nodesHandled.insert(abs(first.getNodeID()));
-                                        nodesHandled.insert(abs(second.getNodeID()));
-                                        numberOfNewConnection ++;
-                                        //cout <<"The connection successfully stablished. This connection is supported by " <<it->second << " pairs of reads"<<endl;
-                                }
-                                else
-                                {
-                                        violateGraphStructure ++;
-                                        //cout <<"We couldn't make this connection. It probably violates the graph structure" <<endl;
-                                }
-                               // cout <<".............................."<<endl;
-                        }
+                if (!alignTips(first.getNodeID(), second.getNodeID(), firstRead, secondRead))
+                        continue;
+                if (!connectionIsRobust( firstRead, secondRead, it->second  ))
+                        continue;
+                if (first.getAvgKmerCov() >= second.getAvgKmerCov())
+                        found = connectNodes(first.getNodeID(), second.getNodeID());
+                else
+                        found = connectNodes(-second.getNodeID(), -first.getNodeID());
+                if (found)
+                {
+                        nodesHandled.insert(abs(first.getNodeID()));
+                        nodesHandled.insert(abs(second.getNodeID()));
+                        numberOfNewConnection ++;
                 }
+                else
+                        violateGraphStructure ++;
 
         }
         cout <<violateGraphStructure << " number of connection were skipped because they make inconsistency in the graph structure." <<endl;
@@ -366,29 +375,17 @@ void FindGap::streamReads(string readFileName , set<int> &tipNodes,  vector< pai
                         }
                         if (firstFoundOntip && secondFoundOnTip )
                                 if (abs(firstTipId)!= abs(secondTipId)){
-
-                                        if (dbg.getSSNode(firstTipId).getNumRightArcs() != 0 &&
-                                                dbg.getSSNode(secondTipId).getNumLeftArcs() != 0)
+                                        if ((dbg.getSSNode(firstTipId).getNumRightArcs() == 0 &&
+                                                dbg.getSSNode(secondTipId).getNumLeftArcs() == 0) ||
+                                                (dbg.getSSNode(firstTipId).getNumLeftArcs() == 0 &&
+                                                dbg.getSSNode(secondTipId).getNumRightArcs() == 0))
                                         {
-                                                firstTipId = -firstTipId;
-                                                secondTipId = -secondTipId;
+                                                pair <int, int >join = make_pair(firstTipId,secondTipId);
+                                                if (pairedEndJoinsTemp.find(join)!=pairedEndJoinsTemp.end())
+                                                        pairedEndJoinsTemp[join] = pairedEndJoinsTemp[join] +1 ;
+                                                else
+                                                        pairedEndJoinsTemp[join] = 1 ;
                                         }
-                                        if (dbg.getSSNode(firstTipId).getNumRightArcs() != 0 )
-                                                continue;
-
-                                        if (dbg.getSSNode(secondTipId).getNumLeftArcs() != 0)
-                                                continue;
-                                        if (abs (secondTipId )== 7321 || abs (firstTipId )== 7321)
-                                        {
-                                                int stop =0;
-                                                stop++;
-                                        }
-                                        //pair <int, int > join =makePairOfTips( firstTipId, secondTipId);
-                                        pair <int, int >join = make_pair(firstTipId,secondTipId);
-                                        if (pairedEndJoinsTemp.find(join)!=pairedEndJoinsTemp.end())
-                                                pairedEndJoinsTemp[join] = pairedEndJoinsTemp[join] +1 ;
-                                        else
-                                                pairedEndJoinsTemp[join] = 1 ;
 
                                 }
                 }
@@ -399,19 +396,18 @@ void FindGap::streamReads(string readFileName , set<int> &tipNodes,  vector< pai
         //sum the frequency with  the reverse direction
         for(auto it = pairedEndJoinsTemp.cbegin(); it != pairedEndJoinsTemp.cend(); ++it)
         {
-                if (abs(it->first.first)<abs(it->first.second)){
-                        pair <int, int >reverseJoin = make_pair(-it->first.second, -it->first.first);
-                        size_t frequency = it->second;
-                        if (pairedEndJoinsTemp.find(reverseJoin)!= pairedEndJoinsTemp.end())
-                                frequency = frequency  + pairedEndJoinsTemp[reverseJoin];
-                        if (abs (it->first.second )== 7321 || abs (it->first.second )== 303096 ||abs (it->first.first )== 7321 || abs (it->first.first )== 303096 )
-                        {
-                                int stop =0;
-                                stop++;
+                if ((dbg.getSSNode(it->first.first).getNumRightArcs() == 0 &&
+                        dbg.getSSNode(it->first.second).getNumLeftArcs() == 0)){
+                        if (abs(it->first.first) > abs(it->first.second)){
+                                pair <int, int >reverseJoin = make_pair(-it->first.second, -it->first.first);
+                                size_t frequency = it->second;
+                                if (pairedEndJoinsTemp.find(reverseJoin)!= pairedEndJoinsTemp.end())
+                                        frequency = frequency  + pairedEndJoinsTemp[reverseJoin];
+
+                                if (frequency > minNumbOfPairs )
+                                        pairedEndJoins[it->first] = frequency;
                         }
-                        if (frequency > minNumbOfPairs )
-                                pairedEndJoins[it->first] = frequency;
-                }
+                 }
         }
         // remove tip pairs which comes with different combinations
         //sort them first based on the frequency
@@ -601,7 +597,7 @@ string FindGap::getLongestCommonSubStr(string str1, string str2, size_t & firsSt
 
                                 LCSuff[i][j] = LCSuff[i-1][j-1] + 1;
                                 if (result < LCSuff[i][j]){
-                                        result =LCSuff[i][j];
+                                        result = LCSuff[i][j];
                                         maxIndex1 = i;
                                         maxIndex2 = j;
                                 }
@@ -609,9 +605,13 @@ string FindGap::getLongestCommonSubStr(string str1, string str2, size_t & firsSt
                         else LCSuff[i][j] = 0;
                 }
         }
-        firsStartIndex = maxIndex1 -result ;
-        SecondStartIndex =maxIndex2 -result;
+        firsStartIndex = maxIndex1 - result ;
+        SecondStartIndex = maxIndex2 - result;
         string commonSubstr = str1.substr(maxIndex1 -result,result);
+        if (commonSubstr.length()>minExactMatchSize){
+                firsStartIndex = str1.rfind(commonSubstr.c_str());
+                SecondStartIndex = str2.find(commonSubstr.c_str());
+        }
         return commonSubstr;
 }
 void FindGap::findTips(set<int> &tipNodes)
@@ -662,7 +662,7 @@ void FindGap::extractBreakpointSubgraph( std::string breakpointFileName,string  
                 RefComp refComp("tempBreakpoint.fasta");
                 vector<NodeChain> trueNodeChain;
                 refComp.getTrueNodeChain(dbg, trueNodeChain);
-                //writeCytoscapeGraph( tempDir+breakPoint.first,trueNodeChain,2);
+                writeCytoscapeGraph( tempDir+breakPoint.first,trueNodeChain,2);
                 ofs.close();
 
         }
@@ -717,6 +717,7 @@ void FindGap::writeCytoscapeGraph(const std::string& filename,
                 }
 
                 // write the right arcs
+                bool hasLeftArcs = false, hasrightArcs =false;;
                 SSNode thisNode = dbg.getSSNode(thisID);
                 for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
                         SSNode rNode = dbg.getSSNode(it->getNodeID());
@@ -740,8 +741,12 @@ void FindGap::writeCytoscapeGraph(const std::string& filename,
                                 ofs << it->getNodeID() << "\t" << thisID << "\t" << it->getCoverage() << "\n";
                         PathDFS nextTop(it->getNodeID(), thisDepth + 1);
                         nodeDepth.push(nextTop);
-                }
 
+                }
+                 if (thisNode.getNumLeftArcs() ==0 && thisNode.getNumRightArcs()==0){
+                     ofs << thisID << "\t" << ""<< "\t" << "" << "\n";
+
+                }
                 // mark this node as handled
                 nodesHandled.insert(thisID);
 

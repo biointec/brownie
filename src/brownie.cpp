@@ -171,13 +171,10 @@ void Brownie::stageFour()
                         getMetaDataFilename(3));
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << graph.getGraphStats() << endl;
-
-        graph.loadKmerSpectrumFit(getSpectrumFitFilename());
         double cutoff = settings.getCutOffValue();
         graph.loadKmerSpectrumFit(getSpectrumFitFilename());
-        if (cutoff == 0){
+        if (cutoff == 0)
                 cutoff = graph.getCovCutoff();
-        }
         FindGap  findGap (libraries, settings, graph);
 
         #ifdef DEBUG
@@ -196,6 +193,9 @@ void Brownie::stageFour()
         graph.findbreakpoints("breakpoints.fasta");
         bool change = true;
         cutoff = cutoff/2;
+        findGap.closeGaps();
+        graph.buildKmerNPPTable();      // build kmer-NPP index
+        graph.findbreakpoints("breakpoints.fasta");
         while (change){
                 change = false;
                 // TIP CLIPPING
@@ -252,10 +252,7 @@ void Brownie::stageFour()
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);
-        graph.writeCytoscapeGraph(settings.getTempDirectory()+"stage4");
         #endif
-
-
         cout << graph.getGraphStats() << endl;
         cout << "Writing graph..." << endl;
         graph.writeGraph(getNodeFilename(4),

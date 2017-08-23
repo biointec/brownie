@@ -10,9 +10,9 @@ class FindGap {
 private:
         size_t overlapSize;
         AlignmentJan alignment;
-        DBGraph &dbg;
+
         Settings settings;
-        string correctedFile;
+        string inputReadFileName;
         size_t maxSearchSize;
         size_t kmerSize;
         size_t minComponentSize;
@@ -22,11 +22,13 @@ private:
         size_t minSim;
         size_t minTipLength;
         size_t minExactMatchSize;
+        double cutoff;
 
 
 
 
 public:
+        DBGraph &dbg;
         /**
          * Default constructor
          */
@@ -170,7 +172,7 @@ private:
 
          void findneighbourNodes(int ** neighbours,set<int> &tipNodes);
          set<NodeID> searchForNeighbours(NodeID tipID, size_t searchLimit);
-
+         bool connectionIsRobust(const string& s1, const string& s2, size_t numbOfPairs);
 
 
 };
