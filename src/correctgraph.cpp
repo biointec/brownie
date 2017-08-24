@@ -343,7 +343,7 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                         continue;
                 if (startNode.getMarginalLength() > 2*maxMargLength && isolated )
                         continue;
-                if (startNode.getMarginalLength() >maxMargLength && !isolated)
+                if (startNode.getMarginalLength() > maxMargLength && !isolated)
                         continue;
                 if (remove){
                         removeNode(startNode.getNodeID());

@@ -173,6 +173,7 @@ private:
          void findneighbourNodes(int ** neighbours,set<int> &tipNodes);
          set<NodeID> searchForNeighbours(NodeID tipID, size_t searchLimit);
          bool connectionIsRobust(const string& s1, const string& s2, size_t numbOfPairs);
+         void filterParis(std::map< pair<int, int>, int> pairedEndJoinsTemp,vector< pair< pair<int , int> , int > >& potentialPairs );
 
 
 };
