@@ -556,21 +556,16 @@ void ReadCorrection::correctRead(ReadRecord& record,
         string bestCorrectedRead;
         vector<NodeID> bestNodeChain;
         int bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
-
-        if (bestScore != -read.size() &&  bestScore <= ((int)read.size() / 2)) {
-                correctedByMEM = true;
-                findSeedMEM(read, seeds);
-                bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
-        }
-
-        if (bestScore != -read.size() && bestScore < (int)read.size()){
-                vector<Seed> seedsRC;
-                string readRC = record.getRead() ;
-                Nucleotide::revCompl(readRC);
-                findSeedKmer(readRC, seedsRC);
-                string bestCorrectedReadRC;
-                vector<NodeID> bestNodeChainRC;
-                int bestScoreRC = correctRead(readRC, bestCorrectedReadRC, seedsRC, bestNodeChainRC);
+        vector<Seed> seedsRC;
+        string readRC = record.getRead() ;
+        Nucleotide::revCompl(readRC);
+        findSeedKmer(readRC, seedsRC);
+        string bestCorrectedReadRC;
+        vector<NodeID> bestNodeChainRC;
+        int bestScoreRC = correctRead(readRC, bestCorrectedReadRC, seedsRC, bestNodeChainRC);
+        if (bestScoreRC ==  -read.size() ||  bestScore ==read.size())
+                bestScore = -read.size();
+        else{
                 if (bestScoreRC > bestScore){
                         bestScore = bestScoreRC;
                         Nucleotide::revCompl(readRC);
@@ -582,8 +577,14 @@ void ReadCorrection::correctRead(ReadRecord& record,
                         for (auto it :bestNodeChainRC)
                                 bestNodeChain.push_back(-it);
                 }
-
         }
+
+        if (bestScore != -read.size() &&  bestScore <= ((int)read.size() / 2)) {
+                correctedByMEM = true;
+                findSeedMEM(read, seeds);
+                bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
+        }
+
         /*if (bestCorrectedRead!=""){
                 alignment.align(read, bestCorrectedRead);
                 cout << "BEST ALIGNMENT: " << bestScore << endl;
