@@ -557,13 +557,13 @@ void ReadCorrection::correctRead(ReadRecord& record,
         vector<NodeID> bestNodeChain;
         int bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
 
-        if (bestScore <= ((int)read.size() / 2)) {
+        if (bestScore != -read.size() &&  bestScore <= ((int)read.size() / 2)) {
                 correctedByMEM = true;
                 findSeedMEM(read, seeds);
                 bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
         }
 
-        if (bestScore < (int)read.size()){
+        if (bestScore != -read.size() && bestScore < (int)read.size()){
                 vector<Seed> seedsRC;
                 string readRC = record.getRead() ;
                 Nucleotide::revCompl(readRC);
@@ -584,12 +584,17 @@ void ReadCorrection::correctRead(ReadRecord& record,
                 }
 
         }
-       // alignment.align(read, bestCorrectedRead);
-       // cout << "BEST ALIGNMENT: " << bestScore << endl;
-       // alignment.printAlignment(read, bestCorrectedRead);
-
+        /*if (bestCorrectedRead!=""){
+                alignment.align(read, bestCorrectedRead);
+                cout << "BEST ALIGNMENT: " << bestScore << endl;
+                alignment.printAlignment(read, bestCorrectedRead);
+                for (auto it:bestNodeChain){
+                        cout <<it <<",";
+                }
+                cout <<endl;
+        }*/
         size_t numSubstitutions = 0;
-        if (bestScore > ((int)read.size() / 2)) {
+        if (bestScore > ((int)read.size() / 2) &&dbg.validateChain(bestNodeChain)) {
                 read = bestCorrectedRead;
                 readCorrected = true;
                 numSubstitutions = (read.length() - bestScore)/2;

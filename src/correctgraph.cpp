@@ -259,7 +259,11 @@ bool DBGraph::clipNormalTip(SSNode startNode ){
                         //For the small ones the last k-1 base is exactly the same, more likely will be deleted
                         currStr = currStr.substr(currStr.length() - min (currStr.length(),altStr.length() ),min (currStr.length(),altStr.length() ));
                         altStr = altStr.substr(altStr.length()- min( currStr.length(),altStr.length() ),min (currStr.length(),altStr.length() ));
-                        if ( alignment.align(currStr,altStr)> ( (int) max( currStr.length(),altStr.length() ) / 3)){
+                        
+                        altStr = altStr.substr(0,altStr.length()-settings.getK()+1);
+                        currStr = currStr.substr(0,currStr.length()-settings.getK()+1);
+                        if ( currStr.length() <settings.getK()||
+                                alignment.align(currStr,altStr)> ( (int) max( currStr.length(),altStr.length() ) / 3)){
                                 return true;
                         }
 
