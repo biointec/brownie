@@ -563,7 +563,7 @@ void ReadCorrection::correctRead(ReadRecord& record,
         string bestCorrectedReadRC;
         vector<NodeID> bestNodeChainRC;
         int bestScoreRC = correctRead(readRC, bestCorrectedReadRC, seedsRC, bestNodeChainRC);
-        if (bestScoreRC ==  -read.size() ||  bestScore ==read.size())
+        if (bestScoreRC ==  -read.size() ||  bestScore ==-read.size())
                 bestScore = -read.size();
         else{
                 if (bestScoreRC > bestScore){
@@ -585,7 +585,7 @@ void ReadCorrection::correctRead(ReadRecord& record,
                 bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
         }
 
-        /*if (bestCorrectedRead!=""){
+        if (bestCorrectedRead!=""){
                 alignment.align(read, bestCorrectedRead);
                 cout << "BEST ALIGNMENT: " << bestScore << endl;
                 alignment.printAlignment(read, bestCorrectedRead);
@@ -593,7 +593,7 @@ void ReadCorrection::correctRead(ReadRecord& record,
                         cout <<it <<",";
                 }
                 cout <<endl;
-        }*/
+        }
         size_t numSubstitutions = 0;
         if (bestScore > ((int)read.size() / 2) &&dbg.validateChain(bestNodeChain)) {
                 read = bestCorrectedRead;
