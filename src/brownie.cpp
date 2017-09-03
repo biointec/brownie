@@ -192,15 +192,15 @@ void Brownie::stageFour()
         graph.buildKmerNPPTable();      // build kmer-NPP index
         graph.findbreakpoints("breakpoints.fasta");
         bool change = true;
-        cutoff = cutoff/2;
-        findGap.closeGaps();
+        cutoff = cutoff*2/3;
+
         graph.buildKmerNPPTable();      // build kmer-NPP index
         graph.findbreakpoints("breakpoints.fasta");
         while (change){
                 change = false;
                 // TIP CLIPPING
                 Util::startChrono();
-                size_t lmax = libraries.getAvgReadLength() - settings.getK() + 5;
+                size_t lmax = libraries.getAvgReadLength();
                 if (lmax < settings.getK()*2)
                         lmax = settings.getK()*2;
                 cout << "Cleaning graph (tips, cov-cutoff = " << cutoff
@@ -213,8 +213,8 @@ void Brownie::stageFour()
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
                 // BUBBLE DETECTION
                 Util::startChrono();
-                lmax = libraries.getAvgReadLength() - (settings.getK()-1)*2 + 5;
-                if (lmax < settings.getK()*2+5 )
+                lmax = libraries.getAvgReadLength();
+                if (lmax < settings.getK()*2 )
                         lmax = settings.getK()*2+5;
                 bool bubbleChange =true;
                 while (bubbleChange){
@@ -241,7 +241,7 @@ void Brownie::stageFour()
                 graph.removeChimericLinksByFlow(cutoff, libraries.getAvgReadLength());
                 graph.concatenateNodes();
         }
-        findGap.closeGaps();
+
         graph.buildKmerNPPTable();      // build kmer-NPP index
         graph.findbreakpoints("breakpoints.fasta");
         #ifdef DEBUG

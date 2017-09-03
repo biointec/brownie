@@ -11,12 +11,13 @@ using namespace std;
 bool DBGraph::removeChimericLinksByFlow(double covCutoff, size_t maxMargLength){
         size_t numOfDel = 0;
         for ( NodeID lID = -numNodes ; lID <= numNodes; lID++ ) {
+
                 if (lID ==0)
                         continue;
                 SSNode node = getSSNode ( lID );
                 if(!node.isValid())
                         continue;
-                if (!checkNodeIsReliable(node, covCutoff))
+                if (!checkNodeIsReliable(node, covCutoff, maxMargLength))
                         continue;
 
                 pair<int, pair<double,double> > result=nodesExpMult[abs( node.getNodeID())];
@@ -34,7 +35,7 @@ bool DBGraph::removeChimericLinksByFlow(double covCutoff, size_t maxMargLength){
                 SSNode nextReliableNode;
                 while(it != node.rightEnd()) {
                         SSNode nextReliableNode = getSSNode(it->getNodeID());
-                        if (checkNodeIsReliable(nextReliableNode , covCutoff))
+                        if (checkNodeIsReliable(nextReliableNode , covCutoff, maxMargLength))
                         {
                                 pair<int, pair<double,double> > result=nodesExpMult[abs( nextReliableNode.getNodeID())];
                                 size_t reliableNodeMultiplicity = result.first;
@@ -67,18 +68,41 @@ bool DBGraph::removeChimericLinksByFlow(double covCutoff, size_t maxMargLength){
         return (numOfDel > 0);
 }
 
-bool DBGraph::checkNodeIsReliable(SSNode node, double covCutoff){
+bool DBGraph::checkNodeIsReliable(SSNode node, double covCutoff, size_t maxMargLength){
 
-        if ( node.getAvgKmerCov() < covCutoff)
+        if ( node.getAvgKmerCov() < covCutoff || node.getMarginalLength() < maxMargLength)
                 return false;
         pair<int, pair<double,double> > result=nodesExpMult[abs( node.getNodeID())];
         double confidenceRatio = result.second.first;
         double inCorrctnessRatio = result.second.second;
         size_t nodeMultiplicity = result.first;
+        //if (getExpMult(node.getAvgKmerCov()) != nodeMultiplicity)
+        //        return false;
+        /*size_t realMul=trueMult[abs(node.getNodeID())];
+        if (realMul != nodeMultiplicity){
+                cout <<"MarginalLength       : "<<node.getMarginalLength()<<endl;
+                cout <<"avrage coverage      : "<<node.getAvgKmerCov() <<endl;
+                cout <<"read start Cov       : "<<node.getReadStartCov() <<endl;
+                cout <<"guessed multiplicity : "<<nodeMultiplicity <<endl;
+                cout <<"genome based mul     : "<<realMul <<endl;
+                cout <<"wrong guessed,cov is : "<< node.getAvgKmerCov() << " ,it could be "<<getExpMult(node.getAvgKmerCov()) << endl;
+                cout <<"confidenceRatio      : "<<confidenceRatio <<endl;
+                cout <<"inCorrctnessRatio    : "<<inCorrctnessRatio <<endl;
+               if (confidenceRatio <1.5|| inCorrctnessRatio > 1.5 )
+                        cout << "we don't trust to this guess" <<endl;
+               else{
+                        cout << "we trust to this guess" <<endl;
+                        cout << "node id :" << node.getNodeID() <<endl;
+                }
+
+        }
+        else
+                cout<<"well guessed" <<endl;*/
         if ( nodeMultiplicity > 4 )
                 return false;
-        if (confidenceRatio <1000 || inCorrctnessRatio > 2 )
+        if (confidenceRatio <1.5|| inCorrctnessRatio > 1.5 )
                 return false;
+
         return true;
 
 }
@@ -106,8 +130,9 @@ double DBGraph ::getStartReadAvg(){
         double sizeLimit=0;
         sizeLimit= ( totalLength * percentage)/100;
         size_t numOfVisitedNodeLimit = 100;
+        size_t minNumOfsamples = 20;
         size_t num  = 0;
-        while(sumOfMarginalLenght < sizeLimit  && numOfVisitedNodeLimit > num) {
+        while(sumOfMarginalLenght < sizeLimit  && numOfVisitedNodeLimit > num || num < minNumOfsamples) {
                 SSNode tempNode = nodeArray[num];
                 sumOfMarginalLenght = sumOfMarginalLenght + tempNode.getMarginalLength() + settings.getK()-1;
                 sumOfReadStcov = sumOfReadStcov + tempNode.getReadStartCov();
@@ -121,38 +146,48 @@ double DBGraph ::getStartReadAvg(){
 void DBGraph::extractStatistic(){
         double avg = getStartReadAvg();
         for ( NodeID lID = 1; lID <= numNodes; lID++ ) {
+
+
                 SSNode node = getSSNode ( lID );
                 if (!node.isValid())
                         continue;
-                double maxProb = .0001;
+
                 size_t nodeMultiplicity = 0;
                 double confidenceRatio = 0;
                 double inCorrctnessRatio = std::numeric_limits<double>::max();
-                size_t len = node.getMarginalLength() + settings.getK()-1;
-
-                size_t i = 0;
+                double len = node.getMarginalLength() + settings.getK()-1;
+                double readStartCov = (double)node.getReadStartCov()/len;
+                if (readStartCov == 0){
+                        nodesExpMult[abs(node.getNodeID())] = make_pair(nodeMultiplicity , make_pair( confidenceRatio , inCorrctnessRatio));
+                        continue;
+                }
+                double coefficient = 100 / avg;
+                readStartCov = coefficient*(double)node.getReadStartCov()/len;
+                double maxProb = .001;
+                size_t i = 1;
                 while ( i < 10 ) {
-                        i++;
-                        double expectedRSTCov = avg * i * len ;
-                        double probabilityOfCurrMul = Util::poissonPDF(node.getReadStartCov(), expectedRSTCov);
+                        double expectedRSTCov = coefficient* avg * i  ;
+                        double readStartCov = coefficient* node.getReadStartCov()/len ;
+                        double probabilityOfCurrMul = Util::poissonPDF(readStartCov, expectedRSTCov);
                         if ( probabilityOfCurrMul > maxProb ){
                                 maxProb = probabilityOfCurrMul;
-                                nodeMultiplicity =i;
+                                nodeMultiplicity = i;
                         }
+                        i++;
                 }
                 if (nodeMultiplicity ==0 ){
                         nodesExpMult[abs(node.getNodeID())] = make_pair(nodeMultiplicity , make_pair( confidenceRatio , inCorrctnessRatio));
                         continue;
-                }
 
+                }
                 double denominator = 0;
-                double expectedRSTCov = avg * nodeMultiplicity * len ;
-                double observedprob = Util::poissonPDF(node.getReadStartCov(),expectedRSTCov);
+                double expectedRSTCov = coefficient * avg * nodeMultiplicity  ;
+                double observedprob = Util::poissonPDF(coefficient *node.getReadStartCov()/len,expectedRSTCov);
                 i = 1;
                 while( i < 10 ){
                         if (i != nodeMultiplicity){
-                                double expectedRSTCov = avg * i * len;
-                                double newProbability = Util::poissonPDF(node.getReadStartCov(),expectedRSTCov);
+                                double expectedRSTCov =coefficient * avg * i ;
+                                double newProbability = Util::poissonPDF(coefficient *node.getReadStartCov()/len,expectedRSTCov);
                                 denominator = denominator + newProbability;
                         }
                         i = i+1;
@@ -160,9 +195,10 @@ void DBGraph::extractStatistic(){
 
                 if (denominator > 0 )
                         confidenceRatio = maxProb / denominator;
-                expectedRSTCov = avg * nodeMultiplicity * len ;
-                observedprob = Util::poissonPDF(node.getReadStartCov(),expectedRSTCov);
-                inCorrctnessRatio = Util::poissonPDF(expectedRSTCov,expectedRSTCov)/observedprob;
+                expectedRSTCov = coefficient *avg * nodeMultiplicity  ;
+                observedprob = Util::poissonPDF(coefficient *node.getReadStartCov()/len,expectedRSTCov);
+                double maxAchivalbeProb =Util::poissonPDF(expectedRSTCov,expectedRSTCov);
+                inCorrctnessRatio = maxAchivalbeProb/observedprob;
                 nodesExpMult[abs(node.getNodeID())] = make_pair(nodeMultiplicity , make_pair( confidenceRatio,inCorrctnessRatio));
         }
 }

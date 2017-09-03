@@ -5,6 +5,9 @@
 #include <queue>
 #include "library.h"
 #include "readcorrection.h"
+#include "refcomp.h"
+#include <list>
+#define NIL -1
 using namespace std;
 
 
@@ -21,52 +24,105 @@ void FindGap::parameterInitialization(){
 }
 
 
-void FindGap::findneighbourNodes(int ** neighbours, set<int> &tipNodes){
-        for(size_t i =0 ; i <dbg.getNumNodes() ;i++)
-                *(neighbours+i) = (int*)malloc(sizeof(int)*5);
-        for (size_t i = 0; i< dbg.getNumNodes(); i++)
-                for (size_t j = 0; j<5 ; j++)
-                        neighbours [i][j] = 0 ;
-
-        for (auto it:tipNodes){
-                NodeID tipID = it;
-                if (dbg.getSSNode(it).getNumLeftArcs() ==0 && dbg.getSSNode(it).getNumRightArcs()==0)
-                        continue;
-                if (dbg.getSSNode(it).getNumLeftArcs() !=0 && dbg.getSSNode(it).getNumRightArcs()==0)
-                        tipID = - tipID;
-                if (dbg.getSSNode(it).getNumLeftArcs() ==0 && dbg.getSSNode(it).getNumRightArcs()!=0){
-                        set <NodeID> neighbourNodes =  searchForNeighbours(tipID, 250);
-                        for (size_t i =0; i <neighbourNodes.size();i++){
-                                size_t j =0 ;
-                                while (j< 5 && neighbours[i][j] != 0)
-                                        j++;
-                                if (j<5)
-                                        neighbours[i][j] = it;
-                        }
-                }
-
-        }
-}
-set<NodeID> FindGap::searchForNeighbours(NodeID tipNode, size_t searchSizeLim)
+void FindGap::bridgeUtil(int u ,int *visited, int *disc,
+                         int *low, int *parent, vector<pair<int, int>> &bridges)
 {
-        set<NodeID> neighbours;
-        priority_queue<pair< NodeID, size_t> > toVisit;
-        pair<NodeID, size_t> startPair = make_pair(tipNode, dbg.getSSNode(tipNode).getLength());
-        toVisit.push(startPair);
-        while (!toVisit.empty()){
-                SSNode startNode = dbg.getSSNode(toVisit.top().first);
-                size_t length = toVisit.top().second;
-                toVisit.pop();
-                if (length > searchSizeLim )
-                        continue;
-                for (ArcIt it = startNode.rightBegin(); it != startNode.rightEnd(); it++) {
-                        SSNode rightNode = dbg.getSSNode(it->getNodeID());
-                        neighbours.insert(rightNode.getNodeID());
-                        pair<NodeID, size_t> rightPair = make_pair(startNode.getNodeID(),length+ dbg.getSSNode(tipNode).getLength());
-                        toVisit.push(rightPair);
+
+
+        size_t numOfNodes= dbg.getNumNodes();
+        // A static variable is used for simplicity, we can
+        // avoid use of static variable by passing a pointer.
+        static int time = 0;
+
+        // Mark the current node as visited
+        visited[abs(u)] = true;
+
+        // Initialize discovery time and low value
+        disc[abs(u)] = low[abs(u)] = ++time;
+
+        // Go through all vertices aadjacent to this
+        list<int>::iterator i;
+
+        SSNode startNode =dbg.getSSNode( u);
+
+        vector<NodeID> neighbours;
+
+        for (ArcIt it = startNode.rightBegin(); it != startNode.rightEnd(); it++)
+                neighbours.push_back(it->getNodeID());
+        for (ArcIt it = startNode.leftBegin(); it != startNode.leftEnd(); it++)
+                neighbours.push_back(it->getNodeID());
+
+        for (auto it :neighbours) {
+
+                int v = it;
+                // v is current adjacent of u
+                // If v is not visited yet, then recur for it
+                if (!visited[abs(v)])
+                {
+                        parent[abs(v)] = u;
+                        bridgeUtil(v, visited, disc, low, parent,bridges);
+
+                        // Check if the subtree rooted with v has a
+                        // connection to one of the ancestors of u
+                        low[abs(u)]  = min(low[abs(u)], low[abs(v)]);
+
+                        // If the lowest vertex reachable from subtree
+                        // under v is  below u in DFS tree, then u-v
+                        // is a bridge
+                        if (low[abs(v)] > disc[abs(u)])
+                                bridges.push_back(make_pair(u,v));
                 }
+
+                // Update low value of u for parent function calls.
+                else if (v != parent[abs(u)])
+                        low[abs(u)]  = min(low[abs(u)], disc[abs(v)]);
         }
-        return neighbours;
+
+
+
+}
+
+// DFS based function to find all bridges. It uses recursive
+// function bridgeUtil()
+void FindGap::findBridges()
+{
+        // Mark all the vertices as not visited
+        size_t numOfNodes= dbg.getNumNodes();
+        int * visited = (int*)malloc(sizeof(int*)*numOfNodes);
+        int * disc = (int*)malloc(sizeof(int*)*numOfNodes);
+        int * low = (int*)malloc(sizeof(int*)*numOfNodes);
+        int * parent = (int*)malloc(sizeof(int*)*numOfNodes);
+        vector<pair<int, int>> bridges;
+
+
+        // Initialize parent and visited arrays
+        for (int i = 0; i < numOfNodes; i++)
+        {
+                parent[i] = NIL;
+                visited[i] = false;
+        }
+
+        // Call the recursive helper function to find Bridges
+        // in DFS tree rooted with vertex 'i'
+        for (int i = 1; i <= numOfNodes; i++){
+                if (visited[i] == false)
+                        bridgeUtil(i, visited, disc, low, parent,bridges);
+
+        }
+
+        for (auto it:bridges){
+                SSNode first  = dbg.getSSNode( it.first);
+                SSNode second  = dbg.getSSNode( it.second);
+                if (first.getRightArc(second.getNodeID()) != NULL && second.getRightArc(first.getNodeID()) !=NULL)
+                        continue;
+
+
+                if (dbg.getSSNode(it.first).getNumLeftArcs()!=0 && dbg.getSSNode(it.second).getNumLeftArcs()!=0 &&
+                        dbg.getSSNode(it.first).getNumRightArcs()!=0 && dbg.getSSNode(it.second).getNumRightArcs()!=0  ){
+                        cout << it.first << ", " <<it.second <<endl;
+                        }
+        }
+
 }
 /*
 FindGap::FindGap(string nodeFileName, string arcFileName, string metaDataFileName, string readFileName,unsigned int kmerVlue  ,string tempDir):settings(kmerVlue,tempDir), dbg(settings),overlapSize(kmerVlue),alignment(1000, 2, 1, -1, -3)
@@ -97,7 +153,7 @@ bool FindGap::closeGaps(string nodeFilename, string arcFilename,string metaDataF
 {
         set<int> tipNodes;
         vector< pair< pair<int , int> , int > > potentialPairs;
-        //int ** neighbours = (int**)malloc(sizeof(int*)*dbg.getNumNodes());
+
         findTips(tipNodes);
         //findneighbourNodes(neighbours,tipNodes);
         streamReads(inputReadFileName,tipNodes,potentialPairs);
@@ -115,21 +171,7 @@ bool FindGap::closeGaps(string nodeFilename, string arcFilename,string metaDataF
 
 void FindGap::reorderTips(SSNode &first, SSNode &second)
 {
-        /*if (first.getNumRightArcs() !=0 && first.getNumLeftArcs() ==0 && second.getNumLeftArcs()!=0 && second.getNumRightArcs() ==0)
-        {
-                first = dbg.getSSNode( -first.getNodeID());
-                second = dbg.getSSNode( -second.getNodeID());
-        }*/
-        /*if (first.getNumRightArcs() !=0 && first.getNumLeftArcs() ==0 && second.getNumLeftArcs()==0 && second.getNumRightArcs() ==0)
-        {
-                first = dbg.getSSNode( -first.getNodeID());
-                second = dbg.getSSNode( -second.getNodeID());
-        }*/
-        /*if (first.getNumRightArcs() ==0 && first.getNumLeftArcs() ==0 && second.getNumLeftArcs()!=0 && second.getNumRightArcs() ==0)
-        {
-                first = dbg.getSSNode( -first.getNodeID());
-                second = dbg.getSSNode( -second.getNodeID());
-        }*/
+
         if (second.getNumLeftArcs()==0 && second.getNumRightArcs() ==0 && first.getNumLeftArcs()==0 && first.getNumRightArcs()==0){
                 string firstRead1="", secondRead1="";
                 double sim1 = -100, sim2 = -100, sim3 = -100, sim4 = -100;
@@ -653,8 +695,14 @@ void FindGap::findTips(set<int> &tipNodes)
 
 void FindGap::extractBreakpointSubgraph( std::string breakpointFileName,string  tempDir){
         cout << "Creating kmer lookup table... ";
+         vector<size_t> trueMult;
+#ifdef DEBUG
         dbg.buildKmerNPPTable();
+        RefComp refComp("genome.fasta");
 
+        refComp.getNodeMultiplicity(dbg, trueMult);
+        dbg.setTrueNodeMultiplicity(trueMult);
+#endif
         std::ifstream input(breakpointFileName);
         vector< pair<string, string> > breakpoints;
         if (!input.good()) {
@@ -683,13 +731,13 @@ void FindGap::extractBreakpointSubgraph( std::string breakpointFileName,string  
                 RefComp refComp("tempBreakpoint.fasta");
                 vector<NodeChain> trueNodeChain;
                 refComp.getTrueNodeChain(dbg, trueNodeChain);
-                writeCytoscapeGraph( tempDir+breakPoint.first,trueNodeChain,2);
+                writeCytoscapeGraph( tempDir+breakPoint.first,trueNodeChain, trueMult,2);
                 ofs.close();
 
         }
 }
 void FindGap::writeCytoscapeGraph(const std::string& filename,
-                                  vector<NodeChain>& nodeChain, size_t maxDepth) const
+                                  vector<NodeChain>& nodeChain, vector<size_t> trueMult,size_t maxDepth) const
 {
         // a map containing nodeIDs to handle + their depth
         priority_queue<PathDFS, vector<PathDFS>, PathDFSComp> nodeDepth;
@@ -782,7 +830,7 @@ void FindGap::writeCytoscapeGraph(const std::string& filename,
                "\tKmer coverage\tRead start coverage\tSequence\tinPath\tpos" << "\n";
         for (set<NodeID>::iterator it = nodesHandled.begin(); it != nodesHandled.end(); it++) {
                 SSNode node = dbg.getSSNode(*it);
-                int thisTrueMult = 0;
+                int thisTrueMult =  (trueMult.empty()) ? 0 : trueMult[abs(*it)];;
                 bool is_in = false;
                 int index = -1 ;
                 for (unsigned int i =0; i<nodeChain.size();i++){

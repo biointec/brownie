@@ -44,7 +44,7 @@ public:
          * @param nodeSet set of seeds node identifier
          * @param maxDepth Maximum depth (in terms of number of nodes)
          */
-        void writeCytoscapeGraph(const std::string& filename,vector<NodeChain>& nodeChain, size_t maxDepth=0) const;
+        void writeCytoscapeGraph(const std::string& filename,vector<NodeChain>& nodeChain, vector<size_t> trueMult,size_t maxDepth=0 ) const;
 
 
         /**
@@ -60,6 +60,8 @@ public:
          *
          */
         bool closeGaps(string nodeFilename ="", string arcFilename ="",string metaDataFilename = "");
+
+        void findBridges();
 
 private:
 
@@ -170,10 +172,12 @@ private:
           */
          void reorderTips(SSNode &first, SSNode &second);
 
-         void findneighbourNodes(int ** neighbours,set<int> &tipNodes);
-         set<NodeID> searchForNeighbours(NodeID tipID, size_t searchLimit);
+
          bool connectionIsRobust(const string& s1, const string& s2, size_t numbOfPairs);
          void filterParis(std::map< pair<int, int>, int> pairedEndJoinsTemp,vector< pair< pair<int , int> , int > >& potentialPairs );
+
+
+         void bridgeUtil(int u ,int *visited, int *disc,int *low, int *parent, vector<pair<int, int>> &bridges);
 
 
 };

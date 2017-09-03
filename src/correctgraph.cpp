@@ -251,7 +251,7 @@ bool DBGraph::clipNormalTip(SSNode startNode ){
         ArcIt it = currNode.leftBegin();
         do{
                 alternative = getSSNode(it->getNodeID());
-                if (startNode.getNodeID()!=alternative.getNodeID() && alternative.getAvgKmerCov()>=startNode.getAvgKmerCov()){
+                if (startNode.getNodeID()!=alternative.getNodeID() ){ // alternative.getAvgKmerCov()>=startNode.getAvgKmerCov()
                         string currStr="", altStr="";
                         currStr = startNode.getSequence();
                         altStr = alternative.getSequence();
@@ -259,7 +259,7 @@ bool DBGraph::clipNormalTip(SSNode startNode ){
                         //For the small ones the last k-1 base is exactly the same, more likely will be deleted
                         currStr = currStr.substr(currStr.length() - min (currStr.length(),altStr.length() ),min (currStr.length(),altStr.length() ));
                         altStr = altStr.substr(altStr.length()- min( currStr.length(),altStr.length() ),min (currStr.length(),altStr.length() ));
-                        
+
                         altStr = altStr.substr(0,altStr.length()-settings.getK()+1);
                         currStr = currStr.substr(0,currStr.length()-settings.getK()+1);
                         if ( currStr.length() <settings.getK()||
@@ -277,7 +277,7 @@ bool DBGraph::clipNormalTip(SSNode startNode ){
 
 
 
-bool DBGraph::clipJoinedTip(double covCutoff, SSNode startNode ){
+bool DBGraph::clipJoinedTip(double covCutoff,size_t maxMargLength ,SSNode startNode ){
 
 
         bool remove = true;
@@ -288,6 +288,8 @@ bool DBGraph::clipJoinedTip(double covCutoff, SSNode startNode ){
                         remove = false;
                 it++;
         }
+        if (startNode.getAvgKmerCov() > covCutoff || startNode.getMarginalLength() > maxMargLength )
+                remove = false;
         if ( !remove){
                 ArcIt it = startNode.rightBegin();
                 SSNode nodeBefore;
@@ -317,8 +319,45 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
         size_t tps=0, tns=0, fps=0,fns=0;
         size_t tpj=0, tnj=0, fpj=0,fnj=0;
 #endif
+
         size_t numDeleted = 0;
+        //remove single loops
         for (NodeID id = 1; id <= numNodes; id++) {
+
+                SSNode node = getSSNode(id);
+
+                if (node.getAvgKmerCov() > (covCutoff) )
+                        continue;
+                if (node.getMarginalLength() > maxMargLength )
+                        continue;
+
+                if (node.getNumRightArcs() ==1 && node.getNumLeftArcs()==1&& node.getLeftArc(node.getNodeID()) != NULL){
+                        removeNode(node.getNodeID());
+                        numDeleted ++ ;
+                }
+        }
+        //remove palindromic tips
+        for (NodeID id = -numNodes; id <= numNodes; id++) {
+                if (id ==0)
+                        continue;
+                SSNode first  = getSSNode( id);
+                if (first.getNumRightArcs() != 1)
+                        continue;
+                if (first.getNumLeftArcs()  != 1)
+                        continue;
+                SSNode second  = getSSNode( first.rightBegin()->getNodeID());
+                if (second.getRightArc(first.getNodeID()) ==NULL)
+                        continue;
+                if (first.getAvgKmerCov() > (covCutoff) )
+                        continue;
+                if (first.getMarginalLength() > maxMargLength )
+                        continue;
+
+                removeNode(first.getNodeID());
+                numDeleted ++ ;
+        }
+        for (NodeID id = 1; id <= numNodes; id++) {
+
                 SSNode node = getSSNode(id);
                 if (!node.isValid())
                         continue;
@@ -332,28 +371,29 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
                 bool joinedTip = false;
                 bool remove = false;
                 //isolated tips
-                if (startNode.getNumRightArcs() == 1){
-                        remove = clipNormalTip( startNode );
-                }
                 if (startNode.getNumRightArcs() == 0 ){
                         isolated = true;
                         remove = true;
                 }
+
+                if (startNode.getNumRightArcs() == 1){
+                        remove = clipNormalTip( startNode );
+                }
+
                 if (startNode.getNumRightArcs()>1){
                         joinedTip = true;
-                        remove = clipJoinedTip(covCutoff,startNode);
+                        remove = clipJoinedTip(covCutoff, maxMargLength, startNode);
                 }
                 if (startNode.getAvgKmerCov() > (covCutoff) )
                         continue;
-                if (startNode.getMarginalLength() > 2*maxMargLength && isolated )
-                        continue;
                 if (startNode.getMarginalLength() > maxMargLength && !isolated)
+                        continue;
+                if (startNode.getMarginalLength() > maxMargLength*2 && isolated)
                         continue;
                 if (remove){
                         removeNode(startNode.getNodeID());
                         numDeleted ++;
                 }
-
                 #ifdef DEBUG
                 if (remove) {
                         //cout << "node " <<id << " detected as a tip and removed" <<endl;
@@ -406,7 +446,7 @@ bool DBGraph::clipTips(double covCutoff, size_t maxMargLength)
         cout << "\t===== DEBUG: end =====" << endl;
 #endif
 
-        return  numDeleted > 20 ;
+        return  numDeleted > 0 ;
 }
 
 void DBGraph::concatenateAroundNode(NodeID seedID, vector<NodeID>& nodeListv)
@@ -613,26 +653,28 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
         cout << "First: " << firstB << ", last: " << lastB << endl;
         cout << subPathB << endl;
         cout << covSubPathB << endl;*/
-       if (lowCov == covSubPathA){
-               if (covSubPathB < covSubPathA * 2)
-                       return false;
-       }else{
-               if (covSubPathA < covSubPathB * 2)
-                       return false;
+       bool remove = true;
+       if (!lowCovPath.empty()) {
+               if (lowCov == covSubPathA){
+                       if (covSubPathB < covSubPathA * 2)
+                               remove = false;
+               }else{
+                       if (covSubPathA < covSubPathB * 2)
+                               remove = false;
+               }
        }
-
        AlignmentJan ali(250, 2, 1, -1, -3);
        string pathAstr = getPathSeq(pathA);
        string pathBstr = getPathSeq(pathB);
-       if ( pathAstr.length()!=pathBstr.length())
-               return false;
+       if (abs( pathAstr.length()- pathBstr.length())> 1 )
+               remove = false;
 
        if ( pathAstr.length() >settings.getK() && ali.align(pathAstr,pathBstr)<((int)min( pathAstr.length(),pathBstr.length() ) / 3)){
-               return false;
+               remove = false;
        }
 
 
-       if ((lowCov <= covCutoff) && !lowCovPath.empty()) {
+       if (remove && (lowCov <= covCutoff) && !lowCovPath.empty()) {
                 //removePath(lowCovPath);
                 flagPath(lowCovPath);
                 return true;
@@ -758,7 +800,6 @@ void DBGraph::bubbleDetectionThread(size_t threadID, ParGraph& wlb,
                         SSNode node = getSSNode(id);
                         if (!node.isValid())
                                 continue;
-
                         // handle the positive node
                         bubbleDetection(id, visited, prevNode, nodeColor,
                                         covCutoff, maxMargLength,
@@ -880,5 +921,4 @@ size_t DBGraph::findbreakpoints(std::string breakpointFileName )
         cout << "There are " << numberOfBreakpoints << " breakpoins in the input file. "<<endl;
         return numberOfBreakpoints;
 }
-
 

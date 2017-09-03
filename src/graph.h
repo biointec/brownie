@@ -571,20 +571,8 @@ public:
          * @return True if  node was removed
          */
 
-        bool clipJoinedTip(double covCutoff,  SSNode startNode );
+        bool clipJoinedTip(double covCutoff,  size_t maxMargLength, SSNode startNode );
 
-
-        /**
-         * This function searches for all alternative paths of a given string and returns the best similarity score
-         * @param root the root node from which it searches for the alternative path
-         * @param rightPart the input string whcih this function looks for the most similar string in the graph from root
-         * @param bestAlternative the most similar string to the given right part
-         * @param exceptionNode parsing graph shouldn't pass from this node
-         * @return the similarity value of best alternative path to the string value in rightPart
-         */
-
-
-        int GetBesAlternativePath(  NodeID root, string rightPart,string &bestAlternative,  NodeID exceptionNode, vector<NodeID> &bestPath );
 
         /**
          * Concatentate linear paths
@@ -791,7 +779,7 @@ public:
          * @return true if the node is reliable
          */
 
-        bool checkNodeIsReliable(SSNode node, double covCutoff);
+        bool checkNodeIsReliable(SSNode node, double covCutoff,size_t maxMargLength);
         /**
          * it does a flow correction in the graph
          *

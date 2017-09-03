@@ -555,6 +555,7 @@ void ReadCorrection::correctRead(ReadRecord& record,
 
         string bestCorrectedRead;
         vector<NodeID> bestNodeChain;
+
         int bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
         vector<Seed> seedsRC;
         string readRC = record.getRead() ;
@@ -579,13 +580,13 @@ void ReadCorrection::correctRead(ReadRecord& record,
                 }
         }
 
-        if (bestScore != -read.size() &&  bestScore <= ((int)read.size() / 2)) {
+        if (seeds.size() ==0|| bestScore != -read.size() &&  bestScore <= ((int)read.size() / 2)) {
                 correctedByMEM = true;
                 findSeedMEM(read, seeds);
                 bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
         }
 
-        if (bestCorrectedRead!=""){
+        /*if (bestCorrectedRead!=""){
                 alignment.align(read, bestCorrectedRead);
                 cout << "BEST ALIGNMENT: " << bestScore << endl;
                 alignment.printAlignment(read, bestCorrectedRead);
@@ -593,15 +594,14 @@ void ReadCorrection::correctRead(ReadRecord& record,
                         cout <<it <<",";
                 }
                 cout <<endl;
-        }
+        }*/
+
         size_t numSubstitutions = 0;
         if (bestScore > ((int)read.size() / 2) &&dbg.validateChain(bestNodeChain)) {
                 read = bestCorrectedRead;
                 readCorrected = true;
                 numSubstitutions = (read.length() - bestScore)/2;
-                dbg.validateChain(bestNodeChain);
         }
-        metrics.addObservation(readCorrected, correctedByMEM, numSubstitutions);
 }
 
 void ReadCorrection::correctChunk(vector<ReadRecord>& readChunk,
