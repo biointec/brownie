@@ -189,11 +189,9 @@ void Brownie::stageFour()
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);
         #endif
-        graph.buildKmerNPPTable();      // build kmer-NPP index
-        graph.findbreakpoints("breakpoints.fasta");
+
         bool change = true;
         cutoff = cutoff*2/3;
-
         graph.buildKmerNPPTable();      // build kmer-NPP index
         graph.findbreakpoints("breakpoints.fasta");
         while (change){

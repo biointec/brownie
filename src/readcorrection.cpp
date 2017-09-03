@@ -602,6 +602,8 @@ void ReadCorrection::correctRead(ReadRecord& record,
                 readCorrected = true;
                 numSubstitutions = (read.length() - bestScore)/2;
         }
+        metrics.addObservation(readCorrected, correctedByMEM, numSubstitutions);
+
 }
 
 void ReadCorrection::correctChunk(vector<ReadRecord>& readChunk,
