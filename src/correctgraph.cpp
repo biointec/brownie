@@ -664,16 +664,13 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
                }
        }
        AlignmentJan ali(250, 2, 1, -1, -3);
+
        string pathAstr = getPathSeq(pathA);
        string pathBstr = getPathSeq(pathB);
-       if (abs( pathAstr.length()- pathBstr.length())> 1 )
-               remove = false;
-
-       if ( pathAstr.length() >settings.getK() && ali.align(pathAstr,pathBstr)<((int)min( pathAstr.length(),pathBstr.length() ) / 3)){
-               remove = false;
-       }
-
-
+       if (abs( pathAstr.length()- pathBstr.length())> 0 )
+                       remove = false;
+       if ( pathAstr.length() >settings.getK() && ali.align(pathAstr,pathBstr)<((int)min( pathAstr.length(),pathBstr.length() ) / 3))
+                       remove =false;
        if (remove && (lowCov <= covCutoff) && !lowCovPath.empty()) {
                 //removePath(lowCovPath);
                 flagPath(lowCovPath);
@@ -688,9 +685,11 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
         if (min(covFinalArcA, covFinalArcB) <= covCutoff) {
                 if (covFinalArcA < covFinalArcB)
                         //removeArc(pathA[lastA], pathA[lastA+1]);
+                        if (covFinalArcA *2 < covFinalArcB)
                         flagArc(pathA[lastA], pathA[lastA+1]);
                 else
                         //removeArc(pathB[lastB], pathB[lastB+1]);
+                        if (covFinalArcB *2 <covFinalArcA )
                         flagArc(pathB[lastB], pathB[lastB+1]);
                 return true;
         }
@@ -703,9 +702,11 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
         if (min(covFirstArcA, covFirstArcB) <= covCutoff) {
                 if (covFirstArcA < covFirstArcB)
                         //removeArc(pathA[0], pathA[1]);
+                        if (covFirstArcA*2 < covFirstArcB)
                         flagArc(pathA[0], pathA[1]);
                 else
                         //removeArc(pathB[0], pathB[1]);
+                        if (covFirstArcB*2 <covFirstArcA )
                         flagArc(pathB[0], pathB[1]);
                 return true;
         }

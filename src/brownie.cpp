@@ -211,7 +211,7 @@ void Brownie::stageFour()
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
                 // BUBBLE DETECTION
                 Util::startChrono();
-                lmax = libraries.getAvgReadLength();
+                lmax = libraries.getAvgReadLength() - settings.getK()*2+5;;
                 if (lmax < settings.getK()*2 )
                         lmax = settings.getK()*2+5;
                 bool bubbleChange =true;
@@ -356,9 +356,9 @@ void Brownie::assembleModule()
         else
                 cout << "Files produced by this stage appear to"
                         " be present, skipping stage 3...\n";
-        if (stageFourNecessary())
+        //if (stageFourNecessary())
                 stageFour();
-        else
+        //else
                cout << "Files produced by this stage appear to"
                         " be present, skipping stage 4...\n";
         //if (stageFiveNecessary())
