@@ -549,6 +549,7 @@ public: // FIXME !!! (private)
         bool flowCorrection(NodeID nodeID, double covCutoff, size_t maxMargLength);
 
 public:
+
         /**
          * Invalidate tips from a graph
          * @param covCutoff Maximum coverage of a node to delete
@@ -574,6 +575,7 @@ public:
         bool clipJoinedTip(double covCutoff,  size_t maxMargLength, SSNode startNode );
 
 
+        bool  removeErroneousComponents(vector<NodeID> untrustableComponentsNodes);
         /**
          * Concatentate linear paths
          * @return True if at least one node was merged

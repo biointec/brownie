@@ -7,6 +7,7 @@
 #include <map>
 #include <limits>
 #include <math.h>
+
 using namespace std;
 
 bool DBGraph::removeChimericLinksByFlow(double covCutoff, size_t maxMargLength){
@@ -172,68 +173,57 @@ void DBGraph::extractStatistic(map<NodeID, size_t> &nodesExpMult, size_t maxMarg
         }
 }
 
-size_t DBGraph:: findComponentsInGraph(size_t minSize)
+size_t DBGraph::findbreakpoints(std::string breakpointFileName )
 {
-        cout << "Finding disjoint components in the graph ..." <<endl;
-        int srcID=1;
-        int i=0;
-        size_t numberOfcomponents =0;
-        set<NodeID> nodesHandled;
-        for (i =srcID ; i <=getNumNodes(); i++){
-                set<NodeID> currentSetNodes;
-                size_t componentSize =0;
-                if (!getSSNode(i).isValid())
-                        continue;
-                if (nodesHandled.find(i) != nodesHandled.end())
-                        continue;
-                if (nodesHandled.find(i) != nodesHandled.end())
-                        continue;
-                srcID=i;
-                multimap<size_t, NodeID> nodeDepth;     // map of all nodes in the local graph and its depth
-                nodeDepth.insert(pair<size_t, NodeID>(0, srcID));
-                // nodes that were already handled
-
-                while (!nodeDepth.empty()) {
-                        // get and erase the current node
-                        multimap<size_t, NodeID>::iterator
-                        e = nodeDepth.begin();
-                        size_t thisDepth = e->first;
-                        NodeID thisID = e->second;
-                        nodeDepth.erase(e);
-                        // if the node was already handled, skip
-                        if (nodesHandled.find(thisID) != nodesHandled.end())
-                                continue;
-                        if (nodesHandled.find(-thisID) != nodesHandled.end())
-                                continue;
-                        // mark this node as handled
-                        nodesHandled.insert(thisID);
-                        currentSetNodes.insert(thisID);
-                        SSNode thisNode = getSSNode(thisID);
-                        componentSize = componentSize + thisNode.getMarginalLength();
-                        for (ArcIt it = thisNode.rightBegin(); it != thisNode.rightEnd(); it++) {
-                                SSNode rNode = getSSNode(it->getNodeID());
-                                if (!rNode.isValid())
-                                        continue;
-                                if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
-                                        continue;
-                                nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
-                        }
-                        for (ArcIt it = thisNode.leftBegin(); it != thisNode.leftEnd(); it++) {
-                                SSNode lNode = getSSNode(it->getNodeID());
-                                if (!lNode.isValid())
-                                        continue;
-                                if (nodesHandled.find(it->getNodeID()) != nodesHandled.end())
-                                        continue;
-                                nodeDepth.insert(pair<size_t, NodeID>(thisDepth + thisNode.getMarginalLength(), it->getNodeID()));
-                        }
-                }
-                if ( componentSize >minSize && currentSetNodes.size() >1)
-                        numberOfcomponents ++;
-
-                currentSetNodes.clear();
+        std::ifstream input(breakpointFileName);
+        vector< pair<string, string> > breakpoints;
+        if (!input.good()) {
+                std::cerr << "Error opening: " << breakpointFileName << std::endl;
+                return -1;
         }
-        cout << "Number of disjoint components in the graph with more than 1 nodes and larger than : " <<minSize << " is " <<numberOfcomponents <<endl;
-        return numberOfcomponents;
+        std::string line, id ="", DNA_sequence ="" ;
+        while (std::getline(input, line).good()) {
+                if (line[0] == '>') {
+                        if (DNA_sequence!= "")
+                                breakpoints.push_back( make_pair(id, DNA_sequence));
+                        id = line.substr(1);
+                        DNA_sequence.clear();
+                }
+                else if (line[0] != '>')
+                        DNA_sequence += line;
+        }
+        breakpoints.push_back( make_pair(id, DNA_sequence));
+
+        size_t numberOfBreakpoints = 0 ;
+        for (int i = 0 ;i <breakpoints.size(); i++){
+                pair<string , string> breakPoint= breakpoints [i];
+                string refSeq = breakPoint.second;
+                //cout << " we are looking at ref ID : " << breakPoint.first <<endl;
+                // handle the other kmers
+                NodePosPair prev;
+
+                for (KmerIt it(refSeq); it.isValid(); it++) {
+                        Kmer kmer = it.getKmer();
+                        NodePosPair curr = findNPP(kmer);
+                        if (!curr.isValid())
+                                continue;
+                        if (!prev.isValid()){
+                                prev = curr;
+                                continue;
+                        }
+                        if (!consecutiveNPP(prev, curr) && prev.getNodeID() != curr.getNodeID())
+                        {
+                                cout << "new breakpoint happend in " <<  breakPoint.first <<endl;
+                                cout << "the connection between node " << prev.getNodeID() << " and " <<curr.getNodeID()  << " is lost." <<endl;
+                                numberOfBreakpoints ++;
+                                break;
+
+                        }
+                        prev = curr;
+                }
+        }
+        cout << "There are " << numberOfBreakpoints << " breakpoins in the input file. "<<endl;
+        return numberOfBreakpoints;
 }
 
 

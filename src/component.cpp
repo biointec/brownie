@@ -3,7 +3,7 @@
 #include "set"
 using namespace std;
 
-size_t ComponentHandler:: findComponentsInGraph(size_t minSize)
+void ComponentHandler:: findComponentsInGraph(size_t minSize)
 {
         cout << "Finding disjoint components in the graph ..." <<endl;
         int srcID=1;
@@ -62,6 +62,35 @@ size_t ComponentHandler:: findComponentsInGraph(size_t minSize)
 
                 currentSetNodes.clear();
         }
-        cout << "Number of disjoint components in the graph with more than 1 nodes and larger than : " <<minSize << " is " <<this->numberOfcomponents <<endl;
-        return this->numberOfcomponents ;
+        reportStatistics();
 }
+void ComponentHandler::reportStatistics ()
+{
+        vector<Component> components;
+        for (auto it : componentsMap)
+                components.push_back(it.second);
+        sort(components.begin(), components.end(),greater_than_Component());
+        for (auto  it : components)
+        {
+            Component c = it;
+            cout <<"Component ID   : " <<c.componentID << endl;
+            cout <<"Coverage       : " <<c.componentKmerCov << endl;
+            cout <<"Num Of Nodes   : " <<c.numOfNodes <<endl;
+            cout <<"Component Size : " <<c.componentSize <<endl;
+            cout <<"**************" <<endl;
+        }
+}
+void ComponentHandler::detectErroneousComponent (double covCutoff, size_t maxMargLength , vector<Component> &tobeRemoved)
+{
+        findComponentsInGraph();
+        vector<Component> components;
+        for (auto it : componentsMap)
+                components.push_back(it.second);
+        for (auto  it : components)
+        {
+            Component c = it;
+            if (c.componentKmerCov < covCutoff && c.componentSize < maxMargLength)
+                    tobeRemoved.push_back(c);
+        }
+}
+

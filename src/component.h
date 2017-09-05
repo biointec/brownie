@@ -34,11 +34,13 @@ public:
         size_t componentID;
         size_t componentSize;
         size_t numOfNodes;
+        double componentKmerCov;
 
         Component (){
 
         }
-        Component(set<NodeID> &IDs, size_t ID, size_t size) : NodesID(IDs),componentID(ID), componentSize(size),numOfNodes(IDs.size()){
+
+        Component(set<NodeID> &IDs, size_t ID, size_t size ,double cov) : NodesID(IDs),componentID(ID), componentSize(size),numOfNodes(IDs.size()) ,componentKmerCov(cov){
         }
         /**
          * keep the nodes ID in component in a set of nodes Id
@@ -75,6 +77,7 @@ public:
 
         ComponentHandler( DBGraph& g,Settings& s):dbg(g),settings(s),numberOfcomponents(0){}
 
+        
         /**
          * Add new coponent to the list of comonent
          * @param nodesIdSet set of nodes which are in the component
@@ -96,10 +99,13 @@ public:
         void addComponent(set<NodeID>&  nodesIdSet){
                 numberOfcomponents++;
                 size_t size =0;
+                double cov = 0;
                 for (auto it:nodesIdSet){
                         size = size + dbg.getSSNode(it).getMarginalLength();
+                        cov = cov + dbg.getSSNode(it).getKmerCov();
                 }
-                Component newComonent(nodesIdSet, numberOfcomponents,size);
+                cov = cov / (double) size;
+                Component newComonent(nodesIdSet, numberOfcomponents,size, cov);
                 components.push_back(newComonent);
                 for (auto it:nodesIdSet){
                         nodeComponentMap[it] = newComonent.componentID ;
@@ -107,13 +113,15 @@ public:
                 }
                 componentsMap[newComonent.getComponentID()] = newComonent;
         }
+        void reportStatistics ();
         /**
          * find number of disjoint components in the graph
-         * @param minSize the minimum size of a component to be considered
          * @return number of comonents in the graph
          *
          */
-        size_t findComponentsInGraph( size_t minSize =0);
+        void findComponentsInGraph( size_t minSize = 0 );
+
+        void detectErroneousComponent (double covCutoff, size_t maxMargLength , vector<Component> &tobeRemoved);
         struct less_than_Component
         {
                 inline bool operator() (const Component& object1, const Component& object2)

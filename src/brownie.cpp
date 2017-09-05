@@ -26,6 +26,7 @@
 #include "readcorrection.h"
 #include "refcomp.h"
 #include "findGap.h"
+
 using namespace std;
 
 Brownie::Brownie(int argc, char** args)
@@ -249,8 +250,17 @@ void Brownie::stageFour()
         graph.setTrueNodeMultiplicity(trueMult);
         #endif
         cout << graph.getGraphStats() << endl;
-        cout << "Writing graph..." << endl;
+        ComponentHandler ch (graph,settings);
+        vector<Component> tobeRemoved;
+        vector<NodeID> untrustableNodes;
+        ch.detectErroneousComponent (cutoff, libraries.getAvgReadLength()*2 , tobeRemoved);
+        for (Component c :tobeRemoved){
+                for (auto n : c.getNodeIDSet())
+                        untrustableNodes.push_back(n);
 
+        }
+        graph.removeErroneousComponents(untrustableNodes);
+        cout << "Writing graph..." << endl;
         graph.writeGraph(getNodeFilename(4),
                          getArcFilename(4),
                          getMetaDataFilename(4));
@@ -359,9 +369,9 @@ void Brownie::assembleModule()
         else
                cout << "Files produced by this stage appear to"
                         " be present, skipping stage 4...\n";
-        //if (stageFiveNecessary())
+        if (stageFiveNecessary())
                 stageFive();
-        //else
+        else
                 cout << "Files produced by this stage appear to"
                         " be present, skipping stage 5...\n";
         /*if (stageSixNecessary())
