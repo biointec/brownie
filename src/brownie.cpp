@@ -189,9 +189,7 @@ void Brownie::stageFour()
         refComp.getNodeMultiplicity(graph, trueMult);
         graph.setTrueNodeMultiplicity(trueMult);
         #endif
-
         bool change = true;
-        cutoff = cutoff*2/3;
         graph.buildKmerNPPTable();      // build kmer-NPP index
         graph.findbreakpoints("breakpoints.fasta");
         while (change){
@@ -211,7 +209,7 @@ void Brownie::stageFour()
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
                 // BUBBLE DETECTION
                 Util::startChrono();
-                lmax = libraries.getAvgReadLength() - settings.getK()*2+5;;
+                lmax = libraries.getAvgReadLength() - settings.getK()*2+5;
                 if (lmax < settings.getK()*2 )
                         lmax = settings.getK()*2+5;
                 bool bubbleChange =true;
@@ -235,7 +233,6 @@ void Brownie::stageFour()
                         }
                 }
                 cout << "Done (" << Util::stopChronoStr() << ")\n" << endl;
-                graph.extractStatistic();
                 graph.removeChimericLinksByFlow(cutoff, libraries.getAvgReadLength());
                 graph.concatenateNodes();
         }
@@ -253,6 +250,7 @@ void Brownie::stageFour()
         #endif
         cout << graph.getGraphStats() << endl;
         cout << "Writing graph..." << endl;
+
         graph.writeGraph(getNodeFilename(4),
                          getArcFilename(4),
                          getMetaDataFilename(4));
@@ -356,9 +354,9 @@ void Brownie::assembleModule()
         else
                 cout << "Files produced by this stage appear to"
                         " be present, skipping stage 3...\n";
-        //if (stageFourNecessary())
+        if (stageFourNecessary())
                 stageFour();
-        //else
+        else
                cout << "Files produced by this stage appear to"
                         " be present, skipping stage 4...\n";
         //if (stageFiveNecessary())
@@ -384,9 +382,6 @@ void Brownie::visualizeModule()
                            getMetaDataFilename(3));
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
         cout << graph.getGraphStats() << endl;
-
-        graph.writeCytoscapeGraph(settings.getTempDirectory() + "graph", 1, 10);
-
         graph.clear();
 }
 

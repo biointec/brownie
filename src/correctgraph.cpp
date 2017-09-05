@@ -653,24 +653,25 @@ bool DBGraph::handleParallelPaths(const vector<NodeID>& pathA,
         cout << "First: " << firstB << ", last: " << lastB << endl;
         cout << subPathB << endl;
         cout << covSubPathB << endl;*/
-       bool remove = true;
-       if (!lowCovPath.empty()) {
-               if (lowCov == covSubPathA){
-                       if (covSubPathB < covSubPathA * 2)
-                               remove = false;
-               }else{
-                       if (covSubPathA < covSubPathB * 2)
-                               remove = false;
-               }
-       }
        AlignmentJan ali(250, 2, 1, -1, -3);
 
        string pathAstr = getPathSeq(pathA);
        string pathBstr = getPathSeq(pathB);
        if (abs( pathAstr.length()- pathBstr.length())> 0 )
-                       remove = false;
+                       return false;
        if ( pathAstr.length() >settings.getK() && ali.align(pathAstr,pathBstr)<((int)min( pathAstr.length(),pathBstr.length() ) / 3))
-                       remove =false;
+                       return false;
+
+
+       bool remove = true;
+       if (lowCov == covSubPathA){
+               if (covSubPathB < covSubPathA * 2)
+                       remove = false;
+       }else{
+               if (covSubPathA < covSubPathB * 2)
+                       remove = false;
+       }
+
        if (remove && (lowCov <= covCutoff) && !lowCovPath.empty()) {
                 //removePath(lowCovPath);
                 flagPath(lowCovPath);

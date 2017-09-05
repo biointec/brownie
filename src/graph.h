@@ -770,7 +770,7 @@ public:
          * 5. for every node it calculates the inCorrctnessRatio of our guess about MULTIPLICITY
          *
          */
-        void extractStatistic();
+        void extractStatistic(map<NodeID, size_t> &nodesExpMult, size_t maxMargLength);
         /**
          * check nodes to see wether is reliable or not
          * a node is reliable if it has a high confidenceRatio and low inCorrctnessRatio
@@ -779,7 +779,7 @@ public:
          * @return true if the node is reliable
          */
 
-        bool checkNodeIsReliable(SSNode node, double covCutoff,size_t maxMargLength);
+        bool checkNodeIsReliable(SSNode node, double covCutoff,size_t maxMargLength , map<NodeID, size_t> &nodesExpMult);
         /**
          * it does a flow correction in the graph
          *
@@ -792,10 +792,9 @@ public:
         /*
          * calculates the startReadCov getAvgKmerCov
          */
-        double getStartReadAvg();
+        void getReadStartCovAvg(double &avg, double &variance);
 
-        typedef pair<int, pair<double, double> > pair_k;
-        map<NodeID, pair_k> nodesExpMult;
+
         /**
          * find number of disjoint components in the graph
          * @param minSize the minimum size of a component to be considered
