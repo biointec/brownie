@@ -595,7 +595,7 @@ void ReadCorrection::correctRead(ReadRecord& record,
                 }
                 cout <<endl;
         }*/
-
+        record.postRead.insert(2,"\t"+to_string( bestScore));
         size_t numSubstitutions = 0;
         if (bestScore > ((int)read.size() / 2) &&dbg.validateChain(bestNodeChain)) {
                 read = bestCorrectedRead;
