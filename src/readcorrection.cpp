@@ -558,9 +558,8 @@ int ReadCorrection::correctRead(const string &read, string &bestCorrectedRead,ve
                 findSeedMEM(read, seeds);
                 bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
         }
-         cout <<"***********************"<<endl;
-
-       /* if (bestCorrectedRead!=""){
+       /* cout <<"***********************"<<endl;
+       if (bestCorrectedRead!=""){
 
                 alignment.align(read, bestCorrectedRead);
                 cout << "BEST ALIGNMENT: " << bestScore << endl;
@@ -577,7 +576,7 @@ int ReadCorrection::correctRead(const string &read, string &bestCorrectedRead,ve
 void ReadCorrection::correctRead(ReadRecord& record,
                                  AlignmentMetrics& metrics)
 {
-        cout << record.preRead <<endl;
+        //cout << record.preRead <<endl;
         bool correctedByMEM = false, readCorrected = false;
         string& read = record.getRead();
         // if the read is too short, get out
@@ -587,19 +586,23 @@ void ReadCorrection::correctRead(ReadRecord& record,
         string bestCorrectedRead;
         vector<NodeID> bestNodeChain;
         int bestScore = correctRead(read,bestCorrectedRead, bestNodeChain,correctedByMEM, minSim);
-        string readRC = record.getRead() ;
-        Nucleotide::revCompl(readRC);
-        string bestCorrectedReadRC;
-        vector<NodeID> bestNodeChainRC;
-        int bestScoreRC = correctRead(readRC,bestCorrectedReadRC, bestNodeChainRC,correctedByMEM, minSim);
-        if (bestScoreRC > bestScore){
-                bestScore = bestScoreRC;
-                Nucleotide::revCompl(bestCorrectedReadRC);
-                bestCorrectedRead = bestCorrectedReadRC;
-                reverse(bestNodeChainRC.begin(), bestNodeChainRC.end());
-                bestNodeChain.clear();
-                for (auto it :bestNodeChainRC)
-                        bestNodeChain.push_back(-it);
+        if (bestScore != -read.size()){
+                string readRC = record.getRead() ;
+                Nucleotide::revCompl(readRC);
+                string bestCorrectedReadRC;
+                vector<NodeID> bestNodeChainRC;
+                int bestScoreRC = correctRead(readRC,bestCorrectedReadRC, bestNodeChainRC,correctedByMEM, minSim);
+                if (bestScoreRC == -read.size() )
+                        bestScore = -read.size();
+                if ( bestScoreRC > bestScore){
+                        bestScore = bestScoreRC;
+                        Nucleotide::revCompl(bestCorrectedReadRC);
+                        bestCorrectedRead = bestCorrectedReadRC;
+                        reverse(bestNodeChainRC.begin(), bestNodeChainRC.end());
+                        bestNodeChain.clear();
+                        for (auto it :bestNodeChainRC)
+                                bestNodeChain.push_back(-it);
+                }
         }
         record.postRead.insert(2,"\t"+to_string( bestScore)+"\t");
         size_t numSubstitutions = 0;
