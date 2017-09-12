@@ -208,7 +208,7 @@ void ReadCorrection::extractSeeds(const vector<NodePosPair>& nppv,
 
 void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& npp,
                                   size_t currReadPos, size_t& counter,
-                                  int currScore, int& bestScore, size_t& seedLast, bool &fullyCorrected)
+                                  int currScore, int& bestScore, size_t& seedLast, bool &fullyCorrected,string currentNode)
 {
         const SSNode node = dbg.getSSNode(curr);
 
@@ -231,12 +231,19 @@ void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& n
 
                 string nodeOL = nextNode.substr(Kmer::getK()-1, OLSize);
                 string readOL = read.substr(currReadPos + Kmer::getK() - 1, OLSize);
+                string discoveredNode = currentNode + nodeOL;
+
+                /*cout << nextID <<endl;
+                string discoveredRead = read.substr(currReadPos + readOL.size()+ Kmer::getK() - 1 - discoveredNode.size(), discoveredNode.size());
+                int fullScore = alignment.align(discoveredNode, discoveredRead);
+                alignment.printAlignment(discoveredNode, discoveredRead);
+                cout <<fullScore <<endl;*/
 
                 int thisScore = alignment.align(readOL, nodeOL);
                 int nextScore = currScore + thisScore;
                 float nextRelScore = (float)thisScore / (float)OLSize;
 
-                dfsNode.push_back(DFSNode(nextID, nextReadPos, nextScore, nextRelScore));
+                dfsNode.push_back(DFSNode(nextID, nextReadPos, nextScore, nextRelScore, discoveredNode));
 
                 // =====================
                 /*string str = nextNode.substr(Kmer::getK()-1, OLSize);
@@ -254,6 +261,7 @@ void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& n
                 int nextScore = it.score;
                 size_t nextReadPos = it.readPos;
                 size_t OLSize = nextReadPos - currReadPos;
+                string discoveredNode = it.discoveredNode;
 
                 int maxAttainScore = nextScore + getMarginalLength(read) - nextReadPos;
 
@@ -275,7 +283,7 @@ void ReadCorrection::recSearch(NodeID curr, string& read, vector<NodePosPair>& n
 
                 // descend in a child node only if there is chance this will improve the best score
                 if (maxAttainScore > bestScore)
-                        recSearch(nextID, read, npp, nextReadPos, counter, nextScore, bestScore, seedLast,fullyCorrected);
+                        recSearch(nextID, read, npp, nextReadPos, counter, nextScore, bestScore, seedLast,fullyCorrected, discoveredNode);
 
                 // if the best score has been updated in this branch save the npp
                 if (bestScore > prevBestScore)
@@ -309,8 +317,9 @@ bool ReadCorrection::extendSeed(string& read, vector<NodePosPair>& npp,
         //      cout << read << endl;
         size_t counter = 0; int bestScore = -(getMarginalLength(read) - seedLast);
         bool fullyCorrected = true;
+        string discoveredNode = read.substr(seedFirst,seedLast-seedFirst+Kmer::getK()-1);
         if (seedLast < getMarginalLength(read))
-                 recSearch(node.getNodeID(), read, npp, seedLast, counter, 0, bestScore, seedLast, fullyCorrected);
+                 recSearch(node.getNodeID(), read, npp, seedLast, counter, 0, bestScore, seedLast, fullyCorrected,discoveredNode);
         return fullyCorrected;
 }
 
@@ -539,54 +548,20 @@ int ReadCorrection::correctRead(const string& read,
 
         return bestScore;
 }
-
-void ReadCorrection::correctRead(ReadRecord& record,
-                                 AlignmentMetrics& metrics)
-{
-        bool correctedByMEM = false, readCorrected = false;
-        string& read = record.getRead();
-        vector<NodeID>& nodeChain = record.getNodeChain();
-
-        // if the read is too short, get out
-        if (read.length() < Kmer::getK())
-                return;
+int ReadCorrection::correctRead(const string &read, string &bestCorrectedRead,vector<NodeID> &bestNodeChain  , bool& correctedByMEM, int minSim){
         vector<Seed> seeds;
+        int bestScore = -read.size();
         findSeedKmer(read, seeds);
-
-        string bestCorrectedRead;
-        vector<NodeID> bestNodeChain;
-
-        int bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
-        vector<Seed> seedsRC;
-        string readRC = record.getRead() ;
-        Nucleotide::revCompl(readRC);
-        findSeedKmer(readRC, seedsRC);
-        string bestCorrectedReadRC;
-        vector<NodeID> bestNodeChainRC;
-        int bestScoreRC = correctRead(readRC, bestCorrectedReadRC, seedsRC, bestNodeChainRC);
-        if (bestScoreRC ==  -read.size() ||  bestScore ==-read.size())
-                bestScore = -read.size();
-        else{
-                if (bestScoreRC > bestScore){
-                        bestScore = bestScoreRC;
-                        Nucleotide::revCompl(readRC);
-                        read = readRC;
-                        Nucleotide::revCompl(bestCorrectedReadRC);
-                        bestCorrectedRead = bestCorrectedReadRC;
-                        reverse(bestNodeChainRC.begin(), bestNodeChainRC.end());
-                        bestNodeChain.clear();
-                        for (auto it :bestNodeChainRC)
-                                bestNodeChain.push_back(-it);
-                }
-        }
-
-        if (seeds.size() ==0|| bestScore != -read.size() &&  bestScore <= ((int)read.size() / 2)) {
+        bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
+        if ((seeds.size() ==0 || bestScore <= minSim )&& bestScore != -read.size()) {
                 correctedByMEM = true;
                 findSeedMEM(read, seeds);
                 bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
         }
+         cout <<"***********************"<<endl;
 
-        /*if (bestCorrectedRead!=""){
+       /* if (bestCorrectedRead!=""){
+
                 alignment.align(read, bestCorrectedRead);
                 cout << "BEST ALIGNMENT: " << bestScore << endl;
                 alignment.printAlignment(read, bestCorrectedRead);
@@ -594,27 +569,54 @@ void ReadCorrection::correctRead(ReadRecord& record,
                         cout <<it <<",";
                 }
                 cout <<endl;
-        }*/
-        record.postRead.insert(2,"\t"+to_string( bestScore));
+        }else
+                cout << "couldn't find the best alignment for this read" <<endl;*/
+
+        return bestScore;
+}
+void ReadCorrection::correctRead(ReadRecord& record,
+                                 AlignmentMetrics& metrics)
+{
+        cout << record.preRead <<endl;
+        bool correctedByMEM = false, readCorrected = false;
+        string& read = record.getRead();
+        // if the read is too short, get out
+        if (read.length() < Kmer::getK())
+                return;
+        int minSim = ((int)read.size() / 2);
+        string bestCorrectedRead;
+        vector<NodeID> bestNodeChain;
+        int bestScore = correctRead(read,bestCorrectedRead, bestNodeChain,correctedByMEM, minSim);
+        string readRC = record.getRead() ;
+        Nucleotide::revCompl(readRC);
+        string bestCorrectedReadRC;
+        vector<NodeID> bestNodeChainRC;
+        int bestScoreRC = correctRead(readRC,bestCorrectedReadRC, bestNodeChainRC,correctedByMEM, minSim);
+        if (bestScoreRC > bestScore){
+                bestScore = bestScoreRC;
+                Nucleotide::revCompl(bestCorrectedReadRC);
+                bestCorrectedRead = bestCorrectedReadRC;
+                reverse(bestNodeChainRC.begin(), bestNodeChainRC.end());
+                bestNodeChain.clear();
+                for (auto it :bestNodeChainRC)
+                        bestNodeChain.push_back(-it);
+        }
+        record.postRead.insert(2,"\t"+to_string( bestScore)+"\t");
         size_t numSubstitutions = 0;
-        if (bestScore > ((int)read.size() / 2) &&dbg.validateChain(bestNodeChain)) {
+        if ( bestScore > minSim && dbg.validateChain(bestNodeChain)) {
                 read = bestCorrectedRead;
                 readCorrected = true;
                 numSubstitutions = (read.length() - bestScore)/2;
         }
         metrics.addObservation(readCorrected, correctedByMEM, numSubstitutions);
-
 }
 
 void ReadCorrection::correctChunk(vector<ReadRecord>& readChunk,
                                   AlignmentMetrics& metrics)
 {
         ofstream ofs;
-        for (ReadRecord& record : readChunk) {
-                vector<NodeID> nodeChain;
+        for (ReadRecord& record : readChunk)
                 correctRead(record, metrics);
-        }
-
         /*cout << readChunk.size() << endl;
         for (size_t i = 0; i < 1000; i++) {
                 cout << "================== read " << i << endl;

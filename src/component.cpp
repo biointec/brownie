@@ -71,7 +71,7 @@ void ComponentHandler::reportStatistics ()
         for (auto it : componentsMap)
                 components.push_back(it.second);
         cout << "There are " << components.size() << "number of disjoint components in the graph" <<endl;
-        sort(components.begin(), components.end(),greater_than_Component());
+        /*sort(components.begin(), components.end(),greater_than_Component());
         for (auto  it : components)
         {
             Component c = it;
@@ -80,7 +80,7 @@ void ComponentHandler::reportStatistics ()
             cout <<"Num Of Nodes   : " <<c.numOfNodes <<endl;
             cout <<"Component Size : " <<c.componentSize <<endl;
             cout <<"**************" <<endl;
-        }
+        }*/
 }
 void ComponentHandler::detectErroneousComponent (double covCutoff, size_t maxMargLength , vector<Component> &tobeRemoved)
 {

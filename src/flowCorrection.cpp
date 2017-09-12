@@ -125,7 +125,7 @@ void DBGraph ::getReadStartCovAvg( double &avg, double &variance){
         while(i < num) {
 
                 SSNode tempNode = nodeArray[i];
-                double len =tempNode.getMarginalLength() + settings.getK()-1;
+                double len = tempNode.getMarginalLength() + settings.getK()-1;
                 variance = variance +(tempNode.getReadStartCov()/len - avg )* (tempNode.getReadStartCov()/len - avg );
                 sumOfReadStcov = sumOfReadStcov + tempNode.getReadStartCov();
                 i ++;

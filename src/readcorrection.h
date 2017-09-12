@@ -161,12 +161,13 @@ public:
         size_t readPos;
         int score;
         float relScore;
+        string discoveredNode;
 
-        DFSNode() : nodeID(0), readPos(0), score(0), relScore(0.0f) {}
+        DFSNode() : nodeID(0), readPos(0), score(0), relScore(0.0f), discoveredNode("") {}
 
-        DFSNode(NodeID nodeID_, size_t readPos_, int score_, float relScore_) :
+        DFSNode(NodeID nodeID_, size_t readPos_, int score_, float relScore_, string discovered) :
                 nodeID(nodeID_), readPos(readPos_), score(score_),
-                relScore(relScore_) {}
+                relScore(relScore_), discoveredNode(discovered) {}
 
         bool operator< (const DFSNode& rhs) const {
                 if (rhs.relScore != relScore)
@@ -262,7 +263,7 @@ private:
 
         void recSearch(NodeID curr, string& read, vector<NodePosPair>& npp,
                        size_t currPos, size_t& counter, int score,
-                       int& bestScore, size_t& seedLast,  bool &fullyCorrected);
+                       int& bestScore, size_t& seedLast,  bool &fullyCorrected, string currntRead);
 
         void revCompl(vector<NodePosPair>& npp);
 
@@ -275,7 +276,9 @@ private:
          * @param seeds TODO
          */
         void findSeedMEM(const std::string& read, std::vector<Seed>& seeds);
-
+        int correctRead(const string &read, string &bestCorrectedRead,
+                                        vector<NodeID> &bestNodeChain,bool& correctedByMEM,
+                                        int minSim);
         int correctRead(const std::string& read,
                         std::string& bestCorrectedRead,
                         const std::vector<Seed>& seeds,

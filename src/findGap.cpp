@@ -731,7 +731,7 @@ void FindGap::extractBreakpointSubgraph( std::string breakpointFileName,string  
                 RefComp refComp("tempBreakpoint.fasta");
                 vector<NodeChain> trueNodeChain;
                 refComp.getTrueNodeChain(dbg, trueNodeChain);
-                writeCytoscapeGraph( tempDir+breakPoint.first,trueNodeChain, trueMult,2);
+                writeCytoscapeGraph( tempDir+breakPoint.first,trueNodeChain, trueMult,1);
                 ofs.close();
 
         }

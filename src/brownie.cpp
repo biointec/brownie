@@ -176,7 +176,7 @@ void Brownie::stageFour()
         graph.loadKmerSpectrumFit(getSpectrumFitFilename());
         if (cutoff == 0)
                 cutoff = graph.getCovCutoff();
-        FindGap  findGap (libraries, settings, graph);
+
 
         #ifdef DEBUG
 
@@ -241,7 +241,7 @@ void Brownie::stageFour()
         graph.buildKmerNPPTable();      // build kmer-NPP index
         graph.findbreakpoints("breakpoints.fasta");
         #ifdef DEBUG
-        findGap.extractBreakpointSubgraph("breakpoints.fasta", settings.getTempDirectory()+"Stage4_");
+        //findGap.extractBreakpointSubgraph("breakpoints.fasta", settings.getTempDirectory()+"Stage4_");
         Util::startChrono();
         cout << "Building kmer - node/position index... "; cout.flush();
         graph.buildKmerNPPTable();      // build kmer-NPP index
@@ -289,6 +289,9 @@ void Brownie::stageFive()
         cout << "Graph contains " << graph.getNumNodes() << " nodes and "
              << graph.getNumArcs() << " arcs" << endl;
         graph.buildKmerNPPTable();
+        //FindGap  findGap (libraries, settings, graph);
+        //findGap.extractBreakpointSubgraph("breakpoints.fasta", "cythoGraphs/Stage5_1_");
+        //graph.findbreakpoints("breakpoints.fasta");
         ReadCorrectionHandler rcHandler(graph, settings);
         rcHandler.doErrorCorrection(libraries);
 
