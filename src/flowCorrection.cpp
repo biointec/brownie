@@ -111,10 +111,10 @@ void DBGraph ::getReadStartCovAvg( double &avg, double &variance){
         double sumOfMarginalLenght = 0;
         double sizeLimit = 0;
         sizeLimit = ( totalLength * percentage)/100;
-        size_t numOfVisitedNodeLimit = 100;
-        size_t minNumOfsamples = 30;
+        size_t maxNumOfVisitedNode = 100;
+        size_t minNumOfVisitedNode = 30 < nodeArray.size() ? 30:nodeArray.size() ;
         size_t num  = 0;
-        while(sumOfMarginalLenght < sizeLimit  && numOfVisitedNodeLimit > num || num < minNumOfsamples) {
+        while(sumOfMarginalLenght < sizeLimit  && maxNumOfVisitedNode > num  || num < minNumOfVisitedNode ) {
                 num++;
                 SSNode tempNode = nodeArray[num-1];
                 sumOfMarginalLenght = sumOfMarginalLenght + tempNode.getMarginalLength() + settings.getK()-1;

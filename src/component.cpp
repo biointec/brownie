@@ -70,7 +70,7 @@ void ComponentHandler::reportStatistics ()
         vector<Component> components;
         for (auto it : componentsMap)
                 components.push_back(it.second);
-        cout << "There are " << components.size() << "number of disjoint components in the graph" <<endl;
+        cout << "There are " << components.size() << " disjoint components in the graph" <<endl;
         /*sort(components.begin(), components.end(),greater_than_Component());
         for (auto  it : components)
         {

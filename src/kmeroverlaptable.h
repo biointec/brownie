@@ -87,7 +87,7 @@ private:
          * @return True upon success, false otherwise
          */
         void parseRead(std::string &read,
-                       std::vector<std::pair<Kmer, KmerOverlap> >& kmerBuffer) const;
+                       std::vector<std::pair<Kmer, KmerOverlap> >& kmerBuffer) ;
 
         /**
          * Parse a buffer of reads and store kmers in temporary buffers per thread
@@ -96,7 +96,7 @@ private:
          */
         void parseReads(size_t thisThread,
                         std::vector<std::string>& readBuffer,
-                        std::vector<std::pair<Kmer, KmerOverlap> >& kmerBuffer) const;
+                        std::vector<std::pair<Kmer, KmerOverlap> >& kmerBuffer) ;
 
         /**
          * Entry routine for worker thread

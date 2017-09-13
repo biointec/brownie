@@ -139,7 +139,7 @@ void KmerOverlapTable::loadKmersFromDisc(const std::string& filename)
 }
 
 void KmerOverlapTable::parseRead(string& read,
-                                 vector<pair<Kmer, KmerOverlap> >& kmerBuffer) const
+                                 vector<pair<Kmer, KmerOverlap> >& kmerBuffer)
 {
         // get out early
         if (read.size() < Kmer::getK())
@@ -153,8 +153,9 @@ void KmerOverlapTable::parseRead(string& read,
                 refs[it.getOffset()] = find(it.getKmer());
 
         // now mark the overlap implied by the read
-        //size_t lastIndex = 0;
+        size_t lastIndex = 0;
         for (KmerIt it(read); it.isValid(); it++) {
+
                 if (refs[it.getOffset()].first == table.end())
                         continue;
                 if (it.hasRightOverlap())
@@ -163,37 +164,49 @@ void KmerOverlapTable::parseRead(string& read,
                 if (it.hasLeftOverlap())
                         if (refs[it.getOffset()-1].first != table.end())
                                 refs[it.getOffset()].markLeftOverlap(it.getLeftOverlap());
-                //lastIndex = it.getOffset();
+                lastIndex = it.getOffset();
         }
 
         // get the first index of the read that should be kept
-        /*size_t firstIndex = refs.size();
+        size_t firstIndex = refs.size();
         for (KmerIt it(read); it.isValid(); it++) {
                 if (refs[it.getOffset()].first == table.end())
                         continue;
                 firstIndex = it.getOffset();
                 break;
-        }*/
+        }
 
         // insert missing kmers in between first and last index
         // and mark their left and right overlap
-        /*for (KmerIt it(read); it.isValid(); it++) {
+
+        for (KmerIt it(read); it.isValid(); it++) {
                 if (refs[it.getOffset()].first != table.end())
                         continue;
                 if (it.getOffset() < firstIndex)
                         continue;
                 if (it.getOffset() > lastIndex)
                         continue;
-                KmerOverlap ol;
-                ol.markLeftOverlap(it.getLeftOverlap());
-                ol.markRightOverlap(it.getRightOverlap());
-                kmerBuffer.push_back(pair<Kmer, KmerOverlap>(it.getKmer(), ol));
-        }*/
+                KmerOverlapRef ref = insert(it.getKmer());
+                if (it.hasRightOverlap())
+                        ref.markRightOverlap(it.getRightOverlap());
+                if (it.hasLeftOverlap())
+                        ref.markLeftOverlap(it.getLeftOverlap());
+                if (refs[it.getOffset()-1].first != table.end()){
+                        KmerIt itb  = it;
+                        itb --;
+                        refs[it.getOffset()-1].markRightOverlap(itb.getRightOverlap());
+                }
+                if (refs[it.getOffset()+1].first != table.end()){
+                        KmerIt ita = it;
+                        ita ++;
+                        refs[it.getOffset()+1].markLeftOverlap(ita.getLeftOverlap());
+                }
+        }
 }
 
 void KmerOverlapTable::parseReads(size_t thisThread,
                                   vector<string>& readBuffer,
-                                  vector<pair<Kmer, KmerOverlap> >& kmerBuffer) const
+                                  vector<pair<Kmer, KmerOverlap> >& kmerBuffer)
 {
         for (size_t i = 0; i < readBuffer.size(); i++)
                 parseRead(readBuffer[i], kmerBuffer);
@@ -214,7 +227,7 @@ void KmerOverlapTable::workerThread(size_t thisThread, LibraryContainer* inputs)
 
 void KmerOverlapTable::parseInputFiles(LibraryContainer &inputs)
 {
-        const unsigned int& numThreads = settings.getNumThreads();
+        const unsigned int& numThreads = 1; settings.getNumThreads();
         cout << "Number of threads: " << numThreads << endl;
 
         inputs.startIOThreads(settings.getThreadWorkSize(),

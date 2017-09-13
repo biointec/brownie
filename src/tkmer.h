@@ -776,6 +776,16 @@ private:
                         offset = getEndPosition();
         }
 
+        /**
+         * Decrement the offset by a certain amount
+         * @param amount Amount to decrease the offset by
+         */
+        void decrementOffset(size_t amount = 1) {
+                offset -= amount;
+                if (offset < 0)
+                        offset = 0;
+        }
+
         const std::string& str;         // const-ref to the string
         size_t offset;                  // current position in the string
         Kmer kmer;                      // current kmer
@@ -821,6 +831,39 @@ public:
                 return *this;
         }
 
+
+             /**
+         * Prefix decrement operator (move to the previous kmer)
+         * @return Reference to the object after decrementing
+         */
+        KmerIt& operator--() {
+                // advance to the previous character
+                decrementOffset();
+
+                // get out early
+                if (!isValid())
+                        return *this;
+
+                // see if the previous character is valid
+                char previous = str[offset + Kmer::getK() - 1];
+                if (previous == 'A' || previous == 'C' || previous == 'G' || previous == 'T') {
+                        kmer.pushNucleotideLeft(previous);
+                } else {
+                        // go back by k characters
+                        decrementOffset(Kmer::getK());
+
+                        // find the first valid kmer
+                        findFirstValidKmer();
+
+                        // if no valid kmer was found skip entire read
+                        if (isValid())
+                                kmer = Kmer(str, offset);
+                }
+
+                return *this;
+        }
+
+
         /**
          * Postfix increment operator (move to the next kmer)
          * @return Copy of the object before incrementing
@@ -830,7 +873,15 @@ public:
                 operator++();
                 return copy;
         }
-
+        /**
+         * Postfix decrement operator (move to the previous kmer)
+         * @return Copy of the object before decrementing
+         */
+        KmerIt operator--(int) {
+                KmerIt copy(*this);
+                operator--();
+                return copy;
+        }
         /**
          * Get the current kmer
          * @return The current kmer
