@@ -151,7 +151,6 @@ void KmerOverlapTable::parseRead(string& read,
         // find the kmers in the table
         for (KmerIt it(read); it.isValid(); it++)
                 refs[it.getOffset()] = find(it.getKmer());
-
         // now mark the overlap implied by the read
         size_t lastIndex = 0;
         for (KmerIt it(read); it.isValid(); it++) {
@@ -178,7 +177,7 @@ void KmerOverlapTable::parseRead(string& read,
 
         // insert missing kmers in between first and last index
         // and mark their left and right overlap
-
+        /*
         for (KmerIt it(read); it.isValid(); it++) {
                 if (refs[it.getOffset()].first != table.end())
                         continue;
@@ -202,6 +201,7 @@ void KmerOverlapTable::parseRead(string& read,
                         refs[it.getOffset()+1].markLeftOverlap(ita.getLeftOverlap());
                 }
         }
+        */
 }
 
 void KmerOverlapTable::parseReads(size_t thisThread,
@@ -216,10 +216,8 @@ void KmerOverlapTable::workerThread(size_t thisThread, LibraryContainer* inputs)
 {
         // aux variables
         vector<pair<Kmer, KmerOverlap> > kmerBuffer;
-
         // local storage of reads
         vector<string> myReadBuf;
-
         size_t blockID, recordOffset;
         while (inputs->getReadChunk(myReadBuf, blockID, recordOffset))
                 parseReads(thisThread, myReadBuf, kmerBuffer);
@@ -227,11 +225,11 @@ void KmerOverlapTable::workerThread(size_t thisThread, LibraryContainer* inputs)
 
 void KmerOverlapTable::parseInputFiles(LibraryContainer &inputs)
 {
-        const unsigned int& numThreads = 1; settings.getNumThreads();
+        const unsigned int& numThreads = settings.getNumThreads();
         cout << "Number of threads: " << numThreads << endl;
 
         inputs.startIOThreads(settings.getThreadWorkSize(),
-                              settings.getThreadWorkSize() * settings.getNumThreads());
+                              settings.getThreadWorkSize() * numThreads);
 
         // start worker threads
         vector<thread> workerThreads(numThreads);

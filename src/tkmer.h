@@ -845,7 +845,7 @@ public:
                         return *this;
 
                 // see if the previous character is valid
-                char previous = str[offset + Kmer::getK() - 1];
+                char previous = str[offset ];
                 if (previous == 'A' || previous == 'C' || previous == 'G' || previous == 'T') {
                         kmer.pushNucleotideLeft(previous);
                 } else {
