@@ -553,7 +553,7 @@ int ReadCorrection::correctRead(const string &read, string &bestCorrectedRead,ve
         int bestScore = -read.size();
         findSeedKmer(read, seeds);
         bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
-        if ((seeds.size() ==0 || bestScore <= minSim )&& bestScore != -read.size()) {
+        if (seeds.size() == 0 || (bestScore <= minSim && bestScore != -read.size())) {
                 correctedByMEM = true;
                 findSeedMEM(read, seeds);
                 bestScore = correctRead(read, bestCorrectedRead, seeds, bestNodeChain);
