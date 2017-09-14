@@ -66,7 +66,7 @@ void Brownie::stageOne()
         cout.flush();
         Util::startChrono();
         if (settings.getK() >31)
-                readParser->writeAllKmers();
+                readParser->writeAllKmers(getKmerFilename());
         else
                 readParser->writeKmersWithCovGTOne(getKmerFilename());
         cout << "done (" << Util::stopChronoStr() << ")" << endl;
