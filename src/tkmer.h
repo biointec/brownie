@@ -781,9 +781,11 @@ private:
          * @param amount Amount to decrease the offset by
          */
         void decrementOffset(size_t amount = 1) {
-                offset -= amount;
-                if (offset < 0)
+                if (int(offset)- amount < 0)
                         offset = 0;
+                else
+                        offset -= amount;
+
         }
 
         const std::string& str;         // const-ref to the string
@@ -945,6 +947,7 @@ public:
          */
         char getRightOverlap() const {
                 assert(hasRightOverlap());
+
                 return str[offset + Kmer::getK()];
         }
 };

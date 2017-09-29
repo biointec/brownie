@@ -137,7 +137,7 @@ void KmerOverlapTable::loadKmersFromDisc(const std::string& filename)
 
         ifs.close();
 }
-
+/*
 void KmerOverlapTable::parseRead(string& read,
                                  vector<pair<Kmer, KmerOverlap> >& kmerBuffer)
 {
@@ -177,7 +177,7 @@ void KmerOverlapTable::parseRead(string& read,
 
         // insert missing kmers in between first and last index
         // and mark their left and right overlap
-        /*
+
         for (KmerIt it(read); it.isValid(); it++) {
                 if (refs[it.getOffset()].first != table.end())
                         continue;
@@ -185,6 +185,7 @@ void KmerOverlapTable::parseRead(string& read,
                         continue;
                 if (it.getOffset() > lastIndex)
                         continue;
+                table.resize(table.size()+1);
                 KmerOverlapRef ref = insert(it.getKmer());
                 if (it.hasRightOverlap())
                         ref.markRightOverlap(it.getRightOverlap());
@@ -201,7 +202,73 @@ void KmerOverlapTable::parseRead(string& read,
                         refs[it.getOffset()+1].markLeftOverlap(ita.getLeftOverlap());
                 }
         }
-        */
+
+}
+*/
+
+
+void KmerOverlapTable::parseRead(string& read,
+                                 vector<pair<Kmer, KmerOverlap> >& kmerBuffer)
+{
+        // get out early
+        if (read.size() < Kmer::getK())
+                return;
+
+        // reserve space for kmers and flags
+        vector<KmerOverlapRef> refs(read.size() + 1 - Kmer::getK());
+
+        // find the kmers in the table
+        for (KmerIt it(read); it.isValid(); it++)
+                refs[it.getOffset()] = find(it.getKmer());
+        // now mark the overlap implied by the read
+        size_t lastIndex = 0;
+        for (KmerIt it(read); it.isValid(); it++) {
+
+                if (refs[it.getOffset()].first == table.end())
+                        continue;
+                lastIndex = it.getOffset();
+        }
+
+        // get the first index of the read that should be kept
+        size_t firstIndex = refs.size();
+        for (KmerIt it(read); it.isValid(); it++) {
+                if (refs[it.getOffset()].first == table.end())
+                        continue;
+                firstIndex = it.getOffset();
+                break;
+        }
+        for (KmerIt it(read); it.isValid(); it++) {
+
+                if (it.getOffset() < firstIndex)
+                        continue;
+                if (it.getOffset() > lastIndex)
+                        continue;
+                if (refs[it.getOffset()].first == table.end())
+                        KmerOverlapRef ref = insert(it.getKmer());
+        }
+
+        for (KmerIt it(read); it.isValid(); it++)
+                refs[it.getOffset()] = find(it.getKmer());
+       /* cout <<read<<endl;
+        for (KmerIt it(read); it.isValid(); it++) {
+
+                if (refs[it.getOffset()].first == table.end())
+                        cout << "*" ;
+                else
+                        cout<< "|" ;
+        }
+        cout <<endl;*/
+        for (KmerIt it(read); it.isValid(); it++) {
+                if (refs[it.getOffset()].first == table.end())
+                        continue;
+                if (it.hasRightOverlap())
+                        if (refs[it.getOffset()+1].first != table.end())
+                                refs[it.getOffset()].markRightOverlap(it.getRightOverlap());
+                if (it.hasLeftOverlap())
+                        if (refs[it.getOffset()-1].first != table.end())
+                                refs[it.getOffset()].markLeftOverlap(it.getLeftOverlap());
+        }
+
 }
 
 void KmerOverlapTable::parseReads(size_t thisThread,
@@ -225,7 +292,7 @@ void KmerOverlapTable::workerThread(size_t thisThread, LibraryContainer* inputs)
 
 void KmerOverlapTable::parseInputFiles(LibraryContainer &inputs)
 {
-        const unsigned int& numThreads = settings.getNumThreads();
+        const unsigned int& numThreads =1;//  settings.getNumThreads();
         cout << "Number of threads: " << numThreads << endl;
 
         inputs.startIOThreads(settings.getThreadWorkSize(),
