@@ -103,7 +103,7 @@ void DBGraph ::getReadStartCovAvg( double &avg, double &variance){
         for ( NodeID lID = 1; lID <= numNodes; lID++ ) {
                 SSNode node = getSSNode ( lID );
                 if(node.isValid() && node.getMarginalLength()) {
-                        totalLength = totalLength + node.getMarginalLength()+settings.getK()-1;
+                        totalLength = totalLength + node.getMarginalLength();
                         nodeArray.push_back(node);
                 }
         }
@@ -117,7 +117,7 @@ void DBGraph ::getReadStartCovAvg( double &avg, double &variance){
         while(sumOfMarginalLenght < sizeLimit  && maxNumOfVisitedNode > num  || num < minNumOfVisitedNode ) {
                 num++;
                 SSNode tempNode = nodeArray[num-1];
-                sumOfMarginalLenght = sumOfMarginalLenght + tempNode.getMarginalLength() + settings.getK()-1;
+                sumOfMarginalLenght = sumOfMarginalLenght + tempNode.getMarginalLength() ;
                 sumOfReadStcov = sumOfReadStcov + tempNode.getReadStartCov();
         }
         avg = sumOfReadStcov/sumOfMarginalLenght;
@@ -125,7 +125,7 @@ void DBGraph ::getReadStartCovAvg( double &avg, double &variance){
         while(i < num) {
 
                 SSNode tempNode = nodeArray[i];
-                double len = tempNode.getMarginalLength() + settings.getK()-1;
+                double len = tempNode.getMarginalLength() ;
                 variance = variance +(tempNode.getReadStartCov()/len - avg )* (tempNode.getReadStartCov()/len - avg );
                 sumOfReadStcov = sumOfReadStcov + tempNode.getReadStartCov();
                 i ++;
@@ -142,7 +142,7 @@ void DBGraph::extractStatistic(map<NodeID, size_t> &nodesExpMult, size_t maxMarg
                 SSNode node = getSSNode ( lID );
                 if (!node.isValid())
                         continue;
-                size_t len = node.getMarginalLength() + settings.getK()-1;
+                size_t len = node.getMarginalLength() ;
                 double readStarCov = node.getReadStartCov();
                 if ( len < maxMargLength || readStarCov ==0){
                         nodesExpMult[abs(node.getNodeID())] = 0;
