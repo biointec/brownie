@@ -63,6 +63,7 @@ void AlignmentMetrics::printStatistics() const
         cout << "\tNumber of uncorrected reads: " << numUncorrected
              << fixed << setprecision(2) << " ("
              << Util::toPercentage(numUncorrected, numReads) << "%)" << endl;
+
 }
 
 // ============================================================================
