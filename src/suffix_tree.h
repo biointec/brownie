@@ -24,9 +24,6 @@ under the same terms as Perl itself.
 /* A type definition for a 32 bits variable - a double word. */
 #define     DBL_WORD      unsigned long   
 
-/* Error return value for some functions. Initialized  in ST_CreateTree. */
-DBL_WORD    ST_ERROR;
-
 /******************************************************************************/
 /*                           DATA STRUCTURES                                  */
 /******************************************************************************/

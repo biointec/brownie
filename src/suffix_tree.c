@@ -73,6 +73,9 @@ of (1) points only to (2).
 #include "string.h"
 #include "suffix_tree.h"
 
+// definition was originally in ST_CreateTree, but this lead to undefined errors with GCC 10
+DBL_WORD ST_ERROR = 1000000000;
+
 /* See function body */
 void ST_PrintTree(SUFFIX_TREE* tree);
 /* See function body */
@@ -1018,7 +1021,6 @@ SUFFIX_TREE* ST_CreateTree(const char* str, DBL_WORD length)
 
    /* Calculating string length (with an ending $ sign) */
    tree->length         = length+1;
-   ST_ERROR            = 1000000000;
 
    /* Allocating the only real string of the tree */
    tree->tree_string = malloc((tree->length+1)*sizeof(char));
